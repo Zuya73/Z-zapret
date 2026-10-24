@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     tags: ['desktop-v*']
-    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
+    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   pull_request:
-    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
+    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   workflow_dispatch:
 
 permissions:
