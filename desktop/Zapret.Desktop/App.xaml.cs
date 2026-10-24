@@ -36,7 +36,8 @@ public partial class App : Application
             }
             return;
         }
-        bool smoke = e.Args.Contains("--smoke-test");
+        bool startupCheck = e.Args.Contains("--startup-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck;
         if (!smoke)
         {
             singleInstance = new Mutex(true, @"Global\Z-zapret.Desktop", out bool created);
@@ -56,18 +57,21 @@ public partial class App : Application
             MessageBox.Show(error.Exception.Message, "Ошибка Z-zapret", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
-        var window = new MainWindow(smoke);
+        var window = new MainWindow(preview: smoke && !startupCheck);
         MainWindow = window;
         window.Show();
         if (smoke)
         {
             await window.Dispatcher.InvokeAsync(() =>
             {
+                if (startupCheck && !window.StartupSucceeded)
+                    throw new InvalidOperationException("Application initialization failed: " + window.StartupError);
                 window.UpdateLayout();
                 var image = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
                 image.Render(window);
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
-                string destination = e.Args.SkipWhile(x => x != "--smoke-test").Skip(1).FirstOrDefault() ?? "desktop-preview.png";
+                string option = startupCheck ? "--startup-check" : "--smoke-test";
+                string destination = e.Args.SkipWhile(x => x != option).Skip(1).FirstOrDefault() ?? "desktop-preview.png";
                 using var stream = File.Create(destination); encoder.Save(stream);
                 window.ExitForSmokeTest();
             }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);

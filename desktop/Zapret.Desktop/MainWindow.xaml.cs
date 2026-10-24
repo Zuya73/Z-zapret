@@ -37,6 +37,9 @@ public partial class MainWindow : Window
     private string? activeStrategy;
     private static readonly string[] UserFiles = ["list-general-user.txt", "list-exclude-user.txt", "ipset-exclude-user.txt", "ipset-include-user.txt"];
 
+    internal bool StartupSucceeded => ready && ErrorBanner.Visibility != Visibility.Visible;
+    internal string StartupError => ErrorText.Text;
+
     public MainWindow(bool preview = false)
     {
         this.preview = preview;

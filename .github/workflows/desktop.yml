@@ -61,6 +61,13 @@ jobs:
             & $compiler /V2 "/DPUBLISH_DIR=$publishedDirectory" installer.nsi
             if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
           } finally { Pop-Location }
+      - name: Verify full application startup without starting the network engine
+        shell: pwsh
+        run: |
+          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/Z-zapret/Z-zapret.dll', '--startup-check', 'desktop/artifacts/startup-preview.png') -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Application initialization timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Application initialization failed: $($process.ExitCode)" }
+          if (-not (Test-Path desktop/artifacts/startup-preview.png)) { throw 'Application initialization produced no preview.' }
       - name: Test silent installation and uninstallation
         shell: pwsh
         run: |
