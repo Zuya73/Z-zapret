@@ -87,7 +87,11 @@ jobs:
           $installer = @(Get-ChildItem desktop/artifacts/Z-zapret-Setup-*-x64.exe)
           if ($installer.Count -ne 1) { throw 'Expected exactly one desktop installer.' }
           $setup = Start-Process $installer[0].FullName -ArgumentList @('/S', "/D=$directory") -Wait -PassThru
-          if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/Z-zapret.exe")) { throw 'Installation failed.' }
+          if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/Z-zapret.exe")) {
+            $diagnostic = Join-Path ([IO.Path]::GetTempPath()) 'Z-zapret-maintenance-error.txt'
+            if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic desktop/artifacts/maintenance-error.txt }
+            throw "Installation failed with exit code $($setup.ExitCode)."
+          }
           $installedCheck = Start-Process "$directory/Z-zapret.exe" -ArgumentList @('--startup-check', 'desktop/artifacts/installed-preview.png') -WorkingDirectory $PWD.Path -PassThru
           if (-not $installedCheck.WaitForExit(60000)) { $installedCheck.Kill(); throw 'Installed application startup timed out.' }
           if ($installedCheck.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Installed application failed: $($installedCheck.ExitCode)" }

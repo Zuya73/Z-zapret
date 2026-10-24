@@ -16,7 +16,8 @@ public sealed class StartupTaskManager
             ((dynamic)service!).Connect();
             folder = ((dynamic)service!).GetFolder(@"\");
             try { task = ((dynamic)folder!).GetTask(StartupPolicy.TaskName); }
-            catch (COMException error) when (error.HResult == unchecked((int)0x80070002)) { return null; }
+            // COM interop can translate ERROR_FILE_NOT_FOUND to FileNotFoundException.
+            catch (Exception error) when (error.HResult == unchecked((int)0x80070002)) { return null; }
             return (string)((dynamic)task!).Xml;
         }
         finally
