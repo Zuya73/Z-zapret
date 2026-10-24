@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -21,6 +22,12 @@ public sealed record ProbeRow(string Strategy, string Target, string Protocol, s
 public partial class MainWindow : Window
 {
     internal WindowWorkArea WorkAreaBehavior { get; }
+    private readonly PageTransitions pageTransitions;
+    private FrameworkElement[] Pages => [HomePanel, TestsPanel, StrategiesPanel, DiagnosticsPanel, SettingsPanel, LogsPanel];
+    internal void SelectPage(string page) => Navigate_Click(new Button { Tag = page }, new RoutedEventArgs());
+    internal void ApplyMotionPreferences() { pageTransitions.Finish(); Motion.Refresh(this); }
+    private void MotionPreferencesChanged(object? sender, PropertyChangedEventArgs e)
+    { if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation)) Dispatcher.BeginInvoke(() => ApplyMotionPreferences()); }
     private readonly AppPaths paths = new();
     private readonly bool preview;
     private readonly bool startupLaunch;
@@ -59,6 +66,9 @@ public partial class MainWindow : Window
         this.startupLaunch = startupLaunch;
         InitializeComponent();
         WorkAreaBehavior = new WindowWorkArea(this);
+        pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
+        Loaded += (_, _) => pageTransitions.Open();
+        SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
         Navigate_Click(new Button { Tag = "Home" }, new RoutedEventArgs());
         AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
         if (startupLaunch) ShowInTaskbar = false;
@@ -67,6 +77,7 @@ public partial class MainWindow : Window
         Closing += Window_Closing;
         Closed += (_, _) =>
         {
+            SystemParameters.StaticPropertyChanged -= MotionPreferencesChanged; pageTransitions.Dispose();
             timer.Stop(); updateTimer.Stop(); lifetime.Cancel(); tray?.Dispose(); engine?.Dispose(); operationCancellation?.Dispose();
             if (startupLaunch) Application.Current.Shutdown();
         };
@@ -189,25 +200,22 @@ public partial class MainWindow : Window
     private void Navigate_Click(object sender, RoutedEventArgs e)
     {
         string page = (sender as Button)?.Tag as string ?? "Home";
-        foreach (var button in NavigationPanel.Children.OfType<Button>().Where(b => b.Tag is string))
+        var buttons = NavigationPanel.Children.OfType<Button>().Where(b => b.Tag is string).ToArray();
+        var button = buttons.FirstOrDefault(b => (string)b.Tag == page) ?? buttons[0];
+        page = (string)button.Tag;
+        var panel = Pages[Array.IndexOf(buttons, button)];
+        pageTransitions.Select(panel, button, () =>
         {
-            bool selected = (string)button.Tag == page;
-            button.Background = selected ? (Brush)FindResource("HoverBrush") : Brushes.Transparent;
-            button.Foreground = (Brush)FindResource(selected ? "TextBrush" : "MutedBrush");
-            button.BorderBrush = selected ? Brushes.White : Brushes.Transparent;
-            button.BorderThickness = new Thickness(selected ? 2 : 0, 0, 0, 0);
-        }
-        foreach (var (panel, name) in new[] { (HomePanel, "Home"), (TestsPanel, "Tests"), (StrategiesPanel, "Strategies"), (DiagnosticsPanel, "Diagnostics"), (SettingsPanel, "Settings"), (LogsPanel, "Logs") })
-            panel.Visibility = page == name ? Visibility.Visible : Visibility.Collapsed;
-        (PageTitle.Text, PageSubtitle.Text) = page switch
-        {
-            "Tests" => ("Автоподбор", "Рабочая стратегия начинается с проверки."),
-            "Strategies" => ("Стратегии", "Все исходные профили в одном месте."),
-            "Diagnostics" => ("Диагностика", "Найдём причину проблем с подключением."),
-            "Settings" => ("Настройки", "Точная настройка без командной строки."),
-            "Logs" => ("Журнал", "История работы и подробности ошибок."),
-            _ => ("Обзор", "Ваше подключение. Ваши правила.")
-        };
+            (PageTitle.Text, PageSubtitle.Text) = page switch
+            {
+                "Tests" => ("Автоподбор", "Рабочая стратегия начинается с проверки."),
+                "Strategies" => ("Стратегии", "Все исходные профили в одном месте."),
+                "Diagnostics" => ("Диагностика", "Найдём причину проблем с подключением."),
+                "Settings" => ("Настройки", "Точная настройка без командной строки."),
+                "Logs" => ("Журнал", "История работы и подробности ошибок."),
+                _ => ("Обзор", "Ваше подключение. Ваши правила.")
+            };
+        });
     }
 
     private async Task Execute(Func<CancellationToken, Task> action, string stage)
@@ -242,6 +250,7 @@ public partial class MainWindow : Window
         ApplyRecommendedButton.IsEnabled = !value && lastSession?.RecommendedStrategyId != null;
         InstallUpdateButton.IsEnabled = !value && availableUpdate != null;
         CancelUpdateButton.IsEnabled = value && downloadingUpdate;
+        Motion.To(OperationProgress, RangeBase.ValueProperty, 0, 0);
         OperationProgress.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
         OperationProgress.IsIndeterminate = value;
         if (!value) ProgressCounter.Text = "";
@@ -320,7 +329,7 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = p.Stage;
                 OperationProgress.Maximum = Math.Max(1, p.Total);
-                OperationProgress.Value = p.Completed;
+                Motion.To(OperationProgress, RangeBase.ValueProperty, p.Completed);
                 ProgressCounter.Text = p.Completed + " / " + p.Total;
                 if (p.Result is { } result)
                 {
@@ -599,7 +608,7 @@ public partial class MainWindow : Window
                 timeout.CancelAfter(TimeSpan.FromMinutes(10));
                 OperationProgress.IsIndeterminate = false; OperationProgress.Maximum = 100;
                 var progress = new Progress<DownloadProgress>(p =>
-                { OperationProgress.Value = p.Percent; StatusText.Text = $"Загрузка обновления: {p.Percent}%"; });
+                { Motion.To(OperationProgress, RangeBase.ValueProperty, p.Percent); StatusText.Text = $"Загрузка обновления: {p.Percent}%"; });
                 string installer = await updates.DownloadAsync(update, paths, progress, timeout.Token);
                 var snapshot = await engine.CaptureAsync(token);
                 try
@@ -641,7 +650,12 @@ public partial class MainWindow : Window
             LogBox.ScrollToEnd();
         });
     }
-    private void ShowError(string text) { ErrorText.Text = text; ErrorBanner.Visibility = Visibility.Visible; }
+    private void ShowError(string text)
+    {
+        ErrorText.Text = text; ErrorBanner.Visibility = Visibility.Visible;
+        Motion.To(ErrorBanner, UIElement.OpacityProperty, 1, 180, 0);
+        Motion.To(Motion.Translation(ErrorBanner), TranslateTransform.YProperty, 0, 200, -5);
+    }
     private void ExportLog_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "x2zapret-log.txt" };

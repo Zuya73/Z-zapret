@@ -2,7 +2,7 @@
 
 Приложение для **Windows 10/11 x64** с графическим интерфейсом в стиле **X2AIR**, встроенным автоподбором стратегий и проверкой обновлений.
 
-Основано на движке [zapret](https://github.com/bol-van/zapret) и профилях [Flowseal](https://github.com/Flowseal/zapret-discord-youtube). Все 22 стратегии сохранены. Старые консольные инструменты находятся в `legacy/flowseal` и собираются отдельным архивом. Текущая версия приложения - **0.2.3**.
+Основано на движке [zapret](https://github.com/bol-van/zapret) и профилях [Flowseal](https://github.com/Flowseal/zapret-discord-youtube). Все 22 стратегии сохранены. Старые консольные инструменты находятся в `legacy/flowseal` и собираются отдельным архивом. Текущая версия приложения - **0.2.4**.
 
 ![Интерфейс x2zapret](docs/screenshots/overview.png)
 
@@ -29,7 +29,7 @@
 
 Готовые файлы публикуются в [GitHub Releases](https://github.com/Zuya73/x2zapret/releases). Сборки из основной ветки доступны в [артефактах Windows CI](https://github.com/Zuya73/x2zapret/actions/workflows/desktop.yml) под именем `x2zapret-Windows-x64`; для скачивания артефактов нужен вход в GitHub.
 
-1. Запустите `x2zapret-Setup-0.2.3-x64.exe` либо распакуйте **весь** архив `x2zapret-0.2.3-win-x64.zip`.
+1. Запустите `x2zapret-Setup-0.2.4-x64.exe` либо распакуйте **весь** архив `x2zapret-0.2.4-win-x64.zip`.
 2. Откройте `x2zapret.exe` с правами администратора. .NET отдельно устанавливать не нужно.
 3. Перейдите в «Автоподбор», запустите проверку и примените подходящую стратегию.
 4. В «Настройках» при необходимости включите запуск в трее, автоподключение и проверку обновлений.

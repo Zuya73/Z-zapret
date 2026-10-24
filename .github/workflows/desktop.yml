@@ -68,6 +68,15 @@ jobs:
       - name: Check window bounds and taskbar visibility
         shell: pwsh
         run: ./tools/test_window_bounds.ps1
+      - name: Test navigation, interaction and reduced motion
+        shell: pwsh
+        run: |
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--motion-check', 'artifacts/motion-check.json') -PassThru
+          if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Motion checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Motion checks failed.' }
+          $receipt = Get-Content artifacts/motion-check.json -Raw | ConvertFrom-Json
+          if ($receipt.passed -lt 10) { throw 'Motion checks are incomplete.' }
+          Get-Content artifacts/motion-check.json
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -197,6 +206,7 @@ jobs:
             artifacts/maintenance-error.txt
             artifacts/tray-check.json
             artifacts/window-bounds-*.json
+            artifacts/motion-check.json
           if-no-files-found: error
           retention-days: 30
 

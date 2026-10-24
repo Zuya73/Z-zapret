@@ -1,6 +1,4 @@
 using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using Zapret.Core;
 using Zapret.Desktop.Runtime;
 
@@ -48,7 +46,8 @@ public partial class App : Application
         }
         bool startupCheck = e.Args.Contains("--startup-check");
         bool boundsCheck = e.Args.Contains("--window-bounds-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck;
+        bool motionCheck = e.Args.Contains("--motion-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -101,6 +100,11 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (motionCheck)
+            {
+                try { await MotionChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--motion-check").Skip(1).First()); }
+                catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); return; }
+            }
             if (boundsCheck)
             {
                 try
@@ -114,25 +118,17 @@ public partial class App : Application
                     Shutdown(1); return;
                 }
             }
-            if (e.Args.Contains("--settings-preview")) { window.ShowSettingsPreview(); await Task.Delay(250); }
+            if (e.Args.Contains("--settings-preview")) window.ShowSettingsPreview();
+            await Task.Delay(450);
             await window.Dispatcher.InvokeAsync(() =>
             {
                 if (startupCheck && !window.StartupSucceeded)
                     throw new InvalidOperationException("Application initialization failed: " + window.StartupError);
                 string option = startupCheck ? "--startup-check" : "--smoke-test";
                 string destination = e.Args.SkipWhile(x => x != option).Skip(1).FirstOrDefault() ?? "desktop-preview.png";
-                SavePreview(destination);
+                InterfacePreview.Save(window, destination);
                 window.ExitForSmokeTest();
 
-                void SavePreview(string path)
-                {
-                    window.UpdateLayout();
-                    var content = (FrameworkElement)window.Content;
-                    var image = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
-                    image.Render(content);
-                    var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
-                    using var stream = File.Create(path); encoder.Save(stream);
-                }
             }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
     }
