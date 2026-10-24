@@ -55,8 +55,12 @@ jobs:
             choco install nsis --yes --no-progress
             if ($LASTEXITCODE -ne 0) { throw 'Could not install NSIS.' }
           }
-          & $compiler /V2 desktop/installer.nsi
-          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
+          $publishedDirectory = (Resolve-Path 'desktop/artifacts/Z-zapret').Path
+          Push-Location desktop
+          try {
+            & $compiler /V2 "/DPUBLISH_DIR=$publishedDirectory" installer.nsi
+            if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
+          } finally { Pop-Location }
       - name: Test silent installation and uninstallation
         shell: pwsh
         run: |
@@ -72,6 +76,7 @@ jobs:
             "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() )  $($_.Name)"
           } | Set-Content desktop/artifacts/SHA256SUMS.txt -Encoding utf8NoBOM
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Z-zapret-Windows-x64
           path: |

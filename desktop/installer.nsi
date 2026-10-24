@@ -5,10 +5,10 @@ Unicode true
 !include "x64.nsh"
 
 !ifndef PUBLISH_DIR
-  !define PUBLISH_DIR "artifacts/Z-zapret"
+  !define PUBLISH_DIR "artifacts\Z-zapret"
 !endif
 Name "Z-zapret"
-OutFile "artifacts/Z-zapret-Setup-0.1.0-x64.exe"
+OutFile "artifacts\Z-zapret-Setup-0.1.0-x64.exe"
 InstallDir "$PROGRAMFILES64\Z-zapret"
 InstallDirRegKey HKLM "Software\Z-zapret" "InstallDir"
 RequestExecutionLevel admin
@@ -20,12 +20,12 @@ VIAddVersionKey "ProductName" "Z-zapret"
 VIAddVersionKey "FileDescription" "Z-zapret Windows installer"
 VIAddVersionKey "FileVersion" "0.1.0"
 VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
-!define MUI_ICON "Zapret.Desktop/Assets/app.ico"
-!define MUI_UNICON "Zapret.Desktop/Assets/app.ico"
+!define MUI_ICON "Zapret.Desktop\Assets\app.ico"
+!define MUI_UNICON "Zapret.Desktop\Assets\app.ico"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Z-zapret.exe"
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "../LICENSE.txt"
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -71,7 +71,7 @@ Section "Z-zapret" Main
   SetRegView 64
   SetShellVarContext all
   SetOutPath "$INSTDIR"
-  File /r "${PUBLISH_DIR}/*"
+  File /r "${PUBLISH_DIR}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\Z-zapret"
   CreateShortcut "$SMPROGRAMS\Z-zapret\Z-zapret.lnk" "$INSTDIR\Z-zapret.exe"
@@ -103,7 +103,7 @@ Section "Uninstall"
     Abort
   ${EndIf}
   ; Remove only files shipped by this build, preserving unrelated user files.
-  !include "artifacts/uninstall-files.nsh"
+  !include "artifacts\uninstall-files.nsh"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
   Delete "$DESKTOP\Z-zapret.lnk"
