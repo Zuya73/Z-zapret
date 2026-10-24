@@ -43,6 +43,8 @@ jobs:
           $tokens = $null; $errors = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'legacy/flowseal/utils/test zapret.ps1'), [ref]$tokens, [ref]$errors)
           if ($errors.Count) { $errors | Format-List; throw 'Original test script has syntax errors.' }
+      - name: Test desktop release publication
+        run: python -m unittest discover -s tools -p test_publish_desktop_release.py
       - name: Regression tests
         run: dotnet run --project tests/Zapret.Tests/Zapret.Tests.csproj -c Release -- .
       - name: Build solution
@@ -199,26 +201,29 @@ jobs:
           retention-days: 30
 
   release:
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    if: startsWith(github.ref, 'refs/tags/desktop-v') || ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main')
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/download-artifact@v4
         with:
           name: x2zapret-Windows-x64
           path: release
-      - uses: softprops/action-gh-release@v2
+      - name: Publish complete stable desktop update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python tools/publish_desktop_release.py
+      - uses: actions/setup-dotnet@v4
         with:
-          prerelease: false
-          name: x2zapret Desktop ${{ github.ref_name }}
-          body: 'Windows 10/11 x64. Portable ZIP and installer. See docs/USER-GUIDE.md for requirements and test limitations.'
-          files: |
-            release/*.zip
-            release/*.exe
-            release/*.png
-            release/SHA256SUMS.txt
+          dotnet-version: '10.0.x'
+      - name: Verify older clients discover the published installer
+        run: dotnet run --project tests/Zapret.Tests -c Release -- . --published-update release/published-releases.json
 
   publish-root-executable:
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'

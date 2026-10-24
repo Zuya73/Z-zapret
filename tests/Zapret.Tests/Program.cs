@@ -327,6 +327,18 @@ if (OperatingSystem.IsWindows())
         finally { Native.LocalFree(data); }
     });
 
+if (Array.IndexOf(args, "--published-update") is int publishedIndex && publishedIndex >= 0)
+{
+    Check("A client on 0.2.2 discovers the published desktop installer", () =>
+    {
+        string json = File.ReadAllText(args[publishedIndex + 1]);
+        var update = UpdateManifest.Parse(json, new Version(0, 2, 2));
+        Assert(update != null);
+        Assert(update!.Version >= UpdateManifest.CurrentVersion);
+        Assert(UpdateManifest.TrustedDownload(update.DownloadUrl));
+        Console.WriteLine($"Published update visible to 0.2.2: {update.Version}, {update.Size} bytes, SHA256 {update.Sha256}");
+    });
+}
 Console.WriteLine($"{passed} passed; {failures.Count} failed.");
 foreach (string failure in failures) Console.Error.WriteLine(failure);
 return failures.Count == 0 ? 0 : 1;
