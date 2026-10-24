@@ -3,22 +3,24 @@ Unicode true
 !include "LogicLib.nsh"
 !include "WinVer.nsh"
 !include "x64.nsh"
+!include "FileFunc.nsh"
+!include "artifacts\version.nsh"
 
 !ifndef PUBLISH_DIR
   !define PUBLISH_DIR "artifacts\Z-zapret"
 !endif
 Name "Z-zapret"
-OutFile "artifacts\Z-zapret-Setup-0.1.0-x64.exe"
+OutFile "artifacts\Z-zapret-Setup-${APP_VERSION}-x64.exe"
 InstallDir "$PROGRAMFILES64\Z-zapret"
 InstallDirRegKey HKLM "Software\Z-zapret" "InstallDir"
 RequestExecutionLevel admin
 ManifestDPIAware true
 SetCompressor /SOLID lzma
 BrandingText "Z-zapret · Zuya73"
-VIProductVersion "0.1.0.0"
+VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey "ProductName" "Z-zapret"
 VIAddVersionKey "FileDescription" "Z-zapret Windows installer"
-VIAddVersionKey "FileVersion" "0.1.0"
+VIAddVersionKey "FileVersion" "${APP_VERSION}"
 VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
 !define MUI_ICON "Zapret.Desktop\Assets\app.ico"
 !define MUI_UNICON "Zapret.Desktop\Assets\app.ico"
@@ -44,6 +46,27 @@ VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
   ${EndIf}
 !macroend
 
+Function WaitForUpdatingProcess
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/UPDATEPID=" $1
+  ${IfNot} ${Errors}
+    IntOp $1 $1 + 0
+    ${If} $1 > 0
+      System::Call 'kernel32::OpenProcess(i 0x100000, i 0, i r1) p.r2'
+      ${If} $2 != 0
+        System::Call 'kernel32::WaitForSingleObject(p r2, i 60000) i.r3'
+        System::Call 'kernel32::CloseHandle(p r2)'
+        ${If} $3 != 0
+          MessageBox MB_OK|MB_ICONSTOP "Закройте Z-zapret перед обновлением и повторите установку." /SD IDOK
+          SetErrorLevel 6
+          Abort
+        ${EndIf}
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
 Function .onInit
   ${IfNot} ${RunningX64}
     MessageBox MB_OK|MB_ICONSTOP "Требуется 64-разрядная Windows 10 или 11." /SD IDOK
@@ -54,6 +77,7 @@ Function .onInit
     Abort
   ${EndIf}
   SetRegView 64
+  Call WaitForUpdatingProcess
   !insertmacro RequireClosed
   ReadRegStr $0 HKLM "Software\Z-zapret" "InstallDir"
   StrCmp $0 "" ready
@@ -79,12 +103,23 @@ Section "Z-zapret" Main
   SetOutPath "$INSTDIR"
   File /r "${PUBLISH_DIR}\*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
+  ClearErrors
+  ExecWait '"$INSTDIR\Z-zapret.exe" --refresh-startup' $0
+  ${If} ${Errors}
+    SetErrorLevel 5
+    Abort
+  ${EndIf}
+  ${If} $0 != 0
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось обновить настройки автозапуска. Откройте Z-zapret и сохраните их повторно." /SD IDOK
+    SetErrorLevel 5
+    Abort
+  ${EndIf}
   CreateDirectory "$SMPROGRAMS\Z-zapret"
   CreateShortcut "$SMPROGRAMS\Z-zapret\Z-zapret.lnk" "$INSTDIR\Z-zapret.exe"
   CreateShortcut "$DESKTOP\Z-zapret.lnk" "$INSTDIR\Z-zapret.exe"
   WriteRegStr HKLM "Software\Z-zapret" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayName" "Z-zapret"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayVersion" "0.1.0"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "Publisher" "Zuya73"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "URLInfoAbout" "https://github.com/Zuya73/Z-zapret"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayIcon" "$INSTDIR\Z-zapret.exe"

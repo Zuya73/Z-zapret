@@ -16,6 +16,8 @@ public enum GameFilterMode { Disabled, TcpAndUdp, Tcp, Udp }
 public enum ProbeStatus { Passed, Failed, Unsupported, Inconclusive }
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum TestMode { Quick, Full, Dpi }
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum StartupMode { Disabled, Tray, TrayAndConnect }
 
 public sealed record AppSettings
 {
@@ -28,6 +30,8 @@ public sealed record AppSettings
     public string GameFake { get; init; } = "quic_initial_4pda_to.bin";
     public bool MinimizeToTray { get; init; } = true;
     public bool LightTheme { get; init; }
+    public StartupMode Startup { get; init; } = StartupMode.Disabled;
+    public bool AutoUpdate { get; init; }
 }
 
 public sealed record ProbeTarget(string Id, string Name, string Group, string Url, bool Required = false,

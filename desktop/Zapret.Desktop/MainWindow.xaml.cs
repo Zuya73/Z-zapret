@@ -22,9 +22,16 @@ public partial class MainWindow : Window
 {
     private readonly AppPaths paths = new();
     private readonly bool preview;
+    private readonly bool startupLaunch;
+    private Task? initialization;
     private readonly ObservableCollection<ProbeRow> probeRows = [];
     private readonly object logLock = new();
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromHours(6) };
+    private readonly CancellationTokenSource lifetime = new();
+    private readonly UpdateManager updates = new();
+    private AppUpdate? availableUpdate;
+    private bool checkingUpdate, downloadingUpdate;
     private IReadOnlyList<Strategy> strategies = [];
     private IReadOnlyList<ProbeTarget> targets = [];
     private AppSettings settings = new();
@@ -40,19 +47,36 @@ public partial class MainWindow : Window
     internal bool StartupSucceeded => ready && ErrorBanner.Visibility != Visibility.Visible;
     internal string StartupError => ErrorText.Text;
     internal void SetPreviewTheme(bool light) => SetTheme(light);
+    internal void ShowSettingsPreview()
+    {
+        Navigate_Click(new Button { Tag = "Settings" }, new RoutedEventArgs());
+        if (preview) { StartupSwitch.IsChecked = true; StartupConnectSwitch.IsChecked = true; }
+    }
 
-    public MainWindow(bool preview = false)
+    public MainWindow(bool preview = false, bool startupLaunch = false)
     {
         this.preview = preview;
+        this.startupLaunch = startupLaunch;
         InitializeComponent();
+        AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
+        if (startupLaunch) ShowInTaskbar = false;
         ProbeGrid.ItemsSource = probeRows;
         Loaded += Window_Loaded;
         Closing += Window_Closing;
-        Closed += (_, _) => { timer.Stop(); tray?.Dispose(); engine?.Dispose(); operationCancellation?.Dispose(); };
+        Closed += (_, _) =>
+        {
+            timer.Stop(); updateTimer.Stop(); lifetime.Cancel(); tray?.Dispose(); engine?.Dispose(); operationCancellation?.Dispose();
+            if (startupLaunch) Application.Current.Shutdown();
+        };
         timer.Tick += (_, _) => { if (!busy && ready) RefreshState(); };
+        updateTimer.Tick += async (_, _) => await CheckAutomaticUpdatesAsync();
     }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e) => await InitializeAsync();
+
+    internal Task InitializeAsync() => initialization ??= InitializeCoreAsync();
+
+    private async Task InitializeCoreAsync()
     {
         try
         {
@@ -78,7 +102,7 @@ public partial class MainWindow : Window
             CreateTray();
             ready = true;
             LoadUserList();
-            Log("Z-zapret 0.1.0. Подготовлено стратегий: " + strategies.Count);
+            Log("Z-zapret " + UpdateManifest.CurrentVersion.ToString(3) + ". Подготовлено стратегий: " + strategies.Count);
             if (File.Exists(paths.Recovery))
             {
                 await Execute(async token =>
@@ -86,13 +110,16 @@ public partial class MainWindow : Window
                     var record = AtomicFile.ReadJson<RecoveryRecord>(paths.Recovery)
                         ?? throw new InvalidDataException("Повреждён журнал восстановления.");
                     await engine.StopAsync(token);
-                    await engine.RestoreAsync(record.Snapshot, record.Settings, token);
+                    var snapshot = startupLaunch && settings.Startup == StartupMode.Tray
+                        ? record.Snapshot with { WasRunning = false } : record.Snapshot;
+                    await engine.RestoreAsync(snapshot, record.Settings, token);
                     File.Delete(paths.Recovery);
                     Log("Восстановление после прерванной проверки завершено.");
                 }, "Восстановление после прерванной проверки");
             }
             RefreshState(); timer.Start();
             StatusText.Text = "Готово. Выберите профиль или запустите автоподбор.";
+            if (settings.AutoUpdate) { updateTimer.Start(); _ = CheckAutomaticUpdatesAsync(); }
         }
         catch (Exception error)
         {
@@ -101,6 +128,22 @@ public partial class MainWindow : Window
             SetBusy(true);
             CancelTestsButton.IsEnabled = false;
         }
+    }
+
+    internal async Task ConnectOnStartupAsync()
+    {
+        if (!StartupSucceeded || engine == null) return;
+        await Execute(token => StartupPolicy.ConnectAsync(startupLaunch, settings.Startup, engine.IsRunning, async ct =>
+        {
+            await engine.StartAsync(Selected, settings, ct);
+            activeStrategy = Selected.Id;
+        }, token), "Автоматическое подключение");
+    }
+
+    internal void NotifyStartupFailure()
+    {
+        if (tray == null) CreateTray();
+        tray!.ShowBalloonTip(7000, "Z-zapret", "Не удалось завершить запуск. Откройте программу из трея, чтобы посмотреть причину.", Forms.ToolTipIcon.Warning);
     }
 
     private Strategy Selected => HomeStrategyPicker.SelectedItem as Strategy
@@ -116,13 +159,16 @@ public partial class MainWindow : Window
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Открыть Z-zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Включить / выключить", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
+        menu.Items.Add("Проверить обновления", null, (_, _) => Dispatcher.Invoke(() => CheckUpdates_Click(this, new RoutedEventArgs())));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Выход", null, (_, _) => Dispatcher.Invoke(() => { forceExit = true; Close(); }));
         tray.ContextMenuStrip = menu;
         tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowFromTray);
+        tray.BalloonTipClicked += (_, _) => Dispatcher.Invoke(() =>
+        { Navigate_Click(new Button { Tag = "Settings" }, new RoutedEventArgs()); ShowFromTray(); });
     }
 
-    private void ShowFromTray() { Show(); WindowState = WindowState.Normal; Activate(); }
+    private void ShowFromTray() { ShowInTaskbar = true; WindowState = WindowState.Normal; Show(); Activate(); }
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
@@ -180,10 +226,13 @@ public partial class MainWindow : Window
         foreach (Control control in new Control[] { ConnectButton, ServiceButton, HomeStrategyPicker, StartTestsButton, TestModePicker,
             OnlySelectedCheck, ChooseStrategyButton, StrategiesGrid, DiagnoseButton, ClearCacheButton, SaveSettingsButton,
             SaveListButton, UserListPicker, UpdateIpSetButton, UpdateHostsButton, RemoveHostsButton, CheckUpdatesButton,
-            LegacyButton, TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck })
+            LegacyButton, TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton })
             control.IsEnabled = !value;
+        StartupConnectSwitch.IsEnabled = !value && StartupSwitch.IsChecked == true;
         CancelTestsButton.IsEnabled = value && TestsPanel.Visibility == Visibility.Visible;
         ApplyRecommendedButton.IsEnabled = !value && lastSession?.RecommendedStrategyId != null;
+        InstallUpdateButton.IsEnabled = !value && availableUpdate != null;
+        CancelUpdateButton.IsEnabled = value && downloadingUpdate;
         OperationProgress.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
         OperationProgress.IsIndeterminate = value;
         if (!value) ProgressCounter.Text = "";
@@ -351,10 +400,52 @@ public partial class MainWindow : Window
         HomeStrategyPicker.SelectedItem = strategies.FirstOrDefault(x => x.Id == settings.StrategyId) ?? strategies[0];
         IpSetPicker.SelectedIndex = (int)settings.IpSet; GameFilterPicker.SelectedIndex = (int)settings.GameFilter;
         TcpPortsBox.Text = settings.TcpPorts; UdpPortsBox.Text = settings.UdpPorts; TrayCheck.IsChecked = settings.MinimizeToTray;
+        StartupSwitch.IsChecked = settings.Startup != StartupMode.Disabled;
+        StartupConnectSwitch.IsChecked = settings.Startup == StartupMode.TrayAndConnect;
+        StartupConnectSwitch.IsEnabled = StartupSwitch.IsChecked == true;
+        AutoUpdateSwitch.IsChecked = settings.AutoUpdate;
         var fakes = Directory.GetFiles(Path.Combine(paths.Bundle, "bin"), "*.bin").Select(Path.GetFileName)
             .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Order().ToArray();
         DiscordFakePicker.ItemsSource = fakes; GameFakePicker.ItemsSource = fakes;
         DiscordFakePicker.SelectedItem = settings.DiscordFake; GameFakePicker.SelectedItem = settings.GameFake;
+    }
+
+    private void StartupSwitch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (StartupConnectSwitch == null) return;
+        if (StartupSwitch.IsChecked != true) StartupConnectSwitch.IsChecked = false;
+        StartupConnectSwitch.IsEnabled = !busy && StartupSwitch.IsChecked == true;
+    }
+
+    private async void SaveStartup_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy) return;
+        var mode = StartupSwitch.IsChecked != true ? StartupMode.Disabled :
+            StartupConnectSwitch.IsChecked == true ? StartupMode.TrayAndConnect : StartupMode.Tray;
+        await Execute(async token =>
+        {
+            var previous = settings;
+            var manager = new StartupTaskManager();
+            try
+            {
+                await manager.ApplyAsync(mode, token);
+                var updated = settings with { Startup = mode };
+                AtomicFile.WriteJson(paths.Settings, updated);
+                settings = updated;
+            }
+            catch
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await manager.ApplyAsync(previous.Startup, timeout.Token);
+                throw;
+            }
+            Log(mode switch
+            {
+                StartupMode.Tray => "Включён запуск приложения вместе с Windows в трее.",
+                StartupMode.TrayAndConnect => "Включён запуск в трее с автоматическим подключением.",
+                _ => "Автозапуск приложения отключён."
+            });
+        }, "Сохранение автозапуска");
     }
 
     private async void SaveSettings_Click(object sender, RoutedEventArgs e)
@@ -438,7 +529,86 @@ public partial class MainWindow : Window
     { if (maintenance != null) await Execute(_ => { maintenance.ModifyHosts(null); Log("Управляемый блок hosts удалён."); return Task.CompletedTask; }, "Восстановление hosts"); }
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
-        if (maintenance != null) await Execute(async token => { string text = await maintenance.CheckUpdatesAsync(token); Log(text); MessageBox.Show(this, text, "Обновления Z-zapret"); }, "Проверка обновлений");
+        if (!ready || busy) return;
+        await Execute(token => CheckUpdatesCoreAsync(token, automatic: false), "Проверка обновлений");
+    }
+
+    private async Task CheckAutomaticUpdatesAsync()
+    {
+        if (!ready || busy || !settings.AutoUpdate || lifetime.IsCancellationRequested) return;
+        try { await CheckUpdatesCoreAsync(lifetime.Token, automatic: true); }
+        catch (OperationCanceledException) { }
+        catch (Exception error) { Log("Не удалось автоматически проверить обновления: " + error.Message); }
+    }
+
+    private async Task CheckUpdatesCoreAsync(CancellationToken token, bool automatic)
+    {
+        if (checkingUpdate) return;
+        checkingUpdate = true;
+        try
+        {
+            var update = await updates.CheckAsync(token);
+            if (lifetime.IsCancellationRequested || automatic && !settings.AutoUpdate) return;
+            availableUpdate = update;
+            UpdateStatusText.Text = update == null ? "Новых стабильных версий нет. Установлена версия " + UpdateManifest.CurrentVersion.ToString(3) + "." :
+                $"Доступна версия {update.Version.ToString(3)} · {update.Size / 1048576.0:F1} МБ. Установка начнётся после вашего подтверждения.";
+            InstallUpdateButton.IsEnabled = !busy && update != null;
+            Log(UpdateStatusText.Text);
+            if (automatic && update != null)
+                tray?.ShowBalloonTip(7000, "Обновление Z-zapret", "Доступна версия " + update.Version.ToString(3) + ". Откройте настройки, чтобы установить её.", Forms.ToolTipIcon.Info);
+        }
+        finally { checkingUpdate = false; }
+    }
+
+    private void SaveAutoUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy) return;
+        try
+        {
+            var updated = settings with { AutoUpdate = AutoUpdateSwitch.IsChecked == true };
+            AtomicFile.WriteJson(paths.Settings, updated); settings = updated;
+            if (settings.AutoUpdate) { updateTimer.Start(); _ = CheckAutomaticUpdatesAsync(); }
+            else updateTimer.Stop();
+            StatusText.Text = settings.AutoUpdate ? "Автоматическая проверка обновлений включена." : "Автоматическая проверка обновлений отключена.";
+        }
+        catch (Exception error) { ShowError(error.Message); }
+    }
+
+    private void CancelUpdate_Click(object sender, RoutedEventArgs e) => operationCancellation?.Cancel();
+
+    private async void InstallUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy || availableUpdate is not { } update || engine == null) return;
+        if (MessageBox.Show(this, $"Скачать и установить Z-zapret {update.Version.ToString(3)}? Приложение и подключение будут остановлены для обновления. Настройки и списки сохранятся.",
+            "Обновление Z-zapret", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        downloadingUpdate = true;
+        try
+        {
+            await Execute(async token =>
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                timeout.CancelAfter(TimeSpan.FromMinutes(10));
+                OperationProgress.IsIndeterminate = false; OperationProgress.Maximum = 100;
+                var progress = new Progress<DownloadProgress>(p =>
+                { OperationProgress.Value = p.Percent; StatusText.Text = $"Загрузка обновления: {p.Percent}%"; });
+                string installer = await updates.DownloadAsync(update, paths, progress, timeout.Token);
+                var snapshot = await engine.CaptureAsync(token);
+                try
+                {
+                    await engine.StopAsync(token);
+                    var launch = new ProcessStartInfo(installer) { UseShellExecute = true };
+                    launch.ArgumentList.Add("/UPDATEPID=" + Environment.ProcessId);
+                    using var child = Process.Start(launch) ?? throw new InvalidOperationException("Не удалось запустить установщик.");
+                    exitRequested = true; forceExit = true;
+                }
+                catch
+                {
+                    using var restore = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+                    await engine.StopAsync(restore.Token); await engine.RestoreAsync(snapshot, settings, restore.Token); throw;
+                }
+            }, "Загрузка обновления");
+        }
+        finally { downloadingUpdate = false; CancelUpdateButton.IsEnabled = false; }
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)

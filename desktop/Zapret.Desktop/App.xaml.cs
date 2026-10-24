@@ -12,7 +12,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        if (e.Args.Contains("--uninstall-service") || e.Args.Contains("--stop-service-for-update"))
+        if (e.Args.Contains("--uninstall-service") || e.Args.Contains("--stop-service-for-update") || e.Args.Contains("--refresh-startup"))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             try
@@ -21,12 +21,22 @@ public partial class App : Application
                 var strategies = StrategyCatalog.Load(Path.Combine(paths.Bundle, "strategies.json"));
                 using var engine = new EngineController(paths, strategies, _ => { });
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+                if (e.Args.Contains("--refresh-startup"))
+                {
+                    var settings = AtomicFile.ReadJson<AppSettings>(paths.Settings) ?? new();
+                    await new StartupTaskManager().ApplyAsync(settings.Startup, timeout.Token);
+                    Shutdown(0); return;
+                }
                 if (engine.OwnsService)
                 {
                     if (e.Args.Contains("--uninstall-service")) await engine.RemoveServiceAsync(timeout.Token);
                     else await engine.StopAsync(timeout.Token);
                 }
-                if (e.Args.Contains("--uninstall-service")) new Maintenance(paths).ModifyHosts(null);
+                if (e.Args.Contains("--uninstall-service"))
+                {
+                    new Maintenance(paths).ModifyHosts(null);
+                    await new StartupTaskManager().ApplyAsync(StartupMode.Disabled, timeout.Token);
+                }
                 Shutdown(0);
             }
             catch (Exception error)
@@ -38,12 +48,27 @@ public partial class App : Application
         }
         bool startupCheck = e.Args.Contains("--startup-check");
         bool smoke = e.Args.Contains("--smoke-test") || startupCheck;
+        bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
+        if (startupInvocation)
+        {
+            try
+            {
+                var settings = AtomicFile.ReadJson<AppSettings>(new AppPaths().Settings) ?? new();
+                if (!StartupPolicy.StartInTray(true, settings.Startup)) { Shutdown(); return; }
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            }
+            catch (Exception error)
+            {
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "Z-zapret-startup-error.txt"), error.ToString());
+                Shutdown(1); return;
+            }
+        }
         if (!smoke)
         {
             singleInstance = new Mutex(true, @"Global\Z-zapret.Desktop", out bool created);
             if (!created)
             {
-                MessageBox.Show("Z-zapret уже запущен. Откройте его через значок в области уведомлений.", "Z-zapret");
+                if (!startupInvocation) MessageBox.Show("Z-zapret уже запущен. Откройте его через значок в области уведомлений.", "Z-zapret");
                 Shutdown(); return;
             }
         }
@@ -57,11 +82,25 @@ public partial class App : Application
             MessageBox.Show(error.Exception.Message, "Ошибка Z-zapret", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
-        var window = new MainWindow(preview: smoke && !startupCheck);
+        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation);
         MainWindow = window;
+        if (startupInvocation)
+        {
+            await window.InitializeAsync();
+            await window.ConnectOnStartupAsync();
+            if (!window.StartupSucceeded) window.NotifyStartupFailure();
+            if (e.Args.Contains("--tray-check"))
+            {
+                string receipt = e.Args.SkipWhile(x => x != "--tray-check").Skip(1).First();
+                AtomicFile.WriteJson(receipt, new { ready = window.StartupSucceeded, hidden = !window.IsVisible, taskbar = window.ShowInTaskbar });
+                window.ExitForSmokeTest();
+            }
+            return;
+        }
         window.Show();
         if (smoke)
         {
+            if (e.Args.Contains("--settings-preview")) { window.ShowSettingsPreview(); await Task.Delay(250); }
             await window.Dispatcher.InvokeAsync(() =>
             {
                 if (startupCheck && !window.StartupSucceeded)

@@ -104,6 +104,110 @@ Check("Atomic writes replace the file without leaving partial temporary data", (
     finally { Directory.Delete(dir, true); }
 });
 
+Check("Existing settings keep application autostart disabled", () =>
+{
+    var old = System.Text.Json.JsonSerializer.Deserialize<AppSettings>("{\"strategyId\":\"general-alt\",\"minimizeToTray\":true}", StrategyCatalog.JsonOptions)!;
+    Equal(StartupMode.Disabled, old.Startup); Equal("general-alt", old.StrategyId);
+});
+Check("Only explicit Windows startup opens directly in the tray", () =>
+{
+    foreach (var mode in Enum.GetValues<StartupMode>()) Assert(!StartupPolicy.StartInTray(false, mode));
+    Assert(!StartupPolicy.StartInTray(true, StartupMode.Disabled));
+    Assert(StartupPolicy.StartInTray(true, StartupMode.Tray));
+    Assert(StartupPolicy.StartInTray(true, StartupMode.TrayAndConnect));
+});
+Check("Startup task uses an interactive user and no stored password", () =>
+{
+    const string exe = @"C:\Program Files\Z & Friends\Z-zapret.exe";
+    const string sid = "S-1-5-21-1-2-3-1001";
+    string xml = StartupPolicy.TaskXml(exe, @"C:\Program Files\Z & Friends", sid);
+    var document = System.Xml.Linq.XDocument.Parse(xml); var n = StartupPolicy.TaskNamespace;
+    Equal(exe, document.Root!.Element(n + "Actions")!.Element(n + "Exec")!.Element(n + "Command")!.Value);
+    Equal("--startup", document.Root.Element(n + "Actions")!.Element(n + "Exec")!.Element(n + "Arguments")!.Value);
+    var principal = document.Root.Element(n + "Principals")!.Element(n + "Principal")!;
+    Equal(sid, principal.Element(n + "UserId")!.Value);
+    Equal("InteractiveToken", principal.Element(n + "LogonType")!.Value);
+    Equal("HighestAvailable", principal.Element(n + "RunLevel")!.Value);
+    Assert(!xml.Contains("<Password")); Assert(StartupPolicy.OwnsTask(xml));
+    Assert(!StartupPolicy.OwnsTask(xml.Replace(StartupPolicy.TaskSource, "OtherApplication")));
+    Throws<ArgumentException>(() => StartupPolicy.TaskXml(exe, "dir", "somebody & another-user"));
+});
+await AsyncCheck("Tray-only startup never starts a connection", async () =>
+{
+    int calls = 0;
+    foreach (var mode in new[] { StartupMode.Disabled, StartupMode.Tray })
+        await StartupPolicy.ConnectAsync(true, mode, false, _ => { calls++; return Task.CompletedTask; }, CancellationToken.None);
+    await StartupPolicy.ConnectAsync(false, StartupMode.TrayAndConnect, false, _ => { calls++; return Task.CompletedTask; }, CancellationToken.None);
+    Equal(0, calls);
+});
+await AsyncCheck("Automatic connection runs once and respects an already running service", async () =>
+{
+    int calls = 0; bool running = false;
+    Task Connect(CancellationToken token) { token.ThrowIfCancellationRequested(); calls++; running = true; return Task.CompletedTask; }
+    await StartupPolicy.ConnectAsync(true, StartupMode.TrayAndConnect, running, Connect, CancellationToken.None);
+    await StartupPolicy.ConnectAsync(true, StartupMode.TrayAndConnect, running, Connect, CancellationToken.None);
+    Equal(1, calls);
+});
+
+string Releases(string tag = "desktop-v2.0.0", bool prerelease = false, string? url = null, string? digest = null) =>
+    System.Text.Json.JsonSerializer.Serialize(new[] { new { tag_name = tag, draft = false, prerelease,
+        assets = new[] { new { name = "Z-zapret-Setup-2.0.0-x64.exe",
+            browser_download_url = url ?? "https://github.com/Zuya73/Z-zapret/releases/download/desktop-v2.0.0/Z-zapret-Setup-2.0.0-x64.exe",
+            size = 8192, digest = digest ?? "sha256:" + new string('a', 64) } } } });
+Check("Only newer stable desktop releases are offered", () =>
+{
+    Equal(new Version(2, 0, 0), UpdateManifest.Parse(Releases(), new Version(1, 0, 0))!.Version);
+    Equal<AppUpdate?>(null, UpdateManifest.Parse(Releases(), new Version(2, 0, 0)));
+    Equal<AppUpdate?>(null, UpdateManifest.Parse(Releases(prerelease: true), new Version(1, 0, 0)));
+    Equal<AppUpdate?>(null, UpdateManifest.Parse(Releases(tag: "1.10.5"), new Version(0, 1, 0)));
+});
+Check("Updates cannot download from another repository or without a digest", () =>
+{
+    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(url: "https://github.com/other/repo/releases/download/v2.0.0/Z-zapret-Setup-2.0.0-x64.exe"), new Version(1, 0, 0)));
+    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(digest: ""), new Version(1, 0, 0)));
+    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(url: "http://github.com/Zuya73/Z-zapret/releases/download/v2/Z-zapret-Setup-2.0.0-x64.exe"), new Version(1, 0, 0)));
+});
+await AsyncCheck("Verified installers survive fragmented HTTP reads", async () =>
+{
+    byte[] bytes = new byte[8192]; bytes[0] = (byte)'M'; bytes[1] = (byte)'Z';
+    string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    try
+    {
+        using var http = new System.Net.Http.HttpClient(new DownloadHandler(bytes, fragmented: true));
+        var info = new AppUpdate(new Version(2, 0, 0), "desktop-v2.0.0", new Uri("https://github.com/Zuya73/Z-zapret/releases/download/v2/installer.exe"), bytes.Length,
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
+        string file = await UpdateDownloader.DownloadAsync(http, info, dir, new QuietDownloadProgress(), CancellationToken.None);
+        Assert(File.ReadAllBytes(file).SequenceEqual(bytes));
+    }
+    finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+});
+await AsyncCheck("Checksum failures remove downloads instead of leaving an executable", async () =>
+{
+    byte[] bytes = new byte[8192]; bytes[0] = (byte)'M'; bytes[1] = (byte)'Z';
+    string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    try
+    {
+        using var http = new System.Net.Http.HttpClient(new DownloadHandler(bytes));
+        var info = new AppUpdate(new Version(2, 0, 0), "desktop-v2.0.0", new Uri("https://github.com/Zuya73/Z-zapret/releases/download/v2/installer.exe"), bytes.Length, new string('0', 64));
+        try { await UpdateDownloader.DownloadAsync(http, info, dir, new QuietDownloadProgress(), CancellationToken.None); throw new Exception("Expected checksum failure"); }
+        catch (InvalidDataException) { Equal(0, Directory.GetFileSystemEntries(dir).Length); }
+    }
+    finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+});
+await AsyncCheck("Cancelling an update leaves no installer behind", async () =>
+{
+    string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    try
+    {
+        using var http = new System.Net.Http.HttpClient(new DownloadHandler(new byte[8192]));
+        using var stop = new CancellationTokenSource(); stop.Cancel();
+        var info = new AppUpdate(new Version(2, 0, 0), "desktop-v2.0.0", new Uri("https://github.com/Zuya73/Z-zapret/releases/download/v2/installer.exe"), 8192, new string('0', 64));
+        try { await UpdateDownloader.DownloadAsync(http, info, dir, new QuietDownloadProgress(), stop.Token); throw new Exception("Expected cancellation"); }
+        catch (OperationCanceledException) { Equal(0, Directory.GetFileSystemEntries(dir).Length); }
+    }
+    finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+});
+
 await AsyncCheck("Cancellation restores the previous connection with a fresh token", async () =>
 {
     using var cancellation = new CancellationTokenSource();
@@ -186,4 +290,19 @@ static partial class Native
 {
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr CommandLineToArgvW(string command, out int count);
     [DllImport("kernel32.dll")] public static extern IntPtr LocalFree(IntPtr data);
+}
+
+sealed class QuietDownloadProgress : IProgress<DownloadProgress> { public void Report(DownloadProgress value) { } }
+sealed class DownloadHandler(byte[] bytes, bool fragmented = false) : System.Net.Http.HttpMessageHandler
+{
+    protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        { Content = fragmented ? new System.Net.Http.StreamContent(new FragmentedStream(bytes)) : new System.Net.Http.ByteArrayContent(bytes) });
+    }
+}
+sealed class FragmentedStream(byte[] bytes) : MemoryStream(bytes)
+{
+    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => base.ReadAsync(buffer[..Math.Min(1, buffer.Length)], cancellationToken);
 }

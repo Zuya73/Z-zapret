@@ -1,6 +1,7 @@
 param([string]$OutputRoot = "$PSScriptRoot/artifacts", [switch]$SkipPublish)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot
+$version = ([xml](Get-Content "$PSScriptRoot/Directory.Build.props" -Raw)).SelectSingleNode('//Version').InnerText
 $publish = Join-Path $OutputRoot 'Z-zapret'
 if (-not $SkipPublish) {
     if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
@@ -34,7 +35,7 @@ Get-ChildItem "$root/bin" -File | Sort-Object Name | ForEach-Object {
     $hashes[$_.Name] = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
 }
 $hashes | ConvertTo-Json | Set-Content "$publish/engine-manifest.json" -Encoding utf8NoBOM
-$zip = Join-Path $OutputRoot 'Z-zapret-0.1.0-win-x64.zip'
+$zip = Join-Path $OutputRoot "Z-zapret-$version-win-x64.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path "$publish/*" -DestinationPath $zip -CompressionLevel Optimal
 Get-FileHash $zip -Algorithm SHA256 | Format-List
