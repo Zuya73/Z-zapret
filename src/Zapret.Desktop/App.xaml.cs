@@ -47,7 +47,8 @@ public partial class App : Application
             return;
         }
         bool startupCheck = e.Args.Contains("--startup-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck;
+        bool boundsCheck = e.Args.Contains("--window-bounds-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -100,6 +101,19 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (boundsCheck)
+            {
+                try
+                {
+                    string receipt = e.Args.SkipWhile(x => x != "--window-bounds-check").Skip(1).First();
+                    await WindowBoundsCheck.RunAsync(window, receipt);
+                }
+                catch (Exception error)
+                {
+                    File.WriteAllText("smoke-error.txt", error.ToString());
+                    Shutdown(1); return;
+                }
+            }
             if (e.Args.Contains("--settings-preview")) { window.ShowSettingsPreview(); await Task.Delay(250); }
             await window.Dispatcher.InvokeAsync(() =>
             {

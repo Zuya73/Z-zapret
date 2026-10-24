@@ -63,6 +63,9 @@ jobs:
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'WPF smoke test timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "WPF smoke test failed: $($process.ExitCode)" }
           if (-not (Test-Path artifacts/desktop-preview.png)) { throw 'UI preview was not created.' }
+      - name: Check window bounds and taskbar visibility
+        shell: pwsh
+        run: ./tools/test_window_bounds.ps1
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -191,6 +194,7 @@ jobs:
             artifacts/SHA256SUMS.txt
             artifacts/maintenance-error.txt
             artifacts/tray-check.json
+            artifacts/window-bounds-*.json
           if-no-files-found: error
           retention-days: 30
 

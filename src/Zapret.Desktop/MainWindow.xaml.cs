@@ -20,6 +20,7 @@ public sealed record ProbeRow(string Strategy, string Target, string Protocol, s
 
 public partial class MainWindow : Window
 {
+    internal WindowWorkArea WorkAreaBehavior { get; }
     private readonly AppPaths paths = new();
     private readonly bool preview;
     private readonly bool startupLaunch;
@@ -57,6 +58,7 @@ public partial class MainWindow : Window
         this.preview = preview;
         this.startupLaunch = startupLaunch;
         InitializeComponent();
+        WorkAreaBehavior = new WindowWorkArea(this);
         Navigate_Click(new Button { Tag = "Home" }, new RoutedEventArgs());
         AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
         if (startupLaunch) ShowInTaskbar = false;
