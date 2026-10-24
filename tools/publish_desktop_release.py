@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 
 def gh(*args):
-    return subprocess.check_output(['gh', *args], text=True)
+    return subprocess.check_output(['gh', *args], text=True, encoding='utf-8')
 
 
 def publish():
@@ -42,7 +42,7 @@ def publish():
                 notes = directory / 'release-notes.md'
                 notes.write_text(f'x2zapret {version} для Windows 10/11 x64.\n\n'
                                  'Установщик и portable ZIP проверены автоматической сборкой. '
-                                 'Настройки и пользовательские списки сохраняются при обновлении.\n')
+                                 'Настройки и пользовательские списки сохраняются при обновлении.\n', encoding='utf-8')
             gh('release', 'create', tag, '--draft', '--target', commit,
                '--title', f'x2zapret {version}', '--notes-file', str(notes))
         files = sorted(path for path in directory.iterdir() if path.suffix in {'.exe', '.zip', '.png'}) + [checksums]
