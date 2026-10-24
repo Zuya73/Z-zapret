@@ -133,7 +133,7 @@ Section "x2zapret" Main
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayName" "x2zapret"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "Publisher" "Zuya73"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "URLInfoAbout" "https://github.com/Zuya73/Z-zapret"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "URLInfoAbout" "https://github.com/Zuya73/x2zapret"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayIcon" "$INSTDIR\x2zapret.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "QuietUninstallString" '$\"$INSTDIR\Uninstall.exe$\" /S'

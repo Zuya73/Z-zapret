@@ -73,7 +73,7 @@ public sealed class Maintenance(AppPaths paths)
 
     public async Task<string> CheckUpdatesAsync(CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Zuya73/Z-zapret/releases/latest");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Zuya73/x2zapret/releases/latest");
         request.Headers.UserAgent.ParseAdd("Z-zapret/0.1.0");
         using var response = await Http.SendAsync(request, cancellationToken);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return "Опубликованных релизов приложения пока нет.";

@@ -11,8 +11,8 @@ public sealed record DownloadProgress(long Received, long Total)
 
 public static class UpdateManifest
 {
-    public const string ApiUrl = "https://api.github.com/repos/Zuya73/Z-zapret/releases?per_page=30";
-    public const string DownloadPrefix = "/Zuya73/Z-zapret/releases/download/";
+    public const string ApiUrl = "https://api.github.com/repos/Zuya73/x2zapret/releases?per_page=30";
+    public const string DownloadPrefix = "/Zuya73/x2zapret/releases/download/";
     public const long MaximumInstallerSize = 300L * 1024 * 1024;
 
     public static Version CurrentVersion
@@ -27,7 +27,7 @@ public static class UpdateManifest
     public static bool TrustedDownload(Uri uri) => uri.Scheme == Uri.UriSchemeHttps &&
         uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) && uri.IsDefaultPort &&
         uri.UserInfo.Length == 0 && (uri.AbsolutePath.StartsWith(DownloadPrefix, StringComparison.Ordinal) ||
-            uri.AbsolutePath.StartsWith("/Zuya73/x2zapret/releases/download/", StringComparison.Ordinal));
+            uri.AbsolutePath.StartsWith("/Zuya73/Z-zapret/releases/download/", StringComparison.Ordinal));
 
     public static AppUpdate? Parse(string json, Version current)
     {

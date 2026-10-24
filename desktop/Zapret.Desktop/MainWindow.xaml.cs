@@ -653,7 +653,7 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo(Path.Combine(paths.Bundle, "service.bat")) { UseShellExecute = true, WorkingDirectory = paths.Bundle });
     }
     private void OpenServices_Click(object sender, RoutedEventArgs e) => Open("services.msc");
-    private void GitHub_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/Z-zapret");
-    private void Releases_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/Z-zapret/releases");
+    private void GitHub_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret");
+    private void Releases_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret/releases");
     private static void Open(string target) => Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
 }
