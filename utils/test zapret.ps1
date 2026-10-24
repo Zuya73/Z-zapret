@@ -923,11 +923,11 @@ try {
         if ($a.ContainsKey('PingOK')) {
             $pingScore = $a.PingOK
         }
-        if ($score -gt $maxScore) {
+        if ($score -gt 0 -and $score -gt $maxScore) {
             $maxScore = $score
             $maxPing = $pingScore
             $bestConfig = $config
-        } elseif ($score -eq $maxScore) {
+        } elseif ($score -gt 0 -and $score -eq $maxScore) {
             if ($pingScore -gt $maxPing) {
                 $maxPing = $pingScore
                 $bestConfig = $config
@@ -1007,11 +1007,11 @@ try {
     Remove-Item -Path $ipsetFlagFile -ErrorAction SilentlyContinue
 } finally {
     Stop-Zapret
-    Restore-WinwsSnapshot -snapshot $originalWinws
     if ($originalIpsetStatus -ne "any") {
         Write-Host "[INFO] Restoring original ipset mode..." -ForegroundColor DarkGray
         Set-IpsetMode -mode "restore"
     }
+    Restore-WinwsSnapshot -snapshot $originalWinws
     Remove-Item -Path $ipsetFlagFile -ErrorAction SilentlyContinue
 }
 

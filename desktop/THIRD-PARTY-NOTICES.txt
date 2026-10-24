@@ -1,0 +1,38 @@
+Z-zapret Desktop
+Copyright (c) 2026 Zuya73. Desktop application code: MIT (see LICENSE.txt).
+
+This distribution retains the unmodified Flowseal scripts, profiles and engine binaries.
+Flowseal/zapret-discord-youtube: https://github.com/Flowseal/zapret-discord-youtube
+Copyright (c) 2024-2026 Flowseal. MIT.
+zapret: https://github.com/bol-van/zapret
+Copyright (c) 2016-2026 bol-van. MIT.
+Windows bundle and binary provenance: https://github.com/bol-van/zapret-win-bundle
+
+WinDivert (WinDivert.dll and WinDivert64.sys), unmodified:
+https://github.com/basil00/WinDivert
+Licensed under the author's choice of LGPLv3 or GPLv2; this distribution uses LGPLv3.
+Source, build instructions and license: https://github.com/basil00/WinDivert
+The driver and DLL remain separate and replaceable. No proprietary modifications are made.
+
+Cygwin runtime (cygwin1.dll), unmodified:
+https://cygwin.com/
+LGPLv3+ with the Cygwin linking exception. Bundled runtime version: 3.4.10-1 (x86_64).
+License and corresponding source packages:
+https://cygwin.com/licensing.html
+https://cygwin.com/packages/summary/cygwin-src.html
+https://cygwin.com/cgit/newlib-cygwin/
+The original runtime is redistributed separately; application code does not link to it.
+
+DPI checker target catalog (downloaded at the user's request):
+https://github.com/hyperion-cs/dpi-checkers (Apache-2.0).
+Copyright and notices remain with the respective authors.
+The desktop implementation is independent; it consumes the public suite.v2.json data.
+
+Microsoft .NET runtime, redistributed with self-contained builds:
+https://github.com/dotnet/runtime
+https://github.com/dotnet/wpf
+MIT and third-party notices supplied in the licenses directory.
+
+Desktop source is provided separately in Z-zapret-source.zip.
+Project repository:
+https://github.com/Zuya73/Z-zapret

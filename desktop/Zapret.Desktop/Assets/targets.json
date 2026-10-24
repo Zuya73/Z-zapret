@@ -1,0 +1,209 @@
+[
+  {
+    "id": "DiscordMain",
+    "name": "DiscordMain",
+    "group": "Discord",
+    "url": "https://discord.com",
+    "required": true,
+    "pingOnly": false,
+    "acceptedCodes": null
+  },
+  {
+    "id": "DiscordGateway",
+    "name": "DiscordGateway",
+    "group": "Discord",
+    "url": "https://gateway.discord.gg",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "DiscordCDN",
+    "name": "DiscordCDN",
+    "group": "Discord",
+    "url": "https://cdn.discordapp.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "DiscordUpdates",
+    "name": "DiscordUpdates",
+    "group": "Discord",
+    "url": "https://updates.discord.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "YouTubeWeb",
+    "name": "YouTubeWeb",
+    "group": "YouTube",
+    "url": "https://www.youtube.com",
+    "required": true,
+    "pingOnly": false,
+    "acceptedCodes": null
+  },
+  {
+    "id": "YouTubeShort",
+    "name": "YouTubeShort",
+    "group": "YouTube",
+    "url": "https://youtu.be",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": null
+  },
+  {
+    "id": "YouTubeImage",
+    "name": "YouTubeImage",
+    "group": "YouTube",
+    "url": "https://i.ytimg.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "YouTubeVideoRedirect",
+    "name": "YouTubeVideoRedirect",
+    "group": "YouTube",
+    "url": "https://redirector.googlevideo.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "GoogleMain",
+    "name": "GoogleMain",
+    "group": "Google",
+    "url": "https://www.google.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": null
+  },
+  {
+    "id": "GoogleGstatic",
+    "name": "GoogleGstatic",
+    "group": "Google",
+    "url": "https://www.gstatic.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "CloudflareWeb",
+    "name": "CloudflareWeb",
+    "group": "Cloudflare",
+    "url": "https://www.cloudflare.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": null
+  },
+  {
+    "id": "CloudflareCDN",
+    "name": "CloudflareCDN",
+    "group": "Cloudflare",
+    "url": "https://cdnjs.cloudflare.com",
+    "required": false,
+    "pingOnly": false,
+    "acceptedCodes": [
+      200,
+      204,
+      301,
+      302,
+      307,
+      308,
+      403,
+      404
+    ]
+  },
+  {
+    "id": "CloudflareDNS1111",
+    "name": "CloudflareDNS1111",
+    "group": "Cloudflare",
+    "url": "1.1.1.1",
+    "required": false,
+    "pingOnly": true,
+    "acceptedCodes": null
+  },
+  {
+    "id": "CloudflareDNS1001",
+    "name": "CloudflareDNS1001",
+    "group": "Cloudflare",
+    "url": "1.0.0.1",
+    "required": false,
+    "pingOnly": true,
+    "acceptedCodes": null
+  },
+  {
+    "id": "GoogleDNS8888",
+    "name": "GoogleDNS8888",
+    "group": "Google",
+    "url": "8.8.8.8",
+    "required": false,
+    "pingOnly": true,
+    "acceptedCodes": null
+  },
+  {
+    "id": "GoogleDNS8844",
+    "name": "GoogleDNS8844",
+    "group": "Google",
+    "url": "8.8.4.4",
+    "required": false,
+    "pingOnly": true,
+    "acceptedCodes": null
+  }
+]

@@ -6,3 +6,8 @@
 
 .vscode/
 /build/
+/desktop/**/bin/
+/desktop/**/obj/
+/desktop/artifacts/
+/desktop/*.png
+/desktop/*.user

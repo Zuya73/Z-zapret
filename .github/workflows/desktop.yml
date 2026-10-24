@@ -1,0 +1,105 @@
+name: Windows desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ['desktop-v*']
+    paths: ['desktop/**', 'tools/**', 'bin/**', 'lists/**', '*.bat', 'utils/**', '.github/workflows/desktop.yml']
+  pull_request:
+    paths: ['desktop/**', 'tools/**', 'bin/**', 'lists/**', '*.bat', 'utils/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify imported strategies
+        run: python tools/generate_desktop_assets.py --check
+      - name: Validate original PowerShell syntax
+        shell: pwsh
+        run: |
+          $tokens = $null; $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'utils/test zapret.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { $errors | Format-List; throw 'Original test script has syntax errors.' }
+      - name: Regression tests
+        run: dotnet run --project desktop/Zapret.Tests/Zapret.Tests.csproj -c Release -- .
+      - name: Build portable application
+        shell: pwsh
+        run: ./desktop/package.ps1
+      - name: Render real WPF interface
+        shell: pwsh
+        run: |
+          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/Z-zapret/Z-zapret.dll', '--smoke-test', 'desktop/artifacts/desktop-preview.png') -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'WPF smoke test timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "WPF smoke test failed: $($process.ExitCode)" }
+          if (-not (Test-Path desktop/artifacts/desktop-preview.png)) { throw 'UI preview was not created.' }
+      - name: Build installer
+        shell: pwsh
+        run: |
+          python tools/generate_installer_files.py
+          if ($LASTEXITCODE -ne 0) { throw 'Could not generate installer file list.' }
+          $compiler = "${env:ProgramFiles(x86)}/NSIS/makensis.exe"
+          if (-not (Test-Path $compiler)) {
+            choco install nsis --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Could not install NSIS.' }
+          }
+          & $compiler /V2 desktop/installer.nsi
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
+      - name: Test silent installation and uninstallation
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'Z-zapret-install-test'
+          $setup = Start-Process desktop/artifacts/Z-zapret-Setup-0.1.0-x64.exe -ArgumentList @('/S', "/D=$directory") -Wait -PassThru
+          if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/Z-zapret.exe")) { throw 'Installation failed.' }
+          $uninstall = Start-Process "$directory/Uninstall.exe" -ArgumentList @('/S', '_?='+$directory) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw 'Uninstallation failed.' }
+      - name: Write checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem desktop/artifacts -File | Where-Object Extension -in '.zip', '.exe' | Sort-Object Name | ForEach-Object {
+            "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() )  $($_.Name)"
+          } | Set-Content desktop/artifacts/SHA256SUMS.txt -Encoding utf8NoBOM
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Z-zapret-Windows-x64
+          path: |
+            desktop/artifacts/*.zip
+            desktop/artifacts/*.exe
+            desktop/artifacts/*.png
+            desktop/artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Z-zapret-Windows-x64
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          name: Z-zapret Desktop ${{ github.ref_name }}
+          body: 'Windows 10/11 x64. Portable ZIP and installer. See desktop/README.md for requirements and test limitations.'
+          files: |
+            release/*.zip
+            release/*.exe
+            release/*.png
+            release/SHA256SUMS.txt
