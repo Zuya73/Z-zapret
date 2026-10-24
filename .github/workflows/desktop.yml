@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     tags: ['desktop-v*']
-    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
+    paths: ['x2zapret.exe', 'src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   pull_request:
-    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
+    paths: ['x2zapret.exe', 'src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,8 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Verify repository structure
         run: python tools/verify_repository.py
+      - name: Verify vendored engine manifest
+        run: python tools/generate_engine_manifest.py --check
       - name: Verify imported strategies
         run: python tools/import_flowseal_strategies.py --check
       - name: Verify desktop release version
@@ -61,6 +63,28 @@ jobs:
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'WPF smoke test timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "WPF smoke test failed: $($process.ExitCode)" }
           if (-not (Test-Path artifacts/desktop-preview.png)) { throw 'UI preview was not created.' }
+      - name: Build self-contained root executable
+        shell: pwsh
+        run: ./build/build-root.ps1
+      - name: Test root executable with only repository data beside it
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'x2zapret root executable test'
+          New-Item $directory -ItemType Directory -Force | Out-Null
+          Copy-Item artifacts/root-executable/x2zapret.exe "$directory/x2zapret.exe"
+          Copy-Item vendor, resources $directory -Recurse
+          if (Get-ChildItem $directory -File -Filter '*.dll') { throw 'Root EXE depends on adjacent DLLs.' }
+          $output = Join-Path $PWD 'artifacts/root-executable-preview.png'
+          $argument = '--startup-check "' + $output + '"'
+          $process = Start-Process "$directory/x2zapret.exe" -ArgumentList $argument -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Root EXE startup timed out.' }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) { throw "Root EXE failed: $($process.ExitCode)" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2zapret-root-executable
+          path: |
+            artifacts/root-executable/x2zapret.exe
+            artifacts/root-executable/root-executable.json
       - name: Build installer
         shell: pwsh
         run: |
@@ -191,3 +215,45 @@ jobs:
             release/*.exe
             release/*.png
             release/SHA256SUMS.txt
+
+  publish-root-executable:
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2zapret-root-executable
+          path: artifacts/root-executable
+      - name: Publish tested executable at repository root
+        shell: bash
+        run: |
+          python - <<'PYROOT'
+          import hashlib, json, shutil, subprocess
+          from pathlib import Path
+          from tools.root_executable import inputs_hash, validate
+          built = Path('artifacts/root-executable')
+          metadata = json.loads((built / 'root-executable.json').read_text())
+          if metadata['built_from'] != subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip():
+              raise SystemExit('Artifact was built from a different commit.')
+          if metadata['inputs_sha256'] != inputs_hash() or metadata['exe_sha256'] != validate(built / 'x2zapret.exe'):
+              raise SystemExit('Artifact verification failed.')
+          previous = Path('build/root-executable.json')
+          if previous.exists() and Path('x2zapret.exe').is_file():
+              old = json.loads(previous.read_text())
+              if old['inputs_sha256'] == metadata['inputs_sha256'] and old['exe_sha256'] == hashlib.sha256(Path('x2zapret.exe').read_bytes()).hexdigest():
+                  print('Root executable already matches the application sources.')
+                  raise SystemExit(0)
+          shutil.copyfile(built / 'x2zapret.exe', 'x2zapret.exe')
+          shutil.copyfile(built / 'root-executable.json', previous)
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'add', 'x2zapret.exe', 'build/root-executable.json'], check=True)
+          subprocess.run(['git', 'commit', '-m', 'Update ready x2zapret.exe at repository root'], check=True)
+          subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
+          PYROOT

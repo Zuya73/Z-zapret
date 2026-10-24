@@ -6,6 +6,10 @@ namespace Zapret.Desktop.Runtime;
 public sealed class AppPaths
 {
     public string Bundle { get; } = AppContext.BaseDirectory;
+    private readonly BundleLayout layout = BundleLayout.Resolve(AppContext.BaseDirectory);
+    public string Catalogs => layout.Catalogs;
+    public string BinarySource => layout.Binaries;
+    public string ListSource => layout.SeedLists;
     public string Root { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Z-zapret");
     public string Bin => Path.Combine(Root, "bin");
     public string Lists => Path.Combine(Root, "lists");
@@ -20,19 +24,19 @@ public sealed class AppPaths
     {
         foreach (string dir in new[] { Root, Bin, Lists, PreparedLists, Results, Path.GetDirectoryName(Log)! }) Directory.CreateDirectory(dir);
         if (File.Exists(Log) && new FileInfo(Log).Length > 2_000_000) File.Move(Log, Log + ".previous", true);
-        string manifest = Path.Combine(Bundle, "engine-manifest.json");
+        string manifest = layout.Manifest;
         var hashes = AtomicFile.ReadJson<Dictionary<string, string>>(manifest)
             ?? throw new FileNotFoundException("Нет комплекта движка. Распакуйте весь архив приложения.", manifest);
         foreach (var (name, expected) in hashes)
         {
             if (Path.GetFileName(name) != name) throw new InvalidDataException("Некорректный манифест движка.");
-            string source = Path.Combine(Bundle, "bin", name), destination = Path.Combine(Bin, name);
+            string source = Path.Combine(BinarySource, name), destination = Path.Combine(Bin, name);
             if (!File.Exists(source) || !string.Equals(Hash(source), expected, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"Не пройдена проверка целостности: {name}. Загрузите полный архив приложения.");
             if (!File.Exists(destination) || !name.StartsWith("ACTIVE_", StringComparison.Ordinal) && !string.Equals(Hash(destination), expected, StringComparison.OrdinalIgnoreCase))
                 File.Copy(source, destination, overwrite: true);
         }
-        foreach (string source in Directory.GetFiles(Path.Combine(Bundle, "lists")))
+        foreach (string source in Directory.GetFiles(ListSource))
         {
             string destination = Path.Combine(Lists, Path.GetFileName(source));
             if (!File.Exists(destination)) File.Copy(source, destination);
@@ -67,7 +71,7 @@ public sealed class AppPaths
         {
             if (Path.GetFileName(sourceName) != sourceName || !sourceName.EndsWith(".bin", StringComparison.OrdinalIgnoreCase) || sourceName.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Недопустимый файл фейка.");
-            File.Copy(Path.Combine(Bundle, "bin", sourceName), Path.Combine(Bin, target), true);
+            File.Copy(Path.Combine(BinarySource, sourceName), Path.Combine(Bin, target), true);
         }
     }
 

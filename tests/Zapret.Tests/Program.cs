@@ -11,6 +11,38 @@ ProbeResult R(string id, ProbeStatus status = ProbeStatus.Passed, string protoco
 StrategyReport Report(string id, params ProbeResult[] results) => new(id, id, results);
 
 Check("All 22 original strategies are imported", () => Equal(22, catalog.Count));
+Check("Portable bundles resolve resources beside the executable", () =>
+{
+    string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    var layout = BundleLayout.Resolve(root);
+    Equal(root, layout.Catalogs); Equal(Path.Combine(root, "bin"), layout.Binaries);
+    Equal(Path.Combine(root, "lists"), layout.SeedLists);
+});
+Check("Repository root executable resolves vendored engine and resource catalogs", () =>
+{
+    string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "vendor", "zapret"));
+        var layout = BundleLayout.Resolve(root);
+        Equal(Path.Combine(root, "resources", "catalogs"), layout.Catalogs);
+        Equal(Path.Combine(root, "vendor", "zapret", "bin"), layout.Binaries);
+        Equal(Path.Combine(root, "resources", "lists"), layout.SeedLists);
+        Equal(Path.Combine(root, "vendor", "zapret", "engine-manifest.json"), layout.Manifest);
+    }
+    finally { Directory.Delete(root, true); }
+});
+Check("A complete portable layout wins when source folders are also present", () =>
+{
+    string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "resources", "catalogs"));
+        File.WriteAllText(Path.Combine(root, "engine-manifest.json"), "{}");
+        Equal(root, BundleLayout.Resolve(root).Catalogs);
+    }
+    finally { Directory.Delete(root, true); }
+});
 Check("Repeated options and literal exclamation survive import", () =>
 {
     var fake = catalog.Single(x => x.Id == "general-fake-tls-auto");
