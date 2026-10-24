@@ -1,13 +1,16 @@
-/utils/test results
-/utils/game_filter.enabled
-/lists/ipset-exclude-user.txt
-/lists/list-general-user.txt
-/lists/list-exclude-user.txt
-
-.vscode/
-/build/
-/desktop/**/bin/
-/desktop/**/obj/
-/desktop/artifacts/
-/desktop/*.png
-/desktop/*.user
+**/bin/
+**/obj/
+!vendor/zapret/bin/
+!vendor/zapret/bin/**
+/artifacts/
+/.vs/
+/.vscode/
+*.user
+smoke-error.txt
+/legacy/flowseal/utils/test results/
+/legacy/flowseal/utils/game_filter.enabled
+/resources/lists/ipset-exclude-user.txt
+/resources/lists/list-general-user.txt
+/resources/lists/list-exclude-user.txt
+**/__pycache__/
+*.pyc

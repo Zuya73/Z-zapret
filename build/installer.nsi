@@ -4,13 +4,13 @@ Unicode true
 !include "WinVer.nsh"
 !include "x64.nsh"
 !include "FileFunc.nsh"
-!include "artifacts\version.nsh"
+!include "..\artifacts\version.nsh"
 
 !ifndef PUBLISH_DIR
-  !define PUBLISH_DIR "artifacts\x2zapret"
+  !define PUBLISH_DIR "..\artifacts\x2zapret"
 !endif
 Name "x2zapret"
-OutFile "artifacts\x2zapret-Setup-${APP_VERSION}-x64.exe"
+OutFile "..\artifacts\x2zapret-Setup-${APP_VERSION}-x64.exe"
 InstallDir "$PROGRAMFILES64\x2zapret"
 InstallDirRegKey HKLM "Software\Z-zapret" "InstallDir"
 RequestExecutionLevel admin
@@ -22,8 +22,8 @@ VIAddVersionKey "ProductName" "x2zapret"
 VIAddVersionKey "FileDescription" "x2zapret Windows installer"
 VIAddVersionKey "FileVersion" "${APP_VERSION}"
 VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
-!define MUI_ICON "Zapret.Desktop\Assets\app.ico"
-!define MUI_UNICON "Zapret.Desktop\Assets\app.ico"
+!define MUI_ICON "..\src\Zapret.Desktop\Assets\app.ico"
+!define MUI_UNICON "..\src\Zapret.Desktop\Assets\app.ico"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\x2zapret.exe"
 !insertmacro MUI_PAGE_WELCOME
@@ -106,6 +106,7 @@ Section "x2zapret" Main
   SetShellVarContext all
   SetOutPath "$INSTDIR"
   File /r "${PUBLISH_DIR}\*"
+  !include "..\artifacts\upgrade-cleanup.nsh"
   ; Known files and shortcuts from the former product name only.
   Delete "$INSTDIR\Z-zapret.exe"
   Delete "$INSTDIR\Z-zapret.dll"
@@ -162,7 +163,7 @@ Section "Uninstall"
     Abort
   ${EndIf}
   ; Remove only files shipped by this build, preserving unrelated user files.
-  !include "artifacts\uninstall-files.nsh"
+  !include "..\artifacts\uninstall-files.nsh"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
   Delete "$DESKTOP\x2zapret.lnk"

@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     tags: ['desktop-v*']
-    paths: ['desktop/**', 'tools/**', 'bin/**', 'lists/**', '*.bat', 'utils/**', '.github/workflows/desktop.yml']
+    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   pull_request:
-    paths: ['desktop/**', 'tools/**', 'bin/**', 'lists/**', '*.bat', 'utils/**', '.github/workflows/desktop.yml']
+    paths: ['src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   workflow_dispatch:
 
 permissions:
@@ -25,32 +25,42 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Verify repository structure
+        run: python tools/verify_repository.py
       - name: Verify imported strategies
-        run: python tools/generate_desktop_assets.py --check
+        run: python tools/import_flowseal_strategies.py --check
       - name: Verify desktop release version
         if: startsWith(github.ref, 'refs/tags/desktop-v')
         shell: pwsh
         run: |
-          $version = ([xml](Get-Content desktop/Directory.Build.props -Raw)).SelectSingleNode('//Version').InnerText
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).SelectSingleNode('//Version').InnerText
           if ($env:GITHUB_REF_NAME -ne "desktop-v$version") { throw 'Desktop tag must match Directory.Build.props version.' }
       - name: Validate original PowerShell syntax
         shell: pwsh
         run: |
           $tokens = $null; $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'utils/test zapret.ps1'), [ref]$tokens, [ref]$errors)
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'legacy/flowseal/utils/test zapret.ps1'), [ref]$tokens, [ref]$errors)
           if ($errors.Count) { $errors | Format-List; throw 'Original test script has syntax errors.' }
       - name: Regression tests
-        run: dotnet run --project desktop/Zapret.Tests/Zapret.Tests.csproj -c Release -- .
+        run: dotnet run --project tests/Zapret.Tests/Zapret.Tests.csproj -c Release -- .
+      - name: Build solution
+        run: dotnet build x2zapret.slnx -c Release
       - name: Build portable application
         shell: pwsh
-        run: ./desktop/package.ps1
+        run: ./build/package.ps1
+      - name: Verify runtime package and build separate legacy tools
+        shell: pwsh
+        run: |
+          python tools/verify_package.py artifacts/x2zapret
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid runtime package.' }
+          ./build/package-legacy.ps1
       - name: Render real WPF interface
         shell: pwsh
         run: |
-          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/x2zapret/x2zapret.dll', '--smoke-test', 'desktop/artifacts/desktop-preview.png') -PassThru
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--smoke-test', 'artifacts/desktop-preview.png') -PassThru
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'WPF smoke test timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "WPF smoke test failed: $($process.ExitCode)" }
-          if (-not (Test-Path desktop/artifacts/desktop-preview.png)) { throw 'UI preview was not created.' }
+          if (-not (Test-Path artifacts/desktop-preview.png)) { throw 'UI preview was not created.' }
       - name: Build installer
         shell: pwsh
         run: |
@@ -61,41 +71,41 @@ jobs:
             choco install nsis --yes --no-progress
             if ($LASTEXITCODE -ne 0) { throw 'Could not install NSIS.' }
           }
-          $publishedDirectory = (Resolve-Path 'desktop/artifacts/x2zapret').Path
-          Push-Location desktop
+          $publishedDirectory = (Resolve-Path 'artifacts/x2zapret').Path
+          Push-Location build
           try {
             & $compiler /V2 "/DPUBLISH_DIR=$publishedDirectory" installer.nsi
             if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
           } finally { Pop-Location }
           # Compatibility asset for the updater shipped under the previous name.
-          $version = ([xml](Get-Content desktop/Directory.Build.props -Raw)).SelectSingleNode('//Version').InnerText
-          Copy-Item "desktop/artifacts/x2zapret-Setup-$version-x64.exe" "desktop/artifacts/Z-zapret-Setup-$version-x64.exe"
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).SelectSingleNode('//Version').InnerText
+          Copy-Item "artifacts/x2zapret-Setup-$version-x64.exe" "artifacts/Z-zapret-Setup-$version-x64.exe"
       - name: Render branded settings and animated switches
         shell: pwsh
         run: |
-          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/x2zapret/x2zapret.dll', '--smoke-test', 'desktop/artifacts/settings-preview.png', '--settings-preview') -PassThru
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--smoke-test', 'artifacts/settings-preview.png', '--settings-preview') -PassThru
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Settings render timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Settings render failed.' }
       - name: Verify full application startup without starting the network engine
         shell: pwsh
         run: |
-          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/x2zapret/x2zapret.dll', '--startup-check', 'desktop/artifacts/startup-preview.png') -PassThru
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--startup-check', 'artifacts/startup-preview.png') -PassThru
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Application initialization timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Application initialization failed: $($process.ExitCode)" }
-          if (-not (Test-Path desktop/artifacts/startup-preview.png)) { throw 'Application initialization produced no preview.' }
+          if (-not (Test-Path artifacts/startup-preview.png)) { throw 'Application initialization produced no preview.' }
       - name: Test silent installation and uninstallation
         shell: pwsh
         run: |
           $directory = Join-Path $env:RUNNER_TEMP 'Z-zapret install test'
-          $installer = @(Get-ChildItem desktop/artifacts/x2zapret-Setup-*-x64.exe)
+          $installer = @(Get-ChildItem artifacts/x2zapret-Setup-*-x64.exe)
           if ($installer.Count -ne 1) { throw 'Expected exactly one desktop installer.' }
           $setup = Start-Process $installer[0].FullName -ArgumentList @('/S', "/D=$directory") -Wait -PassThru
           if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/x2zapret.exe")) {
             $diagnostic = Join-Path ([IO.Path]::GetTempPath()) 'Z-zapret-maintenance-error.txt'
-            if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic desktop/artifacts/maintenance-error.txt }
+            if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic artifacts/maintenance-error.txt }
             throw "Installation failed with exit code $($setup.ExitCode)."
           }
-          $installedCheck = Start-Process "$directory/x2zapret.exe" -ArgumentList @('--startup-check', 'desktop/artifacts/installed-preview.png') -WorkingDirectory $PWD.Path -PassThru
+          $installedCheck = Start-Process "$directory/x2zapret.exe" -ArgumentList @('--startup-check', 'artifacts/installed-preview.png') -WorkingDirectory $PWD.Path -PassThru
           if (-not $installedCheck.WaitForExit(60000)) { $installedCheck.Kill(); throw 'Installed application startup timed out.' }
           if ($installedCheck.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Installed application failed: $($installedCheck.ExitCode)" }
           $preferences = Join-Path $env:ProgramData 'Z-zapret/settings.json'
@@ -105,6 +115,12 @@ jobs:
           $task = Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction Stop
           if ($task.Actions.Execute -ne "$directory\x2zapret.exe" -or $task.Actions.Arguments -ne '--startup') { throw 'Unexpected autostart command.' }
           if ($task.Principal.LogonType -ne 'Interactive' -or $task.Principal.RunLevel -ne 'Highest') { throw 'Autostart task uses an incorrect user context.' }
+          # Simulate files shipped by the previous installer and an unrelated user file.
+          New-Item "$directory/utils", "$directory/.service" -ItemType Directory -Force | Out-Null
+          'old launcher' | Set-Content "$directory/service.bat"
+          'old probe' | Set-Content "$directory/utils/test zapret.ps1"
+          'old version' | Set-Content "$directory/.service/version.txt"
+          'keep' | Set-Content "$directory/utils/user-notes.txt"
           # Exercise the updater handoff and an in-place upgrade with existing settings.
           # Exercise the old executable-name fallback used when upgrading Z-zapret.
           Move-Item "$directory/x2zapret.exe" "$directory/Z-zapret.exe"
@@ -114,18 +130,22 @@ jobs:
           $elapsed.Stop()
           if ($upgrade.ExitCode -ne 0 -or $elapsed.Elapsed.TotalSeconds -lt 3) { throw 'Updater did not wait for its parent or failed to upgrade.' }
           if (Test-Path "$directory/Z-zapret.exe") { throw 'Upgrade left the previous executable behind.' }
+          foreach ($obsolete in @('service.bat', 'utils/test zapret.ps1', '.service/version.txt')) {
+            if (Test-Path "$directory/$obsolete") { throw "Upgrade left obsolete file: $obsolete" }
+          }
+          if ((Get-Content "$directory/utils/user-notes.txt" -Raw).Trim() -ne 'keep') { throw 'Upgrade removed an unrelated user file.' }
           if ((Get-Content $preferences -Raw | ConvertFrom-Json).startup -ne 'Tray') { throw 'Upgrade lost startup preferences.' }
           $task = Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction Stop
           if ($task.Actions.Execute -ne "$directory\x2zapret.exe") { throw 'Upgrade lost the startup task.' }
-          $hidden = Start-Process "$directory/x2zapret.exe" -ArgumentList @('--startup', '--tray-check', 'desktop/artifacts/tray-check.json') -WorkingDirectory $PWD.Path -PassThru
+          $hidden = Start-Process "$directory/x2zapret.exe" -ArgumentList @('--startup', '--tray-check', 'artifacts/tray-check.json') -WorkingDirectory $PWD.Path -PassThru
           if (-not $hidden.WaitForExit(60000)) { $hidden.Kill(); throw 'Tray startup check timed out.' }
-          $receipt = Get-Content desktop/artifacts/tray-check.json -Raw | ConvertFrom-Json
+          $receipt = Get-Content artifacts/tray-check.json -Raw | ConvertFrom-Json
           if ($hidden.ExitCode -ne 0 -or -not $receipt.ready -or -not $receipt.hidden -or $receipt.taskbar) { throw 'Application did not start hidden in the tray.' }
           if (Get-Process winws -ErrorAction SilentlyContinue) { throw 'Tray-only startup unexpectedly started the engine.' }
           $uninstall = Start-Process "$directory/Uninstall.exe" -ArgumentList @('/S', "_?=$directory") -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) {
             $diagnostic = Join-Path ([IO.Path]::GetTempPath()) 'Z-zapret-maintenance-error.txt'
-            if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic desktop/artifacts/maintenance-error.txt }
+            if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic artifacts/maintenance-error.txt }
             throw "Uninstallation failed with exit code $($uninstall.ExitCode)."
           }
           if (Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction SilentlyContinue) { throw 'Uninstall left the autostart task behind.' }
@@ -133,20 +153,20 @@ jobs:
       - name: Write checksums
         shell: pwsh
         run: |
-          Get-ChildItem desktop/artifacts -File | Where-Object Extension -in '.zip', '.exe' | Sort-Object Name | ForEach-Object {
+          Get-ChildItem artifacts -File | Where-Object Extension -in '.zip', '.exe' | Sort-Object Name | ForEach-Object {
             "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() )  $($_.Name)"
-          } | Set-Content desktop/artifacts/SHA256SUMS.txt -Encoding utf8NoBOM
+          } | Set-Content artifacts/SHA256SUMS.txt -Encoding utf8NoBOM
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: x2zapret-Windows-x64
           path: |
-            desktop/artifacts/*.zip
-            desktop/artifacts/*.exe
-            desktop/artifacts/*.png
-            desktop/artifacts/SHA256SUMS.txt
-            desktop/artifacts/maintenance-error.txt
-            desktop/artifacts/tray-check.json
+            artifacts/*.zip
+            artifacts/*.exe
+            artifacts/*.png
+            artifacts/SHA256SUMS.txt
+            artifacts/maintenance-error.txt
+            artifacts/tray-check.json
           if-no-files-found: error
           retention-days: 30
 
@@ -165,7 +185,7 @@ jobs:
         with:
           prerelease: false
           name: x2zapret Desktop ${{ github.ref_name }}
-          body: 'Windows 10/11 x64. Portable ZIP and installer. See desktop/README.md for requirements and test limitations.'
+          body: 'Windows 10/11 x64. Portable ZIP and installer. See docs/USER-GUIDE.md for requirements and test limitations.'
           files: |
             release/*.zip
             release/*.exe

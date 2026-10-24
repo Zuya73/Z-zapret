@@ -1,7 +1,9 @@
 x2zapret Desktop
 Copyright (c) 2026 Zuya73. Desktop application code: MIT (see LICENSE.txt).
 
-This distribution retains the unmodified Flowseal scripts, profiles and engine binaries.
+This application distributes Flowseal profiles and unmodified engine binaries.
+Original Flowseal scripts are retained in legacy/flowseal in the source tree and
+are distributed only in the separate optional legacy-tools archive.
 Flowseal/zapret-discord-youtube: https://github.com/Flowseal/zapret-discord-youtube
 Copyright (c) 2024-2026 Flowseal. MIT.
 zapret: https://github.com/bol-van/zapret
