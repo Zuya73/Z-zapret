@@ -1,0 +1,67 @@
+name: Recover tested desktop release
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/recover-desktop-release.yml']
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Workflow run whose build job passed
+        required: true
+        default: '40097361729'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.run_id || '40097361729' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2zapret-Windows-x64
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2zapret-root-executable
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
+          path: recovery-root
+      - name: Verify tested source and artifact before recovery
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          from tools.root_executable import inputs_hash, validate
+          repo, run = os.environ['GITHUB_REPOSITORY'], os.environ['SOURCE_RUN']
+          if not run.isdigit(): raise SystemExit('Invalid run ID.')
+          def api(path): return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
+          source = api(f'repos/{repo}/actions/runs/{run}')
+          jobs = api(f'repos/{repo}/actions/runs/{run}/jobs')['jobs']
+          if source['head_branch'] != 'main' or not any(j['name'] == 'build' and j['conclusion'] == 'success' for j in jobs):
+              raise SystemExit('Only a tested main build can be recovered.')
+          metadata = json.loads(Path('recovery-root/root-executable.json').read_text())
+          if metadata['built_from'] != source['head_sha'] or metadata['inputs_sha256'] != inputs_hash():
+              raise SystemExit('Current application sources differ from the tested build.')
+          if metadata['exe_sha256'] != validate(Path('recovery-root/x2zapret.exe')):
+              raise SystemExit('Tested executable checksum mismatch.')
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('DESKTOP_RELEASE_COMMIT=' + source['head_sha'] + '\n')
+          print('Recovering verified version', metadata['version'], 'from', source['head_sha'])
+          PY
+      - name: Complete release publication
+        run: python tools/publish_desktop_release.py
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify client 0.2.2 discovers the installer
+        run: dotnet run --project tests/Zapret.Tests -c Release -- . --published-update release/published-releases.json
