@@ -66,14 +66,22 @@ public partial class App : Application
             {
                 if (startupCheck && !window.StartupSucceeded)
                     throw new InvalidOperationException("Application initialization failed: " + window.StartupError);
-                window.UpdateLayout();
-                var image = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-                image.Render(window);
-                var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
                 string option = startupCheck ? "--startup-check" : "--smoke-test";
                 string destination = e.Args.SkipWhile(x => x != option).Skip(1).FirstOrDefault() ?? "desktop-preview.png";
-                using var stream = File.Create(destination); encoder.Save(stream);
+                SavePreview(destination);
+                window.SetPreviewTheme(true);
+                SavePreview(Path.Combine(Path.GetDirectoryName(destination) ?? ".", Path.GetFileNameWithoutExtension(destination) + "-light.png"));
                 window.ExitForSmokeTest();
+
+                void SavePreview(string path)
+                {
+                    window.UpdateLayout();
+                    var content = (FrameworkElement)window.Content;
+                    var image = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+                    image.Render(content);
+                    var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
+                    using var stream = File.Create(path); encoder.Save(stream);
+                }
             }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
     }

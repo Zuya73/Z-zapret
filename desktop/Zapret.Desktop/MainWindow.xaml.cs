@@ -39,6 +39,7 @@ public partial class MainWindow : Window
 
     internal bool StartupSucceeded => ready && ErrorBanner.Visibility != Visibility.Visible;
     internal string StartupError => ErrorText.Text;
+    internal void SetPreviewTheme(bool light) => SetTheme(light);
 
     public MainWindow(bool preview = false)
     {
