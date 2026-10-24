@@ -13,7 +13,7 @@ def inputs_hash():
     paths = ['src', 'resources', 'vendor/zapret', 'Directory.Build.props', 'global.json',
              'build/build-root.ps1', 'tools/root_executable.py']
     listing = subprocess.check_output(['git', 'ls-tree', '-r', 'HEAD', '--', *paths], cwd=ROOT)
-    return hashlib.sha256(listing).hexdigest()
+    return hashlib.sha256(listing.replace(b'\r\n', b'\n')).hexdigest()
 
 def validate(executable):
     data = Path(executable).read_bytes()
