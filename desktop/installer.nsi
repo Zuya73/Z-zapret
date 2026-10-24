@@ -58,7 +58,13 @@ Function .onInit
   ReadRegStr $0 HKLM "Software\Z-zapret" "InstallDir"
   StrCmp $0 "" ready
   IfFileExists "$0\Z-zapret.exe" 0 ready
+  ClearErrors
   ExecWait '"$0\Z-zapret.exe" --stop-service-for-update' $1
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание Z-zapret. Обновление остановлено." /SD IDOK
+    SetErrorLevel 3
+    Abort
+  ${EndIf}
   ${If} $1 != 0
     MessageBox MB_OK|MB_ICONSTOP "Не удалось остановить службу Z-zapret. Остановите её перед обновлением." /SD IDOK
     SetErrorLevel 3
@@ -96,7 +102,13 @@ FunctionEnd
 Section "Uninstall"
   SetRegView 64
   SetShellVarContext all
+  ClearErrors
   ExecWait '"$INSTDIR\Z-zapret.exe" --uninstall-service' $0
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание Z-zapret. Файлы приложения сохранены." /SD IDOK
+    SetErrorLevel 4
+    Abort
+  ${EndIf}
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "Не удалось отключить службу или восстановить hosts. Проверьте журнал Z-zapret и повторите удаление." /SD IDOK
     SetErrorLevel 4

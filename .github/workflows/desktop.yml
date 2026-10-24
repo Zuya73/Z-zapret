@@ -71,11 +71,18 @@ jobs:
       - name: Test silent installation and uninstallation
         shell: pwsh
         run: |
-          $directory = Join-Path $env:RUNNER_TEMP 'Z-zapret-install-test'
+          $directory = Join-Path $env:RUNNER_TEMP 'Z-zapret install test'
           $setup = Start-Process desktop/artifacts/Z-zapret-Setup-0.1.0-x64.exe -ArgumentList @('/S', "/D=$directory") -Wait -PassThru
           if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/Z-zapret.exe")) { throw 'Installation failed.' }
-          $uninstall = Start-Process "$directory/Uninstall.exe" -ArgumentList @('/S', '_?='+$directory) -Wait -PassThru
-          if ($uninstall.ExitCode -ne 0) { throw 'Uninstallation failed.' }
+          $installedCheck = Start-Process "$directory/Z-zapret.exe" -ArgumentList @('--startup-check', 'desktop/artifacts/installed-preview.png') -WorkingDirectory $PWD.Path -PassThru
+          if (-not $installedCheck.WaitForExit(60000)) { $installedCheck.Kill(); throw 'Installed application startup timed out.' }
+          if ($installedCheck.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Installed application failed: $($installedCheck.ExitCode)" }
+          $uninstall = Start-Process "$directory/Uninstall.exe" -ArgumentList @('/S', "_?=$directory") -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) {
+            $diagnostic = Join-Path ([IO.Path]::GetTempPath()) 'Z-zapret-maintenance-error.txt'
+            if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic desktop/artifacts/maintenance-error.txt }
+            throw "Uninstallation failed with exit code $($uninstall.ExitCode)."
+          }
       - name: Write checksums
         shell: pwsh
         run: |
@@ -91,6 +98,7 @@ jobs:
             desktop/artifacts/*.exe
             desktop/artifacts/*.png
             desktop/artifacts/SHA256SUMS.txt
+            desktop/artifacts/maintenance-error.txt
           if-no-files-found: error
           retention-days: 30
 
