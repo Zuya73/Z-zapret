@@ -19,8 +19,8 @@
           <TextBlock Text="x2zapret" FontSize="29" FontWeight="Black" FontStyle="Italic" />
           <TextBlock Text="X2AIR  /  CONNECTION UTILITY" FontFamily="Consolas" FontSize="8" Foreground="#898989" Margin="0,7,0,0" />
         </StackPanel>
-        <StackPanel DockPanel.Dock="Bottom" Margin="10,20,0,0"><Border Background="#1A1A1A" CornerRadius="3" Padding="9,6" HorizontalAlignment="Left"><TextBlock Text="WINDOWS 10 / 11 · x64" FontSize="10" Foreground="#CBCBCB" /></Border><TextBlock x:Name="AppVersionText" Style="{StaticResource Muted}" FontSize="11" Margin="0,14,0,0" /><TextBlock Text="Движок zapret · профили Flowseal" FontSize="10" Style="{StaticResource Muted}" /></StackPanel>
-        <StackPanel x:Name="NavigationPanel">
+        <StackPanel x:Name="SidebarFooter" DockPanel.Dock="Bottom" Margin="10,20,0,0"><Border Background="#1A1A1A" CornerRadius="3" Padding="9,6" HorizontalAlignment="Left"><TextBlock Text="WINDOWS 10 / 11 · x64" FontSize="10" Foreground="#CBCBCB" /></Border><TextBlock x:Name="AppVersionText" Style="{StaticResource Muted}" FontSize="11" Margin="0,14,0,0" /><TextBlock x:Name="AuthorText" Text="by Zuya" FontSize="11" Foreground="#CBCBCB" Margin="0,5,0,5" /><TextBlock Text="Движок zapret · профили Flowseal" FontSize="10" Style="{StaticResource Muted}" /></StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="NavigationPanel">
           <Button Content="◉    Обзор" Style="{StaticResource Nav}" Tag="Home" Click="Navigate_Click" />
           <Button Content="↗    Автоподбор" Style="{StaticResource Nav}" Tag="Tests" Click="Navigate_Click" />
           <Button Content="≡    Стратегии" Style="{StaticResource Nav}" Tag="Strategies" Click="Navigate_Click" />
@@ -29,7 +29,7 @@
           <Button Content="▤    Журнал" Style="{StaticResource Nav}" Tag="Logs" Click="Navigate_Click" />
           <Border Height="1" Background="{DynamicResource LineBrush}" Margin="10,22" />
           <Button Content="↗    GitHub проекта" Style="{StaticResource Nav}" Click="GitHub_Click" />
-        </StackPanel>
+        </StackPanel></ScrollViewer>
       </DockPanel>
     </Border>
     <Grid Grid.Column="1" Margin="36,28,36,22">

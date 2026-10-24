@@ -10,6 +10,41 @@ ProbeResult R(string id, ProbeStatus status = ProbeStatus.Passed, string protoco
     new(id, id, id, protocol, status, ms, 200, 2000, "", true);
 StrategyReport Report(string id, params ProbeResult[] results) => new(id, id, results);
 
+Check("A 900px window fits above the taskbar on a 1366x768 desktop", () =>
+{
+    var work = new Zapret.Desktop.Runtime.PixelBounds(0, 0, 1366, 728);
+    var result = Zapret.Desktop.Runtime.WindowGeometry.Fit(new(43, -66, 1280, 900), work);
+    Equal(new Zapret.Desktop.Runtime.PixelBounds(43, 0, 1280, 728), result);
+});
+Check("Window minimums fit the work area at 100, 125, 150 and 200 percent DPI", () =>
+{
+    foreach (uint dpi in new uint[] { 96, 120, 144, 192 })
+    {
+        var minimum = Zapret.Desktop.Runtime.WindowGeometry.Minimum(new(0, 0, 1366, 728), dpi);
+        Assert(minimum.Width * dpi / 96 <= 1366.001);
+        Assert(minimum.Height * dpi / 96 <= 728.001);
+    }
+});
+Check("Maximizing respects taskbars on all four edges and negative monitor coordinates", () =>
+{
+    var monitor = new Zapret.Desktop.Runtime.PixelBounds(-1920, -1080, 1920, 1080);
+    var areas = new Zapret.Desktop.Runtime.PixelBounds[]
+    {
+        new(-1920, -1080, 1920, 1040), new(-1920, -1040, 1920, 1040),
+        new(-1880, -1080, 1880, 1080), new(-1920, -1080, 1880, 1080)
+    };
+    foreach (var area in areas)
+    {
+        var result = Zapret.Desktop.Runtime.WindowGeometry.Maximized(monitor, area);
+        Equal(area.Left, monitor.Left + result.Left); Equal(area.Top, monitor.Top + result.Top);
+        Equal(area.Width, result.Width); Equal(area.Height, result.Height);
+    }
+});
+Check("Restoring a window after a monitor change keeps every edge in its work area", () =>
+{
+    var result = Zapret.Desktop.Runtime.WindowGeometry.Fit(new(1600, 850, 1600, 1000), new(-1280, 40, 1280, 680));
+    Equal(new Zapret.Desktop.Runtime.PixelBounds(-1280, 40, 1280, 680), result);
+});
 Check("All 22 original strategies are imported", () => Equal(22, catalog.Count));
 Check("Portable bundles resolve resources beside the executable", () =>
 {
