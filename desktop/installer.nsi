@@ -7,25 +7,25 @@ Unicode true
 !include "artifacts\version.nsh"
 
 !ifndef PUBLISH_DIR
-  !define PUBLISH_DIR "artifacts\Z-zapret"
+  !define PUBLISH_DIR "artifacts\x2zapret"
 !endif
-Name "Z-zapret"
-OutFile "artifacts\Z-zapret-Setup-${APP_VERSION}-x64.exe"
-InstallDir "$PROGRAMFILES64\Z-zapret"
+Name "x2zapret"
+OutFile "artifacts\x2zapret-Setup-${APP_VERSION}-x64.exe"
+InstallDir "$PROGRAMFILES64\x2zapret"
 InstallDirRegKey HKLM "Software\Z-zapret" "InstallDir"
 RequestExecutionLevel admin
 ManifestDPIAware true
 SetCompressor /SOLID lzma
-BrandingText "Z-zapret · Zuya73"
+BrandingText "x2zapret · Zuya73"
 VIProductVersion "${APP_VERSION}.0"
-VIAddVersionKey "ProductName" "Z-zapret"
-VIAddVersionKey "FileDescription" "Z-zapret Windows installer"
+VIAddVersionKey "ProductName" "x2zapret"
+VIAddVersionKey "FileDescription" "x2zapret Windows installer"
 VIAddVersionKey "FileVersion" "${APP_VERSION}"
 VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
 !define MUI_ICON "Zapret.Desktop\Assets\app.ico"
 !define MUI_UNICON "Zapret.Desktop\Assets\app.ico"
 !define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_RUN "$INSTDIR\Z-zapret.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\x2zapret.exe"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "..\LICENSE.txt"
 !insertmacro MUI_PAGE_DIRECTORY
@@ -40,7 +40,7 @@ VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
   System::Call 'kernel32::OpenMutexW(i 0x100000, i 0, w "Global\Z-zapret.Desktop") p.r0'
   ${If} $0 != 0
     System::Call 'kernel32::CloseHandle(p r0)'
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Закройте Z-zapret через команду «Выход» в меню трея и повторите установку или удаление." /SD IDOK
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Закройте x2zapret через команду «Выход» в меню трея и повторите установку или удаление." /SD IDOK
     SetErrorLevel 2
     Abort
   ${EndIf}
@@ -58,7 +58,7 @@ Function WaitForUpdatingProcess
         System::Call 'kernel32::WaitForSingleObject(p r2, i 60000) i.r3'
         System::Call 'kernel32::CloseHandle(p r2)'
         ${If} $3 != 0
-          MessageBox MB_OK|MB_ICONSTOP "Закройте Z-zapret перед обновлением и повторите установку." /SD IDOK
+          MessageBox MB_OK|MB_ICONSTOP "Закройте x2zapret перед обновлением и повторите установку." /SD IDOK
           SetErrorLevel 6
           Abort
         ${EndIf}
@@ -81,48 +81,60 @@ Function .onInit
   !insertmacro RequireClosed
   ReadRegStr $0 HKLM "Software\Z-zapret" "InstallDir"
   StrCmp $0 "" ready
-  IfFileExists "$0\Z-zapret.exe" 0 ready
+  StrCpy $2 "$0\x2zapret.exe"
+  IfFileExists "$2" maintenance
+  StrCpy $2 "$0\Z-zapret.exe"
+  IfFileExists "$2" 0 ready
+  maintenance:
   ClearErrors
-  ExecWait '"$0\Z-zapret.exe" --stop-service-for-update' $1
+  ExecWait '"$2" --stop-service-for-update' $1
   ${If} ${Errors}
-    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание Z-zapret. Обновление остановлено." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание x2zapret. Обновление остановлено." /SD IDOK
     SetErrorLevel 3
     Abort
   ${EndIf}
   ${If} $1 != 0
-    MessageBox MB_OK|MB_ICONSTOP "Не удалось остановить службу Z-zapret. Остановите её перед обновлением." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось остановить службу x2zapret. Остановите её перед обновлением." /SD IDOK
     SetErrorLevel 3
     Abort
   ${EndIf}
   ready:
 FunctionEnd
 
-Section "Z-zapret" Main
+Section "x2zapret" Main
   SetRegView 64
   SetShellVarContext all
   SetOutPath "$INSTDIR"
   File /r "${PUBLISH_DIR}\*"
+  ; Known files and shortcuts from the former product name only.
+  Delete "$INSTDIR\Z-zapret.exe"
+  Delete "$INSTDIR\Z-zapret.dll"
+  Delete "$INSTDIR\Z-zapret.deps.json"
+  Delete "$INSTDIR\Z-zapret.runtimeconfig.json"
+  Delete "$DESKTOP\Z-zapret.lnk"
+  Delete "$SMPROGRAMS\Z-zapret\Z-zapret.lnk"
+  RMDir "$SMPROGRAMS\Z-zapret"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   ClearErrors
-  ExecWait '"$INSTDIR\Z-zapret.exe" --refresh-startup' $0
+  ExecWait '"$INSTDIR\x2zapret.exe" --refresh-startup' $0
   ${If} ${Errors}
     SetErrorLevel 5
     Abort
   ${EndIf}
   ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "Не удалось обновить настройки автозапуска. Откройте Z-zapret и сохраните их повторно." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось обновить настройки автозапуска. Откройте x2zapret и сохраните их повторно." /SD IDOK
     SetErrorLevel 5
     Abort
   ${EndIf}
-  CreateDirectory "$SMPROGRAMS\Z-zapret"
-  CreateShortcut "$SMPROGRAMS\Z-zapret\Z-zapret.lnk" "$INSTDIR\Z-zapret.exe"
-  CreateShortcut "$DESKTOP\Z-zapret.lnk" "$INSTDIR\Z-zapret.exe"
+  CreateDirectory "$SMPROGRAMS\x2zapret"
+  CreateShortcut "$SMPROGRAMS\x2zapret\x2zapret.lnk" "$INSTDIR\x2zapret.exe"
+  CreateShortcut "$DESKTOP\x2zapret.lnk" "$INSTDIR\x2zapret.exe"
   WriteRegStr HKLM "Software\Z-zapret" "InstallDir" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayName" "Z-zapret"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayName" "x2zapret"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "Publisher" "Zuya73"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "URLInfoAbout" "https://github.com/Zuya73/Z-zapret"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayIcon" "$INSTDIR\Z-zapret.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "DisplayIcon" "$INSTDIR\x2zapret.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "QuietUninstallString" '$\"$INSTDIR\Uninstall.exe$\" /S'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret" "NoModify" 1
@@ -138,14 +150,14 @@ Section "Uninstall"
   SetRegView 64
   SetShellVarContext all
   ClearErrors
-  ExecWait '"$INSTDIR\Z-zapret.exe" --uninstall-service' $0
+  ExecWait '"$INSTDIR\x2zapret.exe" --uninstall-service' $0
   ${If} ${Errors}
-    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание Z-zapret. Файлы приложения сохранены." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание x2zapret. Файлы приложения сохранены." /SD IDOK
     SetErrorLevel 4
     Abort
   ${EndIf}
   ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "Не удалось отключить службу или восстановить hosts. Проверьте журнал Z-zapret и повторите удаление." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось отключить службу или восстановить hosts. Проверьте журнал x2zapret и повторите удаление." /SD IDOK
     SetErrorLevel 4
     Abort
   ${EndIf}
@@ -153,9 +165,9 @@ Section "Uninstall"
   !include "artifacts\uninstall-files.nsh"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
-  Delete "$DESKTOP\Z-zapret.lnk"
-  Delete "$SMPROGRAMS\Z-zapret\Z-zapret.lnk"
-  RMDir "$SMPROGRAMS\Z-zapret"
+  Delete "$DESKTOP\x2zapret.lnk"
+  Delete "$SMPROGRAMS\x2zapret\x2zapret.lnk"
+  RMDir "$SMPROGRAMS\x2zapret"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Z-zapret"
   DeleteRegKey HKLM "Software\Z-zapret"
 SectionEnd

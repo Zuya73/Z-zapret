@@ -26,7 +26,8 @@ public static class UpdateManifest
 
     public static bool TrustedDownload(Uri uri) => uri.Scheme == Uri.UriSchemeHttps &&
         uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) && uri.IsDefaultPort &&
-        uri.UserInfo.Length == 0 && uri.AbsolutePath.StartsWith(DownloadPrefix, StringComparison.Ordinal);
+        uri.UserInfo.Length == 0 && (uri.AbsolutePath.StartsWith(DownloadPrefix, StringComparison.Ordinal) ||
+            uri.AbsolutePath.StartsWith("/Zuya73/x2zapret/releases/download/", StringComparison.Ordinal));
 
     public static AppUpdate? Parse(string json, Version current)
     {
@@ -43,13 +44,13 @@ public static class UpdateManifest
         }
         if (candidates.Count == 0) return null;
         var latest = candidates.OrderByDescending(x => x.Version).First();
-        string filename = $"Z-zapret-Setup-{latest.Version.ToString(3)}-x64.exe";
+        string filename = $"x2zapret-Setup-{latest.Version.ToString(3)}-x64.exe";
         foreach (var asset in latest.Release.GetProperty("assets").EnumerateArray())
         {
             if (asset.GetProperty("name").GetString() != filename) continue;
             if (!Uri.TryCreate(asset.GetProperty("browser_download_url").GetString(), UriKind.Absolute, out var uri) ||
                 !TrustedDownload(uri) || Uri.UnescapeDataString(uri.Segments[^1]) != filename)
-                throw new InvalidDataException("Адрес обновления не принадлежит репозиторию Z-zapret.");
+                throw new InvalidDataException("Адрес обновления не принадлежит репозиторию x2zapret.");
             long size = asset.GetProperty("size").GetInt64();
             string digest = asset.TryGetProperty("digest", out var value) ? value.GetString() ?? "" : "";
             if (size is < 4096 or > MaximumInstallerSize || !Regex.IsMatch(digest, @"^sha256:[0-9a-fA-F]{64}$"))
@@ -70,7 +71,7 @@ public static class UpdateDownloader
         string folder = Path.Combine(cacheDirectory, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         string partial = Path.Combine(folder, "installer.download");
-        string destination = Path.Combine(folder, $"Z-zapret-Setup-{update.Version.ToString(3)}-x64.exe");
+        string destination = Path.Combine(folder, $"x2zapret-Setup-{update.Version.ToString(3)}-x64.exe");
         bool complete = false;
         try
         {

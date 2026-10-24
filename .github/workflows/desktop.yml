@@ -47,7 +47,7 @@ jobs:
       - name: Render real WPF interface
         shell: pwsh
         run: |
-          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/Z-zapret/Z-zapret.dll', '--smoke-test', 'desktop/artifacts/desktop-preview.png') -PassThru
+          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/x2zapret/x2zapret.dll', '--smoke-test', 'desktop/artifacts/desktop-preview.png') -PassThru
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'WPF smoke test timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "WPF smoke test failed: $($process.ExitCode)" }
           if (-not (Test-Path desktop/artifacts/desktop-preview.png)) { throw 'UI preview was not created.' }
@@ -61,22 +61,25 @@ jobs:
             choco install nsis --yes --no-progress
             if ($LASTEXITCODE -ne 0) { throw 'Could not install NSIS.' }
           }
-          $publishedDirectory = (Resolve-Path 'desktop/artifacts/Z-zapret').Path
+          $publishedDirectory = (Resolve-Path 'desktop/artifacts/x2zapret').Path
           Push-Location desktop
           try {
             & $compiler /V2 "/DPUBLISH_DIR=$publishedDirectory" installer.nsi
             if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
           } finally { Pop-Location }
-      - name: Render startup settings and animated switches
+          # Compatibility asset for the updater shipped under the previous name.
+          $version = ([xml](Get-Content desktop/Directory.Build.props -Raw)).SelectSingleNode('//Version').InnerText
+          Copy-Item "desktop/artifacts/x2zapret-Setup-$version-x64.exe" "desktop/artifacts/Z-zapret-Setup-$version-x64.exe"
+      - name: Render branded settings and animated switches
         shell: pwsh
         run: |
-          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/Z-zapret/Z-zapret.dll', '--smoke-test', 'desktop/artifacts/settings-preview.png', '--settings-preview') -PassThru
+          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/x2zapret/x2zapret.dll', '--smoke-test', 'desktop/artifacts/settings-preview.png', '--settings-preview') -PassThru
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Settings render timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Settings render failed.' }
       - name: Verify full application startup without starting the network engine
         shell: pwsh
         run: |
-          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/Z-zapret/Z-zapret.dll', '--startup-check', 'desktop/artifacts/startup-preview.png') -PassThru
+          $process = Start-Process dotnet -ArgumentList @('desktop/artifacts/x2zapret/x2zapret.dll', '--startup-check', 'desktop/artifacts/startup-preview.png') -PassThru
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Application initialization timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Application initialization failed: $($process.ExitCode)" }
           if (-not (Test-Path desktop/artifacts/startup-preview.png)) { throw 'Application initialization produced no preview.' }
@@ -84,34 +87,37 @@ jobs:
         shell: pwsh
         run: |
           $directory = Join-Path $env:RUNNER_TEMP 'Z-zapret install test'
-          $installer = @(Get-ChildItem desktop/artifacts/Z-zapret-Setup-*-x64.exe)
+          $installer = @(Get-ChildItem desktop/artifacts/x2zapret-Setup-*-x64.exe)
           if ($installer.Count -ne 1) { throw 'Expected exactly one desktop installer.' }
           $setup = Start-Process $installer[0].FullName -ArgumentList @('/S', "/D=$directory") -Wait -PassThru
-          if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/Z-zapret.exe")) {
+          if ($setup.ExitCode -ne 0 -or -not (Test-Path "$directory/x2zapret.exe")) {
             $diagnostic = Join-Path ([IO.Path]::GetTempPath()) 'Z-zapret-maintenance-error.txt'
             if (Test-Path $diagnostic) { Get-Content $diagnostic; Copy-Item $diagnostic desktop/artifacts/maintenance-error.txt }
             throw "Installation failed with exit code $($setup.ExitCode)."
           }
-          $installedCheck = Start-Process "$directory/Z-zapret.exe" -ArgumentList @('--startup-check', 'desktop/artifacts/installed-preview.png') -WorkingDirectory $PWD.Path -PassThru
+          $installedCheck = Start-Process "$directory/x2zapret.exe" -ArgumentList @('--startup-check', 'desktop/artifacts/installed-preview.png') -WorkingDirectory $PWD.Path -PassThru
           if (-not $installedCheck.WaitForExit(60000)) { $installedCheck.Kill(); throw 'Installed application startup timed out.' }
           if ($installedCheck.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "Installed application failed: $($installedCheck.ExitCode)" }
           $preferences = Join-Path $env:ProgramData 'Z-zapret/settings.json'
           @{ startup = 'Tray'; strategyId = 'general' } | ConvertTo-Json | Set-Content $preferences -Encoding utf8NoBOM
-          $register = Start-Process "$directory/Z-zapret.exe" -ArgumentList '--refresh-startup' -Wait -PassThru
+          $register = Start-Process "$directory/x2zapret.exe" -ArgumentList '--refresh-startup' -Wait -PassThru
           if ($register.ExitCode -ne 0) { Get-Content (Join-Path ([IO.Path]::GetTempPath()) 'Z-zapret-maintenance-error.txt') -ErrorAction SilentlyContinue; throw 'Autostart registration failed.' }
           $task = Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction Stop
-          if ($task.Actions.Execute -ne "$directory\Z-zapret.exe" -or $task.Actions.Arguments -ne '--startup') { throw 'Unexpected autostart command.' }
+          if ($task.Actions.Execute -ne "$directory\x2zapret.exe" -or $task.Actions.Arguments -ne '--startup') { throw 'Unexpected autostart command.' }
           if ($task.Principal.LogonType -ne 'Interactive' -or $task.Principal.RunLevel -ne 'Highest') { throw 'Autostart task uses an incorrect user context.' }
           # Exercise the updater handoff and an in-place upgrade with existing settings.
+          # Exercise the old executable-name fallback used when upgrading Z-zapret.
+          Move-Item "$directory/x2zapret.exe" "$directory/Z-zapret.exe"
           $parent = Start-Process powershell.exe -ArgumentList @('-NoProfile', '-Command', 'Start-Sleep -Seconds 5') -PassThru
           $elapsed = [Diagnostics.Stopwatch]::StartNew()
           $upgrade = Start-Process $installer[0].FullName -ArgumentList @('/S', "/UPDATEPID=$($parent.Id)", "/D=$directory") -Wait -PassThru
           $elapsed.Stop()
           if ($upgrade.ExitCode -ne 0 -or $elapsed.Elapsed.TotalSeconds -lt 3) { throw 'Updater did not wait for its parent or failed to upgrade.' }
+          if (Test-Path "$directory/Z-zapret.exe") { throw 'Upgrade left the previous executable behind.' }
           if ((Get-Content $preferences -Raw | ConvertFrom-Json).startup -ne 'Tray') { throw 'Upgrade lost startup preferences.' }
           $task = Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction Stop
-          if ($task.Actions.Execute -ne "$directory\Z-zapret.exe") { throw 'Upgrade lost the startup task.' }
-          $hidden = Start-Process "$directory/Z-zapret.exe" -ArgumentList @('--startup', '--tray-check', 'desktop/artifacts/tray-check.json') -WorkingDirectory $PWD.Path -PassThru
+          if ($task.Actions.Execute -ne "$directory\x2zapret.exe") { throw 'Upgrade lost the startup task.' }
+          $hidden = Start-Process "$directory/x2zapret.exe" -ArgumentList @('--startup', '--tray-check', 'desktop/artifacts/tray-check.json') -WorkingDirectory $PWD.Path -PassThru
           if (-not $hidden.WaitForExit(60000)) { $hidden.Kill(); throw 'Tray startup check timed out.' }
           $receipt = Get-Content desktop/artifacts/tray-check.json -Raw | ConvertFrom-Json
           if ($hidden.ExitCode -ne 0 -or -not $receipt.ready -or -not $receipt.hidden -or $receipt.taskbar) { throw 'Application did not start hidden in the tray.' }
@@ -133,7 +139,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Z-zapret-Windows-x64
+          name: x2zapret-Windows-x64
           path: |
             desktop/artifacts/*.zip
             desktop/artifacts/*.exe
@@ -153,12 +159,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Z-zapret-Windows-x64
+          name: x2zapret-Windows-x64
           path: release
       - uses: softprops/action-gh-release@v2
         with:
           prerelease: false
-          name: Z-zapret Desktop ${{ github.ref_name }}
+          name: x2zapret Desktop ${{ github.ref_name }}
           body: 'Windows 10/11 x64. Portable ZIP and installer. See desktop/README.md for requirements and test limitations.'
           files: |
             release/*.zip

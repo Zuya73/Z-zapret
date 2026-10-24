@@ -46,7 +46,6 @@ public partial class MainWindow : Window
 
     internal bool StartupSucceeded => ready && ErrorBanner.Visibility != Visibility.Visible;
     internal string StartupError => ErrorText.Text;
-    internal void SetPreviewTheme(bool light) => SetTheme(light);
     internal void ShowSettingsPreview()
     {
         Navigate_Click(new Button { Tag = "Settings" }, new RoutedEventArgs());
@@ -58,6 +57,7 @@ public partial class MainWindow : Window
         this.preview = preview;
         this.startupLaunch = startupLaunch;
         InitializeComponent();
+        Navigate_Click(new Button { Tag = "Home" }, new RoutedEventArgs());
         AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
         if (startupLaunch) ShowInTaskbar = false;
         ProbeGrid.ItemsSource = probeRows;
@@ -98,11 +98,10 @@ public partial class MainWindow : Window
             engine = new(paths, strategies, Log);
             maintenance = new(paths);
             LoadSettings();
-            SetTheme(settings.LightTheme);
             CreateTray();
             ready = true;
             LoadUserList();
-            Log("Z-zapret " + UpdateManifest.CurrentVersion.ToString(3) + ". Подготовлено стратегий: " + strategies.Count);
+            Log("x2zapret " + UpdateManifest.CurrentVersion.ToString(3) + ". Подготовлено стратегий: " + strategies.Count);
             if (File.Exists(paths.Recovery))
             {
                 await Execute(async token =>
@@ -143,7 +142,7 @@ public partial class MainWindow : Window
     internal void NotifyStartupFailure()
     {
         if (tray == null) CreateTray();
-        tray!.ShowBalloonTip(7000, "Z-zapret", "Не удалось завершить запуск. Откройте программу из трея, чтобы посмотреть причину.", Forms.ToolTipIcon.Warning);
+        tray!.ShowBalloonTip(7000, "x2zapret", "Не удалось завершить запуск. Откройте программу из трея, чтобы посмотреть причину.", Forms.ToolTipIcon.Warning);
     }
 
     private Strategy Selected => HomeStrategyPicker.SelectedItem as Strategy
@@ -154,10 +153,10 @@ public partial class MainWindow : Window
         tray = new Forms.NotifyIcon
         {
             Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? System.Drawing.SystemIcons.Application,
-            Text = "Z-zapret", Visible = true
+            Text = "x2zapret", Visible = true
         };
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Открыть Z-zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
+        menu.Items.Add("Открыть x2zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Включить / выключить", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
         menu.Items.Add("Проверить обновления", null, (_, _) => Dispatcher.Invoke(() => CheckUpdates_Click(this, new RoutedEventArgs())));
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -188,6 +187,14 @@ public partial class MainWindow : Window
     private void Navigate_Click(object sender, RoutedEventArgs e)
     {
         string page = (sender as Button)?.Tag as string ?? "Home";
+        foreach (var button in NavigationPanel.Children.OfType<Button>().Where(b => b.Tag is string))
+        {
+            bool selected = (string)button.Tag == page;
+            button.Background = selected ? (Brush)FindResource("HoverBrush") : Brushes.Transparent;
+            button.Foreground = (Brush)FindResource(selected ? "TextBrush" : "MutedBrush");
+            button.BorderBrush = selected ? Brushes.White : Brushes.Transparent;
+            button.BorderThickness = new Thickness(selected ? 2 : 0, 0, 0, 0);
+        }
         foreach (var (panel, name) in new[] { (HomePanel, "Home"), (TestsPanel, "Tests"), (StrategiesPanel, "Strategies"), (DiagnosticsPanel, "Diagnostics"), (SettingsPanel, "Settings"), (LogsPanel, "Logs") })
             panel.Visibility = page == name ? Visibility.Visible : Visibility.Collapsed;
         (PageTitle.Text, PageSubtitle.Text) = page switch
@@ -243,14 +250,14 @@ public partial class MainWindow : Window
         if (engine == null) return;
         bool running = engine.IsRunning;
         ConnectionTitle.Text = running ? "Движок работает" : "Готов к запуску";
-        StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(123, 141, 166));
+        StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(119, 119, 119));
         ConnectionDetail.Text = running ? "Для проверки сервисов запустите сетевые тесты." : "Выберите стратегию или запустите автоподбор.";
         ConnectButton.Content = running ? "Выключить" : "Включить";
         ServiceButton.Content = engine.OwnsService ? "Выключить автозапуск" : "Включить автозапуск";
         ServiceText.Text = engine.OwnsService ? "Служба Windows установлена. Движок может работать при закрытом приложении." :
             engine.ServiceInstalled ? "Обнаружена служба zapret из другой сборки. Подробности в диагностике." : "Движок запускается вручную. Можно включить службу Windows.";
         ActiveStrategyText.Text = "Активная стратегия: " + (running ? strategies.FirstOrDefault(x => x.Id == activeStrategy)?.Name ?? "служба Windows" : "—");
-        if (tray != null) tray.Text = running ? "Z-zapret · движок работает" : "Z-zapret · остановлен";
+        if (tray != null) tray.Text = running ? "x2zapret · движок работает" : "x2zapret · остановлен";
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
@@ -375,14 +382,14 @@ public partial class MainWindow : Window
     private void ExportTests_Click(object sender, RoutedEventArgs e)
     {
         if (lastSession == null) return;
-        var dialog = new SaveFileDialog { Filter = "JSON-отчёт|*.json|Текстовый отчёт|*.txt", FileName = "Z-zapret-tests-" + DateTime.Now.ToString("yyyyMMdd-HHmm") };
+        var dialog = new SaveFileDialog { Filter = "JSON-отчёт|*.json|Текстовый отчёт|*.txt", FileName = "x2zapret-tests-" + DateTime.Now.ToString("yyyyMMdd-HHmm") };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
             if (dialog.FilterIndex == 1) AtomicFile.WriteJson(dialog.FileName, lastSession);
             else
             {
-                var lines = new List<string> { "Z-zapret — результаты сетевых проверок", lastSession.Started.ToString("O"), "Рекомендация: " + (lastSession.RecommendedStrategyId ?? "нет"), "" };
+                var lines = new List<string> { "x2zapret — результаты сетевых проверок", lastSession.Started.ToString("O"), "Рекомендация: " + (lastSession.RecommendedStrategyId ?? "нет"), "" };
                 foreach (var report in new[] { lastSession.Baseline }.Concat(lastSession.Reports).Concat(lastSession.Confirmation))
                 {
                     lines.Add(report.Name + " | " + report.StartError);
@@ -523,7 +530,7 @@ public partial class MainWindow : Window
     {
         if (maintenance == null) return;
         if (MessageBox.Show(this, "В hosts будет добавлен отдельный блок адресов Flowseal. Ваши строки сохранятся; будет создана резервная копия. Продолжить?", "Обновление hosts", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-        await Execute(async token => { await maintenance.UpdateHostsAsync(token); Log("Блок Z-zapret в hosts обновлён."); }, "Обновление hosts");
+        await Execute(async token => { await maintenance.UpdateHostsAsync(token); Log("Блок x2zapret в hosts обновлён."); }, "Обновление hosts");
     }
     private async void RemoveHosts_Click(object sender, RoutedEventArgs e)
     { if (maintenance != null) await Execute(_ => { maintenance.ModifyHosts(null); Log("Управляемый блок hosts удалён."); return Task.CompletedTask; }, "Восстановление hosts"); }
@@ -555,7 +562,7 @@ public partial class MainWindow : Window
             InstallUpdateButton.IsEnabled = !busy && update != null;
             Log(UpdateStatusText.Text);
             if (automatic && update != null)
-                tray?.ShowBalloonTip(7000, "Обновление Z-zapret", "Доступна версия " + update.Version.ToString(3) + ". Откройте настройки, чтобы установить её.", Forms.ToolTipIcon.Info);
+                tray?.ShowBalloonTip(7000, "Обновление x2zapret", "Доступна версия " + update.Version.ToString(3) + ". Откройте настройки, чтобы установить её.", Forms.ToolTipIcon.Info);
         }
         finally { checkingUpdate = false; }
     }
@@ -579,8 +586,8 @@ public partial class MainWindow : Window
     private async void InstallUpdate_Click(object sender, RoutedEventArgs e)
     {
         if (!ready || busy || availableUpdate is not { } update || engine == null) return;
-        if (MessageBox.Show(this, $"Скачать и установить Z-zapret {update.Version.ToString(3)}? Приложение и подключение будут остановлены для обновления. Настройки и списки сохранятся.",
-            "Обновление Z-zapret", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, $"Скачать и установить x2zapret {update.Version.ToString(3)}? Приложение и подключение будут остановлены для обновления. Настройки и списки сохранятся.",
+            "Обновление x2zapret", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         downloadingUpdate = true;
         try
         {
@@ -611,19 +618,10 @@ public partial class MainWindow : Window
         finally { downloadingUpdate = false; CancelUpdateButton.IsEnabled = false; }
     }
 
-    private void Theme_Click(object sender, RoutedEventArgs e)
-    {
-        settings = settings with { LightTheme = !settings.LightTheme }; SetTheme(settings.LightTheme);
-        if (ready) AtomicFile.WriteJson(paths.Settings, settings);
-    }
-    private static void SetTheme(bool light)
-    {
-        var values = light
-            ? new[] { "#F2F5F9", "#E8EEF5", "#FFFFFF", "#F4F7FB", "#172434", "#53657B", "#D4DFEA", "#31D5A1", "#DAE9F4" }
-            : new[] { "#0D121B", "#101722", "#161F2C", "#101824", "#EEF4FA", "#A1AFC2", "#2B3749", "#41E0A9", "#243549" };
-        string[] keys = ["BackgroundBrush", "SidebarBrush", "PanelBrush", "FieldBrush", "TextBrush", "MutedBrush", "LineBrush", "AccentBrush", "HoverBrush"];
-        for (int i = 0; i < keys.Length; i++) Application.Current.Resources[keys[i]] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(values[i]));
-    }
+    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    private void Maximize_Click(object sender, RoutedEventArgs e)
+    { if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this); else SystemCommands.MaximizeWindow(this); }
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Log(string message)
     {
@@ -644,7 +642,7 @@ public partial class MainWindow : Window
     private void ShowError(string text) { ErrorText.Text = text; ErrorBanner.Visibility = Visibility.Visible; }
     private void ExportLog_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "Z-zapret-log.txt" };
+        var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "x2zapret-log.txt" };
         if (dialog.ShowDialog(this) == true)
             try { AtomicFile.Write(dialog.FileName, LogBox.Text); } catch (Exception error) { ShowError(error.Message); }
     }

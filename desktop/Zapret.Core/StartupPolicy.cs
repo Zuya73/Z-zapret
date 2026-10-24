@@ -29,7 +29,7 @@ public static class StartupPolicy
         var n = TaskNamespace;
         XElement Element(string name, object value) => new(n + name, value);
         return new XDocument(new XElement(n + "Task", new XAttribute("version", "1.2"),
-            Element("RegistrationInfo", new[] { Element("Description", "Запуск Z-zapret в трее при входе пользователя в Windows"), Element("Source", TaskSource) }),
+            Element("RegistrationInfo", new[] { Element("Description", "Запуск x2zapret в трее при входе пользователя в Windows"), Element("Source", TaskSource) }),
             Element("Triggers", new XElement(n + "LogonTrigger", Element("Enabled", "true"), Element("UserId", userSid), Element("Delay", "PT5S"))),
             Element("Principals", new XElement(n + "Principal", new XAttribute("id", "Owner"),
                 Element("UserId", userSid), Element("LogonType", "InteractiveToken"), Element("RunLevel", "HighestAvailable"))),

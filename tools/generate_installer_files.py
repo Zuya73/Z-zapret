@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 version = ET.parse(root / 'desktop/Directory.Build.props').findtext('./PropertyGroup/Version')
 if not version or not re.fullmatch(r'\d+\.\d+\.\d+', version):
     raise SystemExit('Desktop version must use major.minor.patch.')
-published = root / 'desktop/artifacts/Z-zapret'
-if not (published / 'Z-zapret.exe').is_file():
+published = root / 'desktop/artifacts/x2zapret'
+if not (published / 'x2zapret.exe').is_file():
     raise SystemExit('Publish the application before building its installer.')
 lines = ['; Generated from the published file set.']
 for file in sorted(published.rglob('*')):

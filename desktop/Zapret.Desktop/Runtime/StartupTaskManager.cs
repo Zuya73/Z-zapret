@@ -38,7 +38,7 @@ public sealed class StartupTaskManager
             if (existing != null) await CommandAsync(["/Delete", "/TN", StartupPolicy.TaskName, "/F"], cancellationToken);
             return;
         }
-        string executable = Path.Combine(AppContext.BaseDirectory, "Z-zapret.exe");
+        string executable = Path.Combine(AppContext.BaseDirectory, "x2zapret.exe");
         if (!File.Exists(executable)) throw new FileNotFoundException("Не найден файл приложения для автозапуска.", executable);
         string userSid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Не удалось определить пользователя Windows.");
         string xml = StartupPolicy.TaskXml(executable, AppContext.BaseDirectory, userSid);

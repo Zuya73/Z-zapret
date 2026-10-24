@@ -157,12 +157,12 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         if (!ServiceInstalled)
         {
             string command = ServiceCommand(strategy, lists, settings);
-            await ScAsync(["create", ServiceName, "binPath=", command, "DisplayName=", "Z-zapret", "start=", "auto"], cancellationToken);
+            await ScAsync(["create", ServiceName, "binPath=", command, "DisplayName=", "x2zapret", "start=", "auto"], cancellationToken);
             using var key = Registry.LocalMachine.OpenSubKey(ServiceKey, writable: true)!;
             key.SetValue("ZZapretOwner", AppPaths.Owner);
         }
         await ConfigureService(strategy, lists, settings, cancellationToken);
-        await ScAsync(["description", ServiceName, "Z-zapret desktop - network engine"], cancellationToken);
+        await ScAsync(["description", ServiceName, "x2zapret desktop - network engine"], cancellationToken);
         await ScAsync(["start", ServiceName], cancellationToken);
         await WindowsService.WaitAsync(ServiceName, 4, cancellationToken);
         currentStrategy = strategy.Id;

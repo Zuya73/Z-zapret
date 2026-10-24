@@ -68,7 +68,7 @@ public partial class App : Application
             singleInstance = new Mutex(true, @"Global\Z-zapret.Desktop", out bool created);
             if (!created)
             {
-                if (!startupInvocation) MessageBox.Show("Z-zapret уже запущен. Откройте его через значок в области уведомлений.", "Z-zapret");
+                if (!startupInvocation) MessageBox.Show("x2zapret уже запущен. Откройте его через значок в области уведомлений.", "x2zapret");
                 Shutdown(); return;
             }
         }
@@ -79,7 +79,7 @@ public partial class App : Application
                 File.WriteAllText("smoke-error.txt", error.Exception.ToString());
                 error.Handled = true; Shutdown(1); return;
             }
-            MessageBox.Show(error.Exception.Message, "Ошибка Z-zapret", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(error.Exception.Message, "Ошибка x2zapret", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
         var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation);
@@ -108,8 +108,6 @@ public partial class App : Application
                 string option = startupCheck ? "--startup-check" : "--smoke-test";
                 string destination = e.Args.SkipWhile(x => x != option).Skip(1).FirstOrDefault() ?? "desktop-preview.png";
                 SavePreview(destination);
-                window.SetPreviewTheme(true);
-                SavePreview(Path.Combine(Path.GetDirectoryName(destination) ?? ".", Path.GetFileNameWithoutExtension(destination) + "-light.png"));
                 window.ExitForSmokeTest();
 
                 void SavePreview(string path)

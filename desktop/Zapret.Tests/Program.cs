@@ -151,8 +151,8 @@ await AsyncCheck("Automatic connection runs once and respects an already running
 
 string Releases(string tag = "desktop-v2.0.0", bool prerelease = false, string? url = null, string? digest = null) =>
     System.Text.Json.JsonSerializer.Serialize(new[] { new { tag_name = tag, draft = false, prerelease,
-        assets = new[] { new { name = "Z-zapret-Setup-2.0.0-x64.exe",
-            browser_download_url = url ?? "https://github.com/Zuya73/Z-zapret/releases/download/desktop-v2.0.0/Z-zapret-Setup-2.0.0-x64.exe",
+        assets = new[] { new { name = "x2zapret-Setup-2.0.0-x64.exe",
+            browser_download_url = url ?? "https://github.com/Zuya73/Z-zapret/releases/download/desktop-v2.0.0/x2zapret-Setup-2.0.0-x64.exe",
             size = 8192, digest = digest ?? "sha256:" + new string('a', 64) } } } });
 Check("Only newer stable desktop releases are offered", () =>
 {
@@ -163,9 +163,16 @@ Check("Only newer stable desktop releases are offered", () =>
 });
 Check("Updates cannot download from another repository or without a digest", () =>
 {
-    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(url: "https://github.com/other/repo/releases/download/v2.0.0/Z-zapret-Setup-2.0.0-x64.exe"), new Version(1, 0, 0)));
+    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(url: "https://github.com/other/repo/releases/download/v2.0.0/x2zapret-Setup-2.0.0-x64.exe"), new Version(1, 0, 0)));
     Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(digest: ""), new Version(1, 0, 0)));
-    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(url: "http://github.com/Zuya73/Z-zapret/releases/download/v2/Z-zapret-Setup-2.0.0-x64.exe"), new Version(1, 0, 0)));
+    Throws<InvalidDataException>(() => UpdateManifest.Parse(Releases(url: "http://github.com/Zuya73/Z-zapret/releases/download/v2/x2zapret-Setup-2.0.0-x64.exe"), new Version(1, 0, 0)));
+});
+Check("Repository rename accepts only the two owned release paths", () =>
+{
+    const string filename = "x2zapret-Setup-2.0.0-x64.exe";
+    Equal(new Version(2, 0, 0), UpdateManifest.Parse(Releases(url: "https://github.com/Zuya73/x2zapret/releases/download/desktop-v2.0.0/" + filename), new Version(0, 2, 0))!.Version);
+    Assert(!UpdateManifest.TrustedDownload(new Uri("https://github.com/Zuya73/x2zapret-other/releases/download/v2/" + filename)));
+    Assert(!UpdateManifest.TrustedDownload(new Uri("https://github.com/other/x2zapret/releases/download/v2/" + filename)));
 });
 await AsyncCheck("Verified installers survive fragmented HTTP reads", async () =>
 {

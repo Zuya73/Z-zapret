@@ -7,7 +7,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyName>Z-zapret</AssemblyName>
+    <AssemblyName>x2zapret</AssemblyName>
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Zapret.Desktop</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Zapret.Core\Zapret.Core.csproj" />
     <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\x2air.png" />
     <Content Include="Assets\strategies.json" CopyToOutputDirectory="PreserveNewest" Link="strategies.json" />
     <Content Include="Assets\targets.json" CopyToOutputDirectory="PreserveNewest" Link="targets.json" />
   </ItemGroup>

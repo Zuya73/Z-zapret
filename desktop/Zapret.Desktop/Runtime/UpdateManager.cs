@@ -10,7 +10,7 @@ public sealed class UpdateManager
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Z-zapret/" + UpdateManifest.CurrentVersion.ToString(3));
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("x2zapret/" + UpdateManifest.CurrentVersion.ToString(3));
         client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return client;
     }

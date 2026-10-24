@@ -1,4 +1,4 @@
-Z-zapret Desktop
+x2zapret Desktop
 Copyright (c) 2026 Zuya73. Desktop application code: MIT (see LICENSE.txt).
 
 This distribution retains the unmodified Flowseal scripts, profiles and engine binaries.
@@ -33,6 +33,6 @@ https://github.com/dotnet/runtime
 https://github.com/dotnet/wpf
 MIT and third-party notices supplied in the licenses directory.
 
-Desktop source is provided separately in Z-zapret-source.zip.
+Desktop source is available in the repository at the URL below.
 Project repository:
 https://github.com/Zuya73/Z-zapret

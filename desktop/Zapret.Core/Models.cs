@@ -29,7 +29,6 @@ public sealed record AppSettings
     public string DiscordFake { get; init; } = "quic_initial_steamcommunity_com.bin";
     public string GameFake { get; init; } = "quic_initial_4pda_to.bin";
     public bool MinimizeToTray { get; init; } = true;
-    public bool LightTheme { get; init; }
     public StartupMode Startup { get; init; } = StartupMode.Disabled;
     public bool AutoUpdate { get; init; }
 }
