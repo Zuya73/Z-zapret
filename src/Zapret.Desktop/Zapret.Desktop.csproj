@@ -16,7 +16,7 @@
     <ProjectReference Include="..\Zapret.Core\Zapret.Core.csproj" />
     <Resource Include="Assets\app.ico" />
     <Resource Include="Assets\x2air.png" />
-    <Content Include="Assets\strategies.json" CopyToOutputDirectory="PreserveNewest" Link="strategies.json" />
-    <Content Include="Assets\targets.json" CopyToOutputDirectory="PreserveNewest" Link="targets.json" />
+    <Content Include="..\..\resources\catalogs\strategies.json" CopyToOutputDirectory="PreserveNewest" Link="strategies.json" />
+    <Content Include="..\..\resources\catalogs\targets.json" CopyToOutputDirectory="PreserveNewest" Link="targets.json" />
   </ItemGroup>
 </Project>

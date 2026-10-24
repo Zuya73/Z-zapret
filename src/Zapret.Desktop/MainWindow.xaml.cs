@@ -233,7 +233,7 @@ public partial class MainWindow : Window
         foreach (Control control in new Control[] { ConnectButton, ServiceButton, HomeStrategyPicker, StartTestsButton, TestModePicker,
             OnlySelectedCheck, ChooseStrategyButton, StrategiesGrid, DiagnoseButton, ClearCacheButton, SaveSettingsButton,
             SaveListButton, UserListPicker, UpdateIpSetButton, UpdateHostsButton, RemoveHostsButton, CheckUpdatesButton,
-            LegacyButton, TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton })
+            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton })
             control.IsEnabled = !value;
         StartupConnectSwitch.IsEnabled = !value && StartupSwitch.IsChecked == true;
         CancelTestsButton.IsEnabled = value && TestsPanel.Visibility == Visibility.Visible;
@@ -645,12 +645,6 @@ public partial class MainWindow : Window
         var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "x2zapret-log.txt" };
         if (dialog.ShowDialog(this) == true)
             try { AtomicFile.Write(dialog.FileName, LogBox.Text); } catch (Exception error) { ShowError(error.Message); }
-    }
-    private void Legacy_Click(object sender, RoutedEventArgs e)
-    {
-        if (busy || engine?.IsRunning == true) { ShowError("Сначала остановите движок и завершите проверку."); return; }
-        if (engine?.OwnsService == true) { ShowError("Перед переходом к консольным инструментам выключите автозапуск приложения."); return; }
-        Process.Start(new ProcessStartInfo(Path.Combine(paths.Bundle, "service.bat")) { UseShellExecute = true, WorkingDirectory = paths.Bundle });
     }
     private void OpenServices_Click(object sender, RoutedEventArgs e) => Open("services.msc");
     private void GitHub_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret");

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Zapret.Core/Zapret.Core.csproj" />
+    <Project Path="src/Zapret.Desktop/Zapret.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Zapret.Tests/Zapret.Tests.csproj" />
+  </Folder>
+</Solution>

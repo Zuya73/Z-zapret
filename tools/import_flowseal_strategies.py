@@ -9,14 +9,16 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-DESTINATION = ROOT / "desktop/Zapret.Desktop/Assets/strategies.json"
+DESTINATION = ROOT / "resources/catalogs/strategies.json"
 
 
 def generate():
     profiles = []
-    paths = sorted(ROOT.glob("general*.bat"), key=lambda p: (
+    paths = sorted((ROOT / "legacy/flowseal").glob("general*.bat"), key=lambda p: (
         p.name != "general.bat",
         [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", p.name)]))
+    if len(paths) != 22:
+        raise ValueError(f"Expected 22 upstream profiles, found {len(paths)}")
     for path in paths:
         text = path.read_text(encoding="utf-8")
         marker = '"%BIN%winws.exe"'

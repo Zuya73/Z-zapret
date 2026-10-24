@@ -1,47 +1,34 @@
-name: 🐛 Проблема
-title: '[Проблема] '
-description: Сообщить о проблеме
-labels: ['type: проблема', 'status: нуждается в сортировке']
-
+name: Ошибка x2zapret
+description: Проблема с приложением, автозапуском или проверкой стратегий
+title: "[Ошибка] "
 body:
-  - type: checkboxes
-    id: checklist
+  - type: markdown
     attributes:
-      label: ⚠️ Чеклист
-      description: Перед созданием нового Issue, удостоверьтесь что выполнили следующие пункты
-      options:
-        - label: Я искал решение проблемы в [README](https://github.com/Flowseal/zapret-discord-youtube/blob/main/README.md) и среди [Issues](https://github.com/Flowseal/zapret-discord-youtube/issues) и [Discussions](https://github.com/Flowseal/zapret-discord-youtube/discussions)
-        - label: Я скачал ``zapret-discord-youtube`` из [релизов официального репозитория](https://github.com/Flowseal/zapret-discord-youtube/releases)
-        - label: Ознакомился с [условиями создания Issue](https://gist.github.com/ShadowCreator-5/aa7e39d647c22139103b4191156e3d31)
-          required: true
-
-  - type: textarea
-    id: description
-    attributes:
-      label: Опишите вашу проблему
-      description: Чётко опишите проблему с которой вы столкнулись
-      placeholder: Описание проблемы
-    validations:
-      required: true
-  
-  - type: textarea
-    id: providerandregion
-    attributes:
-      label: Укажите своего провайдера и регион (при желании)
-      description: Провайдер и регион на котором вы словили проблему
-      placeholder: Провайдер и регион
-  
-  - type: textarea
+      value: |
+        Опишите проблему с графическим приложением x2zapret.
+        Руководство: https://github.com/Zuya73/x2zapret/blob/main/docs/USER-GUIDE.md
+  - type: input
     id: version
     attributes:
-      label: Версия zapret-discord-youtube
-      description: Версия zapret-discord-youtube на которой вы словили проблему
-      placeholder: Версия
+      label: Версия приложения и Windows
+      placeholder: x2zapret 0.2.1, Windows 11 x64
     validations:
       required: true
-
   - type: textarea
-    id: additions
+    id: steps
     attributes:
-      label: Дополнительные детали
-      description: Дополнительные детали о которых нам нужно знать
+      label: Как повторить ошибку
+      description: Какие действия выполняли, что ожидали и что произошло?
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Диагностика и результаты автоподбора
+      description: Укажите выбранную стратегию и приложите сохранённый отчёт, если он есть.
+  - type: textarea
+    id: log
+    attributes:
+      label: Сообщение об ошибке или журнал
+      description: Журнал можно сохранить на вкладке «Журнал».
+      render: text
