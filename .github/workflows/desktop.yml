@@ -98,6 +98,15 @@ jobs:
           $task = Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction Stop
           if ($task.Actions.Execute -ne "$directory\Z-zapret.exe" -or $task.Actions.Arguments -ne '--startup') { throw 'Unexpected autostart command.' }
           if ($task.Principal.LogonType -ne 'Interactive' -or $task.Principal.RunLevel -ne 'Highest') { throw 'Autostart task uses an incorrect user context.' }
+          # Exercise the updater handoff and an in-place upgrade with existing settings.
+          $parent = Start-Process powershell.exe -ArgumentList @('-NoProfile', '-Command', 'Start-Sleep -Seconds 5') -PassThru
+          $elapsed = [Diagnostics.Stopwatch]::StartNew()
+          $upgrade = Start-Process $installer[0].FullName -ArgumentList @('/S', "/UPDATEPID=$($parent.Id)", "/D=$directory") -Wait -PassThru
+          $elapsed.Stop()
+          if ($upgrade.ExitCode -ne 0 -or $elapsed.Elapsed.TotalSeconds -lt 3) { throw 'Updater did not wait for its parent or failed to upgrade.' }
+          if ((Get-Content $preferences -Raw | ConvertFrom-Json).startup -ne 'Tray') { throw 'Upgrade lost startup preferences.' }
+          $task = Get-ScheduledTask -TaskName 'Z-zapret Desktop' -ErrorAction Stop
+          if ($task.Actions.Execute -ne "$directory\Z-zapret.exe") { throw 'Upgrade lost the startup task.' }
           $hidden = Start-Process "$directory/Z-zapret.exe" -ArgumentList @('--startup', '--tray-check', 'desktop/artifacts/tray-check.json') -WorkingDirectory $PWD.Path -PassThru
           if (-not $hidden.WaitForExit(60000)) { $hidden.Kill(); throw 'Tray startup check timed out.' }
           $receipt = Get-Content desktop/artifacts/tray-check.json -Raw | ConvertFrom-Json
