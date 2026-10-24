@@ -17,7 +17,8 @@ def publish():
     if not re.fullmatch(r'\d+\.\d+\.\d+', version or ''):
         raise ValueError('Invalid desktop version.')
     tag = f'desktop-v{version}'
-    repo, commit = os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_SHA']
+    repo = os.environ['GITHUB_REPOSITORY']
+    commit = os.environ.get('DESKTOP_RELEASE_COMMIT', os.environ['GITHUB_SHA'])
     directory = Path('release')
     installer = directory / f'x2zapret-Setup-{version}-x64.exe'
     portable = directory / f'x2zapret-{version}-win-x64.zip'
@@ -47,7 +48,8 @@ def publish():
                '--title', f'x2zapret {version}', '--notes-file', str(notes))
         files = sorted(path for path in directory.iterdir() if path.suffix in {'.exe', '.zip', '.png'}) + [checksums]
         gh('release', 'upload', tag, *map(str, files), '--clobber')
-        draft = json.loads(gh('api', f'repos/{repo}/releases/tags/{tag}'))
+        draft = next(release for release in json.loads(gh('api', f'repos/{repo}/releases?per_page=100'))
+                     if release['tag_name'] == tag)
         asset = next(asset for asset in draft['assets'] if asset['name'] == installer.name)
         if asset.get('digest') != 'sha256:' + sums[installer.name] or asset['size'] != installer.stat().st_size:
             raise ValueError('GitHub installer digest/size do not match the tested installer; keep release hidden.')

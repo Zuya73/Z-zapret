@@ -27,10 +27,16 @@ class ReleasePublicationTests(unittest.TestCase):
                                target_commitish='abc', assets=[dict(name=paths[0].name, size=4098,
                                digest='sha256:' + ('0' * 64 if corrupt else digest))])
 
+                created = existing
+
                 def gh(*args):
+                    nonlocal created
                     calls.append(args)
+                    if args[:2] == ('release', 'create'):
+                        created = True
                     if args[0] == 'api':
-                        return json.dumps(release if '/tags/' in args[1] else ([release] if existing else []))
+                        self.assertNotIn('/tags/', args[1], 'Draft tags are not available via the public by-tag endpoint.')
+                        return json.dumps([release] if created else [])
                     return ''
 
                 with patch.dict(os.environ, GITHUB_REPOSITORY='owner/repo', GITHUB_SHA='abc'), patch('publish_desktop_release.gh', gh):
@@ -47,7 +53,7 @@ class ReleasePublicationTests(unittest.TestCase):
         calls = self.run_publication()
         create = next(i for i, args in enumerate(calls) if args[:2] == ('release', 'create'))
         upload = next(i for i, args in enumerate(calls) if args[:2] == ('release', 'upload'))
-        verify = next(i for i, args in enumerate(calls) if args[0] == 'api' and '/tags/' in args[1])
+        verify = next(i for i, args in enumerate(calls) if i > upload and args[0] == 'api')
         edit = next(i for i, args in enumerate(calls) if args[:2] == ('release', 'edit'))
         self.assertIn('--draft', calls[create])
         self.assertLess(create, upload)
