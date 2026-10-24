@@ -18,7 +18,7 @@ public partial class App : Application
             try
             {
                 var paths = new AppPaths();
-                var strategies = StrategyCatalog.Load(Path.Combine(paths.Bundle, "strategies.json"));
+                var strategies = StrategyCatalog.Load(Path.Combine(paths.Catalogs, "strategies.json"));
                 using var engine = new EngineController(paths, strategies, _ => { });
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
                 if (e.Args.Contains("--refresh-startup"))

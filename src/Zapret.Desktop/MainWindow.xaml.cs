@@ -80,8 +80,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            strategies = StrategyCatalog.Load(Path.Combine(paths.Bundle, "strategies.json"));
-            targets = AtomicFile.ReadJson<ProbeTarget[]>(Path.Combine(paths.Bundle, "targets.json"))
+            strategies = StrategyCatalog.Load(Path.Combine(paths.Catalogs, "strategies.json"));
+            targets = AtomicFile.ReadJson<ProbeTarget[]>(Path.Combine(paths.Catalogs, "targets.json"))
                 ?? throw new InvalidDataException("Не найден список проверок.");
             HomeStrategyPicker.ItemsSource = strategies;
             StrategiesGrid.ItemsSource = strategies;
@@ -411,7 +411,7 @@ public partial class MainWindow : Window
         StartupConnectSwitch.IsChecked = settings.Startup == StartupMode.TrayAndConnect;
         StartupConnectSwitch.IsEnabled = StartupSwitch.IsChecked == true;
         AutoUpdateSwitch.IsChecked = settings.AutoUpdate;
-        var fakes = Directory.GetFiles(Path.Combine(paths.Bundle, "bin"), "*.bin").Select(Path.GetFileName)
+        var fakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
             .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Order().ToArray();
         DiscordFakePicker.ItemsSource = fakes; GameFakePicker.ItemsSource = fakes;
         DiscordFakePicker.SelectedItem = settings.DiscordFake; GameFakePicker.SelectedItem = settings.GameFake;
