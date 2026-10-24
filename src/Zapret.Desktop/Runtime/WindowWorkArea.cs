@@ -11,6 +11,9 @@ internal sealed class WindowWorkArea
     private HwndSource? source;
     private IntPtr handle, monitor;
     private bool queued;
+    // Used by the WPF smoke check; production always queries the monitor's rcWork.
+    internal PixelBounds? WorkAreaOverride { get; set; }
+    internal void Refresh() => QueueFit();
 
     internal WindowWorkArea(Window window)
     {
@@ -57,6 +60,8 @@ internal sealed class WindowWorkArea
         monitor = MonitorFromWindow(handle, 2);
         var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
         if (!GetMonitorInfo(monitor, ref info)) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        if (WorkAreaOverride is { } work)
+            info.Work = new() { Left = work.Left, Top = work.Top, Right = work.Left + work.Width, Bottom = work.Top + work.Height };
         return info;
     }
 
