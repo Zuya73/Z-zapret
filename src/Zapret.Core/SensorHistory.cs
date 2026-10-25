@@ -6,7 +6,7 @@ namespace Zapret.Core;
 public sealed record SensorPoint(DateTimeOffset At, double Value);
 public sealed record SensorAlert(string SensorId, double Above);
 public sealed record SensorSeries(string Id, string Device, string Name, string Kind, IReadOnlyList<SensorPoint> Points)
-{ public override string ToString() => Device + " · " + Name; }
+{ public override string ToString() => Device + " · " + SensorStatistics.KindTitle(Kind) + " · " + Name; }
 
 public sealed class SensorHistory
 {
