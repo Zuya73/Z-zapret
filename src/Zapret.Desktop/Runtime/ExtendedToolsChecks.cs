@@ -10,6 +10,14 @@ internal static class ExtendedToolsChecks
     {
         var checks = new List<string>();
         void Require(bool value, string label) { if (!value) throw new InvalidOperationException(label); checks.Add(label); }
+        using (var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
+        {
+            var loopback = await NetworkTools.QualityAsync("127.0.0.1", IPAddress.Loopback, true, new Progress<string>(), deadline.Token, packetCount: 3);
+            Require(loopback.Internet.Count == 3 && loopback.Gateway.Count == 3 && loopback.Internet.All(x => x.Milliseconds.HasValue) && loopback.Route.Count == 1,
+                "Native Windows ICMP and route checks work against loopback without external traffic");
+        }
+        try { await NetworkTools.ResolveAsync("https://example.com/path", CancellationToken.None); throw new Exception("Invalid target accepted"); }
+        catch (ArgumentException) { checks.Add("Network target validation rejects URLs and command fragments"); }
         var transport = new MeasurementHandler();
         var result = await NetworkTools.SpeedAsync(false, new Progress<string>(), CancellationToken.None, transport);
         Require(result.Outcome == "Completed" && result.DownloadMbps > 0 && result.UploadMbps > 0, "HTTP transfer measurements return download and upload throughput");

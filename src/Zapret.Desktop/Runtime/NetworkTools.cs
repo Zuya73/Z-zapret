@@ -79,17 +79,18 @@ internal static class NetworkTools
         catch (Exception e) when (e is PingException or SocketException) { return null; }
     }
     internal static async Task<QualityResult> QualityAsync(string host, IPAddress? gateway, bool route,
-        IProgress<string> progress, CancellationToken token)
+        IProgress<string> progress, CancellationToken token, int packetCount = 30)
     {
+        if (packetCount is < 1 or > 30) throw new ArgumentOutOfRangeException(nameof(packetCount));
         var address = await ResolveAsync(host, token);
         var internet = new List<LatencySample>(); var local = new List<LatencySample>(); var hops = new List<string>();
-        for (int i = 1; i <= 30; i++)
+        for (int i = 1; i <= packetCount; i++)
         {
             token.ThrowIfCancellationRequested();
             var result = await Task.WhenAll(PingAsync(address, 128, token), gateway == null ? Task.FromResult<double?>(null) : PingAsync(gateway, 128, token));
             internet.Add(new(i, result[0])); if (gateway != null) local.Add(new(i, result[1]));
-            progress.Report($"Пакет {i}/30 · {address}: {(result[0].HasValue ? result[0] + " мс" : "нет ICMP-ответа")}");
-            if (i < 30) await Task.Delay(500, token);
+            progress.Report($"Пакет {i}/{packetCount} · {address}: {(result[0].HasValue ? result[0] + " мс" : "нет ICMP-ответа")}");
+            if (i < packetCount) await Task.Delay(500, token);
         }
         if (route)
             for (int ttl = 1; ttl <= 20; ttl++)
