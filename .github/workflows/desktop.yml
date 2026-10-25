@@ -34,6 +34,8 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Verify repository structure
         run: python tools/verify_repository.py
+      - name: Prevent reusing a released application version
+        run: python tools/verify_release_version.py
       - name: Verify vendored engine manifest
         run: python tools/generate_engine_manifest.py --check
       - name: Verify pinned Flowseal snapshot

@@ -128,10 +128,10 @@ public partial class MainWindow : Window
                 await engine.StopAsync(lifetime.Token);
             }
             try { paths.Initialize(); }
-            catch
+            catch (Exception componentError)
             {
                 // EngineFiles rolls back file replacements before an old service is resumed.
-                if (componentSnapshot is { WasRunning: true })
+                if (componentError is not AggregateException && componentSnapshot is { WasRunning: true })
                     using (var recovery = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                         await engine.RestoreAsync(componentSnapshot with { StrategyId = settings.StrategyId }, settings, recovery.Token);
                 throw;

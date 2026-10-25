@@ -86,7 +86,8 @@ def snapshot(tag):
         files.append(dict(source=source, path=target, sourceBlob=sha, blob=blob(data)))
         content[target] = data
     required = ['vendor/zapret/bin/winws.exe', 'vendor/zapret/bin/WinDivert.dll', 'vendor/zapret/bin/WinDivert64.sys',
-                'legacy/flowseal/general.bat', 'legacy/flowseal/.service/version.txt', 'resources/lists/list-general.txt']
+                'legacy/flowseal/general.bat', 'legacy/flowseal/.service/version.txt', 'resources/lists/list-general.txt',
+                'vendor/zapret/licenses/Flowseal-LICENSE.txt']
     if any(path not in content for path in required): raise ValueError('Required upstream files are missing.')
     if content['legacy/flowseal/.service/version.txt'].decode().strip() != tag:
         raise ValueError('Release tag and upstream version file differ.')
@@ -120,6 +121,8 @@ def main():
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--bump-version', action='store_true')
     args = parser.parse_args()
+    if not args.check and git('status', '--porcelain', '--untracked-files=no').strip():
+        raise ValueError('Commit or stash tracked changes before importing upstream files.')
     previous = json.loads(LOCK.read_text(encoding='utf-8'))
     tag = args.tag or (previous['version'] if args.check else latest_tag())
     lock, content = snapshot(tag)
