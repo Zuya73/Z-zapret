@@ -60,13 +60,14 @@ public partial class MainWindow : Window
         if (preview) { StartupSwitch.IsChecked = true; StartupConnectSwitch.IsChecked = true; }
     }
 
-    public MainWindow(bool preview = false, bool startupLaunch = false, ShutdownTimerController? shutdownTimer = null)
+    public MainWindow(bool preview = false, bool startupLaunch = false, ShutdownTimerController? shutdownTimer = null, IPcInformationSource? pcInformation = null)
     {
         this.preview = preview;
         this.startupLaunch = startupLaunch;
         InitializeComponent();
         WorkAreaBehavior = new WindowWorkArea(this);
         InitializeTools(shutdownTimer);
+        InitializePcInformation(pcInformation);
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
