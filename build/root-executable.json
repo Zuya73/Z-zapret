@@ -1,6 +1,6 @@
 {
-  "version": "0.2.6",
-  "inputs_sha256": "dabbd41e3f9dbe3e01ee2dd4afa7c74004b1af0e8c5d80083451a2fcb439e3f8",
-  "exe_sha256": "702a30effd6dd5381cc7622ae6d177c8ffffaf831e57c9d2eac08c65e6723228",
-  "built_from": "1646adb52e047971e3bc44a192486a826a093fe5"
+  "version": "0.2.7",
+  "inputs_sha256": "12d7e7b02e13a23ec3d1e7f552f5643d64caaf2d620754b73cb9164a4def7ba9",
+  "exe_sha256": "69a1a24bc24a5127dc5a94381ada3c728aab6e191a5eab485a6a7b9b422136a2",
+  "built_from": "3764c5303cec7b16655ce895a9690f33bbe328d1"
 }
