@@ -178,7 +178,7 @@ internal static class NetworkTools
             }
         }
         catch (OperationCanceledException) { outcome = token.IsCancellationRequested ? "Cancelled" : "Failed"; note = token.IsCancellationRequested ? "Замер отменён" : "Превышено время ожидания"; }
-        catch (Exception e) when (e is HttpRequestException or IOException) { outcome = "Failed"; note = e.Message; }
+        catch (Exception e) when (e is HttpRequestException or IOException or InvalidDataException) { outcome = "Failed"; note = e.Message; }
         return new(DateTimeOffset.UtcNow, down, up, idle.Count == 0 ? null : idle.Average(), loaded.Count == 0 ? null : loaded.Average(), downloaded, uploaded, outcome, note);
     }
     private sealed class RandomUploadContent(int size) : HttpContent
