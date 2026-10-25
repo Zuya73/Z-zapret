@@ -68,8 +68,25 @@
             <Border Style="{StaticResource Card}" Padding="16"><StackPanel><TextBlock Text="Проверки соединения" FontSize="18" FontWeight="SemiBold" Margin="8,4,0,12" /><DataGrid x:Name="ProbeGrid" Height="320"><DataGrid.Columns><DataGridTextColumn Header="Стратегия" Binding="{Binding Strategy}" Width="1.15*" /><DataGridTextColumn Header="Ресурс" Binding="{Binding Target}" Width="1.2*" /><DataGridTextColumn Header="Проверка" Binding="{Binding Protocol}" Width="90" /><DataGridTextColumn Header="Результат" Binding="{Binding Status}" Width="110" /><DataGridTextColumn Header="мс" Binding="{Binding Latency}" Width="70" /></DataGrid.Columns><DataGrid.RowStyle><Style TargetType="DataGridRow"><Setter Property="ToolTip" Value="{Binding Detail}" /></Style></DataGrid.RowStyle></DataGrid></StackPanel></Border>
           </StackPanel>
           <StackPanel x:Name="StrategiesPanel" Visibility="Collapsed"><Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Все профили Flowseal" Style="{StaticResource Heading}" /><TextBlock Text="Сохранены все профили закреплённого релиза Flowseal. Выбор профиля применяется при следующем запуске движка." Style="{StaticResource Muted}" /><DataGrid x:Name="StrategiesGrid" Height="440" Margin="0,18,0,18"><DataGrid.Columns><DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="1.1*" /><DataGridTextColumn Header="Исходный файл" Binding="{Binding Source}" Width="1.3*" /><DataGridTextColumn Header="Описание" Binding="{Binding Description}" Width="1.7*" /></DataGrid.Columns></DataGrid><Button x:Name="ChooseStrategyButton" Content="Выбрать стратегию" HorizontalAlignment="Left" Style="{StaticResource Primary}" Click="ChooseStrategy_Click" /></StackPanel></Border></StackPanel>
-          <StackPanel x:Name="DiagnosticsPanel" Visibility="Collapsed"><Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Проверка окружения" Style="{StaticResource Heading}" /><TextBlock Text="Покажем состояние компонентов и возможные конфликты. Исправления запускаются отдельными действиями." Style="{StaticResource Muted}" /><WrapPanel Margin="0,18,0,18"><Button x:Name="DiagnoseButton" Content="Проверить систему" Style="{StaticResource Primary}" Click="Diagnose_Click" Margin="0,0,10,10" /><Button x:Name="ClearCacheButton" Content="Очистить кэш Discord" Click="ClearCache_Click" Margin="0,0,10,10" /><Button x:Name="TimestampsButton" Content="Включить TCP timestamps" Click="Timestamps_Click" Margin="0,0,10,10" /><Button Content="Открыть службы Windows" Click="OpenServices_Click" Margin="0,0,0,10" /></WrapPanel><DataGrid x:Name="DiagnosticsGrid" Height="360"><DataGrid.Columns><DataGridTextColumn Header="Компонент" Binding="{Binding Name}" Width="150" /><DataGridTextColumn Header="Состояние" Binding="{Binding State}" Width="120" /><DataGridTextColumn Header="Описание" Binding="{Binding Detail}" Width="*" /></DataGrid.Columns></DataGrid></StackPanel></Border></StackPanel>
+          <StackPanel x:Name="DiagnosticsPanel" Visibility="Collapsed"><Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Проверка окружения" Style="{StaticResource Heading}" /><TextBlock Text="Покажем состояние компонентов и возможные конфликты. Исправления запускаются отдельными действиями." Style="{StaticResource Muted}" /><WrapPanel Margin="0,18,0,18"><Button x:Name="DiagnoseButton" Content="Проверить систему" Style="{StaticResource Primary}" Click="Diagnose_Click" Margin="0,0,10,10" /><Button x:Name="ClearCacheButton" Content="Очистить кэш Discord" Click="ClearCache_Click" Margin="0,0,10,10" /><Button x:Name="TimestampsButton" Content="Включить TCP timestamps" Click="Timestamps_Click" Margin="0,0,10,10" /><Button Content="Открыть службы Windows" Click="OpenServices_Click" Margin="0,0,0,10" /></WrapPanel><DataGrid x:Name="DiagnosticsGrid" Height="360"><DataGrid.Columns><DataGridTextColumn Header="Компонент" Binding="{Binding Name}" Width="150" /><DataGridTextColumn Header="Состояние" Binding="{Binding State}" Width="120" /><DataGridTextColumn Header="Описание" Binding="{Binding Detail}" Width="*" /></DataGrid.Columns></DataGrid></StackPanel></Border><Border Style="{StaticResource Card}"><StackPanel>
+              <TextBlock Text="Доступность сервисов" Style="{StaticResource Heading}" />
+              <TextBlock Text="Проверяется доступ к HTTPS-узлам. Это не проверка воспроизведения видео, QUIC или голосового соединения Discord." Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,12" />
+              <Button Content="Проверить доступность сейчас" Click="CheckConnection_Click" HorizontalAlignment="Left" Margin="0,0,0,12" />
+              <DataGrid x:Name="HealthChecksGrid" Height="230"><DataGrid.Columns><DataGridTextColumn Header="Сервис" Binding="{Binding Name}" Width="*" /><DataGridTextColumn Header="Состояние" Binding="{Binding State}" Width="*" /><DataGridTextColumn Header="Ответ" Binding="{Binding Latency}" Width="85" /><DataGridTextColumn Header="Подробности" Binding="{Binding Detail}" Width="*" /></DataGrid.Columns></DataGrid>
+            </StackPanel></Border></StackPanel>
           <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
+            <Border Style="{StaticResource Card}"><StackPanel>
+              <TextBlock Text="Контроль подключения" Style="{StaticResource Heading}" />
+              <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,16,0"><TextBlock Text="Проверять доступность сервисов" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Небольшие HTTPS-запросы к Discord, YouTube и контрольным сайтам каждые 45 секунд, пока приложение открыто или находится в трее." Style="{StaticResource Muted}" FontSize="12" /></StackPanel>
+                <CheckBox x:Name="MonitorConnectionSwitch" Grid.Column="1" Style="{StaticResource Switch}" HorizontalAlignment="Right" AutomationProperties.Name="Проверять доступность сервисов" />
+              </Grid>
+              <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="70" /></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,16,0"><TextBlock Text="Умное переподключение" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="После трёх неудачных проверок восстановить подключение и проверить запасные стратегии. Не срабатывает после ручного выключения или при отсутствии интернета. До 3 попыток за 15 минут, с паузой от 2 минут." Style="{StaticResource Muted}" FontSize="12" /></StackPanel>
+                <CheckBox x:Name="AutoReconnectSwitch" Grid.Column="1" Style="{StaticResource Switch}" HorizontalAlignment="Right" AutomationProperties.Name="Умное переподключение" />
+              </Grid>
+              <Button x:Name="SaveConnectionMonitorButton" Content="Сохранить контроль подключения" Click="SaveConnectionMonitor_Click" HorizontalAlignment="Left" />
+            </StackPanel></Border>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -114,9 +131,12 @@
           </StackPanel>
           <StackPanel x:Name="ToolsPanel" Visibility="Collapsed">
             <WrapPanel Margin="0,0,0,16">
-              <Button x:Name="PcToolButton" Content="Информация о ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,0" />
-              <Button x:Name="TimerToolButton" Content="Таймер выключения" Click="SelectTimerTool_Click" Margin="0,0,10,0" />
-              <Button x:Name="DiskToolButton" Content="Скорость дисков" Click="SelectDiskTool_Click" />
+              <Button FontSize="12" Padding="12,8" x:Name="PcToolButton" Content="О ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,8" ToolTip="Информация о ПК" AutomationProperties.Name="Информация о ПК" />
+              <Button FontSize="12" Padding="12,8" x:Name="TimerToolButton" Content="Таймер" Click="SelectTimerTool_Click" Margin="0,0,10,8" ToolTip="Таймер выключения" AutomationProperties.Name="Таймер выключения" />
+              <Button FontSize="12" Padding="12,8" x:Name="DiskToolButton" Content="Тест диска" Click="SelectDiskTool_Click" Margin="0,0,10,8" ToolTip="Скорость дисков" AutomationProperties.Name="Скорость дисков" />
+              <Button FontSize="12" Padding="12,8" x:Name="SensorToolButton" Content="Датчики" Tag="Sensors" Click="SelectExtendedTool_Click" Margin="0,0,10,8" ToolTip="Графики датчиков" AutomationProperties.Name="Графики датчиков" />
+              <Button FontSize="12" Padding="12,8" x:Name="NetworkToolButton" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" Margin="0,0,10,8" ToolTip="Качество соединения и скорость интернета" AutomationProperties.Name="Качество соединения и скорость интернета" />
+              <Button FontSize="12" Padding="12,8" x:Name="SpaceToolButton" Content="Место" Tag="Space" Click="SelectExtendedTool_Click" Margin="0,0,0,8" ToolTip="Анализ занятого места" AutomationProperties.Name="Анализ занятого места" />
             </WrapPanel>
             <StackPanel x:Name="PcInfoPanel">
               <StackPanel.Resources><Style x:Key="PcMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
@@ -176,19 +196,69 @@
                 <TextBlock Text="Тест создаёт реальную нагрузку чтения и записи. Для сравнения закройте загрузки и копирование файлов. Размер файла, заполненность, кэш SSD и фоновые задачи влияют на результат. Можно свернуть окно в трей; полный выход отменит замер." Style="{StaticResource DiskMuted}" FontSize="12" />
               </StackPanel></Border>
             </StackPanel>
-            <StackPanel x:Name="ShutdownToolPanel" Visibility="Collapsed">
-            <Border Style="{StaticResource Card}" Padding="28">
+            <StackPanel x:Name="SensorToolPanel" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel>
+                <TextBlock Text="Графики датчиков" Style="{StaticResource Heading}" />
+                <ComboBox x:Name="SensorPicker" SelectionChanged="Sensor_Changed" AutomationProperties.Name="Датчик на графике" Margin="0,0,0,12" />
+                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="SensorValueText" Text="—" FontSize="30" FontFamily="Consolas" /><TextBlock x:Name="SensorRangeText" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="11" /></Grid>
+                <ui:SensorChart x:Name="SensorPlot" Height="200" Margin="0,0,0,12" />
+                <CheckBox x:Name="SensorRecordCheck" Content="Продолжать запись в других вкладках и в трее" Checked="RecordSensors_Changed" Unchecked="RecordSensors_Changed" Margin="0,0,0,10" />
+                <WrapPanel Margin="0,0,0,10"><Button Content="Сохранить CSV" Click="ExportSensors_Click" Margin="0,0,8,6" /><Button Content="Очистить историю" Click="ClearSensors_Click" Margin="0,0,0,6" /></WrapPanel>
+                <TextBlock x:Name="SensorStatusText" Text="Выберите датчик. Графики появятся после первого опроса." Style="{StaticResource Muted}" FontSize="11" />
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel>
+                <TextBlock Text="Уведомление о превышении" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+                <WrapPanel><CheckBox x:Name="SensorAlertCheck" Content="Порог выбранного датчика" VerticalAlignment="Center" Margin="0,0,12,8" /><TextBox x:Name="SensorThresholdBox" Text="80" Width="100" MaxLength="16" Margin="0,0,12,8" AutomationProperties.Name="Порог в единицах датчика" /><Button Content="Сохранить порог" Click="SaveSensorAlert_Click" Margin="0,0,0,8" /></WrapPanel>
+                <TextBlock Text="Единицы соответствуют выбранному датчику. Уведомления работают во время сбора показаний, не чаще раза в 5 минут на датчик. После пауз на графике остаётся разрыв. История хранится в памяти до закрытия приложения; CSV сохраняется отдельно." Style="{StaticResource Muted}" FontSize="11" />
+              </StackPanel></Border>
+            </StackPanel>
+            <StackPanel x:Name="NetworkToolPanel" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel>
+                <TextBlock Text="Качество соединения" Style="{StaticResource Heading}" />
+                <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1.5*" /></Grid.ColumnDefinitions><TextBox x:Name="QualityTargetBox" Text="1.1.1.1" MaxLength="253" AutomationProperties.Name="Внешний IP-адрес или домен для проверки" /><ComboBox x:Name="QualityGatewayPicker" Grid.Column="2" AutomationProperties.Name="Шлюз для сравнения задержки" /></Grid>
+                <CheckBox x:Name="QualityRouteCheck" Content="Показать маршрут · до 20 переходов" Margin="0,0,0,10" />
+                <WrapPanel Margin="0,0,0,12"><Button x:Name="QualityStartButton" Content="Проверить · 30 пакетов" Style="{StaticResource Primary}" Click="StartQuality_Click" Margin="0,0,8,0" /><Button x:Name="NetworkCancelButton" Content="Отменить" Click="CancelExtended_Click" IsEnabled="False" /></WrapPanel>
+                <DataGrid x:Name="QualityRowsGrid" Height="108" RowHeight="34" FontSize="11"><DataGrid.Columns><DataGridTextColumn Header="Узел" Binding="{Binding Target}" Width="2*" /><DataGridTextColumn Header="Пинг, мс" Binding="{Binding Ping}" Width="*" /><DataGridTextColumn Header="Джиттер" Binding="{Binding Jitter}" Width="*" /><DataGridTextColumn Header="Потери" Binding="{Binding Loss}" Width="*" /><DataGridTextColumn Header="Мин.–макс." Binding="{Binding Range}" Width="*" /></DataGrid.Columns></DataGrid>
+                <TextBlock x:Name="QualityRouteText" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0" />
+                <TextBlock Text="Джиттер - средняя разница соседних успешных ответов. Потери и звёздочки показывают отсутствие ICMP-ответов: узел может ограничивать ICMP при исправном интернете. Выберите шлюз нужного адаптера." Style="{StaticResource Muted}" FontSize="11" Margin="0,10,0,0" />
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel>
+                <TextBlock Text="Скорость интернета" Style="{StaticResource Heading}" />
+                <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="ЗАГРУЗКА · Мбит/с" Foreground="{DynamicResource MutedBrush}" FontSize="10" /><TextBlock x:Name="SpeedDownText" Text="—" FontSize="34" FontFamily="Consolas" /></StackPanel>
+                  <StackPanel Grid.Column="1"><TextBlock Text="ОТДАЧА · Мбит/с" Foreground="{DynamicResource MutedBrush}" FontSize="10" /><TextBlock x:Name="SpeedUpText" Text="—" FontSize="34" FontFamily="Consolas" /></StackPanel>
+                </Grid>
+                <TextBlock x:Name="SpeedLatencyText" Text="Задержка без нагрузки и во время передачи данных" Style="{StaticResource Muted}" FontSize="11" Margin="0,0,0,12" />
+                <WrapPanel><ComboBox x:Name="SpeedModePicker" SelectedIndex="0" MinWidth="230" Margin="0,0,10,8"><ComboBoxItem Content="Быстрый · до 62 МБ" /><ComboBoxItem Content="Подробный · до 262 МБ" /></ComboBox><Button x:Name="SpeedStartButton" Content="Измерить скорость" Click="StartSpeed_Click" Style="{StaticResource Primary}" Margin="0,0,8,8" /><Button x:Name="SpeedCancelButton" Content="Отменить" Click="CancelExtended_Click" IsEnabled="False" Margin="0,0,0,8" /></WrapPanel>
+                <TextBlock Text="Cloudflare · ближайший узел выбирает сервис. Один поток, реальные HTTPS-загрузка и отдача со временем запроса. Это оценка скорости до Cloudflare; результат зависит от маршрута, сервиса и фоновых загрузок. Запускается вручную. Объём указан без сетевых накладных расходов; при отмене часть отправленного блока может не попасть в счётчик." Style="{StaticResource Muted}" FontSize="11" />
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel><TextBlock x:Name="NetworkStageText" Text="Запустите нужную проверку." Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,12" /><WrapPanel><Button x:Name="SaveNetworkButton" Content="Сохранить отчёт" Click="SaveNetwork_Click" IsEnabled="False" /></WrapPanel></StackPanel></Border>
+            </StackPanel>
+            <StackPanel x:Name="SpaceToolPanel" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel>
+                <TextBlock Text="Что занимает место" Style="{StaticResource Heading}" />
+                <TextBox x:Name="SpacePathBox" MaxLength="32767" AutomationProperties.Name="Папка для анализа занятого места" Margin="0,0,0,10" />
+                <WrapPanel Margin="0,0,0,10"><Button x:Name="SpaceStartButton" Content="Анализировать" Style="{StaticResource Primary}" Click="StartSpace_Click" Margin="0,0,8,8" /><Button x:Name="SpaceBrowseButton" Content="Выбрать папку" Click="BrowseSpace_Click" Margin="0,0,8,8" /><Button x:Name="SpaceParentButton" Content="На уровень выше" Click="ParentSpace_Click" Margin="0,0,8,8" /><Button x:Name="SpaceCancelButton" Content="Отменить" Click="CancelExtended_Click" Margin="0,0,0,8" IsEnabled="False" /></WrapPanel>
+                <TextBlock x:Name="SpaceStatusText" Text="Выберите накопитель или папку." Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,12" />
+                <TextBlock Text="ПАПКИ · двойной щелчок для перехода" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" />
+                <DataGrid x:Name="SpaceFolderGrid" SelectionChanged="SpaceSelection_Changed" Height="240" FontSize="11" MouseDoubleClick="SpaceFolder_DoubleClick"><DataGrid.Columns><DataGridTextColumn Header="Папка" Binding="{Binding Path}" Width="2*" /><DataGridTextColumn Header="Размер" Binding="{Binding Size}" Width="100" /><DataGridTemplateColumn Header="Доля" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid Margin="4,8"><ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100" Height="18" Opacity="0.3" /><TextBlock Text="{Binding Share}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn></DataGrid.Columns></DataGrid>
+                <Button x:Name="SpaceOpenButton" Content="Показать выбранное в проводнике" Click="OpenSpace_Click" HorizontalAlignment="Left" Margin="0,12,0,0" />
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel><TextBlock Text="100 крупнейших файлов" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" /><DataGrid x:Name="SpaceFilesGrid" SelectionChanged="SpaceSelection_Changed" Height="240" FontSize="11"><DataGrid.Columns><DataGridTextColumn Header="Файл" Binding="{Binding Path}" Width="*" /><DataGridTextColumn Header="Размер" Binding="{Binding Size}" Width="110" /></DataGrid.Columns></DataGrid><Button Content="Показать файл в проводнике" Click="OpenSpace_Click" HorizontalAlignment="Left" Margin="0,12,0,0" /><TextBlock Text="Считается логический размер доступных файлов. Ссылки, точки подключения и недоступные папки пропускаются; жёсткие ссылки могут учитываться повторно. Результат отличается от занятого места на томе. Лимит - 10 минут или 2 млн записей; при отмене остаётся частичный результат. Файлы не изменяются." Style="{StaticResource Muted}" FontSize="11" Margin="0,12,0,0" /></StackPanel></Border>
+            </StackPanel>
+            <StackPanel x:Name="ShutdownToolPanel" Visibility="Collapsed"><StackPanel.Resources><Style x:Key="TimerMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="18" /></Style></StackPanel.Resources>
+            <Border Style="{StaticResource Card}" Padding="18">
               <StackPanel>
-                <TextBlock Text="02 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,14" />
+                <TextBlock Text="02 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" />
                 <TextBlock Text="Выключение по таймеру" Style="{StaticResource Heading}" />
-                <TextBlock Text="Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret." Style="{StaticResource Muted}" Margin="0,0,0,22" />
+                <TextBlock Text="Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret." Style="{StaticResource TimerMuted}" Margin="0,0,0,12" />
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                   <StackPanel>
                     <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="24" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
-                      <StackPanel><TextBlock Text="Часы" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownHoursBox" Text="1" MaxLength="3" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Часы до выключения компьютера" /></StackPanel>
-                      <StackPanel Grid.Column="2"><TextBlock Text="Минуты" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownMinutesBox" Text="0" MaxLength="2" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Минуты до выключения компьютера" /></StackPanel>
+                      <StackPanel><TextBlock Text="Часы" Style="{StaticResource TimerMuted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownHoursBox" Text="1" MaxLength="3" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Часы до выключения компьютера" /></StackPanel>
+                      <StackPanel Grid.Column="2"><TextBlock Text="Минуты" Style="{StaticResource TimerMuted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownMinutesBox" Text="0" MaxLength="2" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Минуты до выключения компьютера" /></StackPanel>
                     </Grid>
-                    <WrapPanel Margin="0,16,0,0">
+                    <WrapPanel Margin="0,10,0,0">
                       <Button Content="15 мин" Tag="15" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
                       <Button Content="30 мин" Tag="30" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
                       <Button Content="1 час" Tag="60" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
@@ -198,11 +268,11 @@
                   <Border Grid.Column="2" Background="#0A0A0A" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="18">
                     <StackPanel><TextBlock Text="ОСТАЛОСЬ" FontSize="10" Foreground="{DynamicResource MutedBrush}" />
                       <Viewbox Height="58" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Stretch" Margin="0,8,0,4"><TextBlock x:Name="ShutdownCountdown" Text="— : — : —" FontSize="40" FontFamily="Consolas" /></Viewbox>
-                      <TextBlock x:Name="ShutdownStatus" Text="Таймер не запущен" Style="{StaticResource Muted}" FontSize="12" />
+                      <TextBlock x:Name="ShutdownStatus" Text="Таймер не запущен" Style="{StaticResource TimerMuted}" FontSize="12" />
                     </StackPanel>
                   </Border>
                 </Grid>
-                <WrapPanel Margin="0,22,0,0">
+                <WrapPanel Margin="0,12,0,0">
                   <Button x:Name="StartShutdownTimerButton" Content="Запустить таймер" Style="{StaticResource Primary}" Click="StartShutdownTimer_Click" Margin="0,0,12,10" />
                   <Button x:Name="CancelShutdownTimerButton" Content="Отменить таймер" IsEnabled="False" Click="CancelShutdownTimer_Click" Margin="0,0,0,10" />
                 </WrapPanel>
@@ -211,7 +281,7 @@
             </Border>
             <Border Style="{StaticResource Card}"><StackPanel>
               <TextBlock Text="Как работает таймер" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10" />
-              <TextBlock Text="• От 1 минуты до 7 дней. Отменить можно до начала выключения.&#x0a;• Windows не будет принудительно закрывать программы. Несохранённые документы могут задержать выключение.&#x0a;• Компьютер должен быть включён, пользователь - оставаться в системе. Таймер не будит ПК и не срабатывает позже пропущенного времени после сна или перезагрузки." Style="{StaticResource Muted}" FontSize="12" />
+              <TextBlock Text="• От 1 минуты до 7 дней. Отменить можно до начала выключения.&#x0a;• Windows не будет принудительно закрывать программы. Несохранённые документы могут задержать выключение.&#x0a;• Компьютер должен быть включён, пользователь - оставаться в системе. Таймер не будит ПК и не срабатывает позже пропущенного времени после сна или перезагрузки." Style="{StaticResource TimerMuted}" FontSize="12" />
             </StackPanel></Border>
             </StackPanel>
           </StackPanel>

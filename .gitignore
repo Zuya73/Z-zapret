@@ -17,3 +17,6 @@ smoke-error.txt
 
 !/vendor/diskspd/bin/
 !/vendor/diskspd/bin/*
+
+# WPF markup compiler temporary project files
+*_wpftmp.csproj

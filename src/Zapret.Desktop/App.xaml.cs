@@ -73,7 +73,8 @@ public partial class App : Application
         bool pcCheck = e.Args.Contains("--pc-check");
         bool hardwareCheck = e.Args.Contains("--hardware-check");
         bool diskCheck = e.Args.Contains("--disk-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck || hardwareCheck || diskCheck;
+        bool extendedCheck = e.Args.Contains("--extended-tools-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck || hardwareCheck || diskCheck || extendedCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -126,6 +127,11 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (extendedCheck)
+            {
+                try { await ExtendedToolsChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--extended-tools-check").Skip(1).First()); }
+                catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); return; }
+            }
             if (diskCheck)
             {
                 try { await DiskBenchmarkChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--disk-check").Skip(1).First()); }
