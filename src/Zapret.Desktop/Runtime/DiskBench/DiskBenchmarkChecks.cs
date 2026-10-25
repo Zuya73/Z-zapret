@@ -39,6 +39,9 @@ internal static class DiskBenchmarkChecks
         await File.WriteAllTextAsync(sentinel, "unrelated user data");
         try
         {
+            string cachedEngine;
+            using (var engine = DiskSpdBinary.OpenVerified()) cachedEngine = engine.Name;
+            File.Delete(cachedEngine); // Force fresh extraction, including the single-file root build.
             var runner = new DiskBenchmarkRunner();
             var options = new DiskBenchmarkOptions(256 * DiskBenchmarkOptions.MiB, 1, 1);
             var report = await runner.RunAsync(root, options, new InlineProgress(_ => { }), CancellationToken.None);
