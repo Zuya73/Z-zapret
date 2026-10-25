@@ -1,6 +1,9 @@
 name: Sync Flowseal components
 
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sync-flowseal.yml', 'tools/sync_flowseal.py', 'tools/flowseal-overrides.json']
   schedule:
     - cron: '20 */6 * * *'
   workflow_dispatch:
@@ -53,19 +56,23 @@ jobs:
             docs/releases
       - name: Resolve prepared branch for Windows validation
         id: source
-        if: steps.sync.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' || github.event_name == 'push'
         env:
+          SYNC_CHANGED: ${{ steps.sync.outputs.changed }}
           PR_OUTCOME: ${{ steps.pr.outcome }}
         run: |
           python - <<'PY'
           import os, re, subprocess
-          data = subprocess.check_output(['git', 'ls-remote', 'origin', 'refs/heads/upstream/flowseal'], text=True).strip()
-          sha = data.split()[0] if data else ''
+          if os.environ['SYNC_CHANGED'] == 'true':
+              data = subprocess.check_output(['git', 'ls-remote', 'origin', 'refs/heads/upstream/flowseal'], text=True).strip()
+              sha = data.split()[0] if data else ''
+          else:
+              sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           if not re.fullmatch('[0-9a-f]{40}', sha): raise SystemExit('Prepared branch was not pushed.')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output: output.write('sha=' + sha + '\n')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
               output.write('Prepared component branch: https://github.com/' + os.environ['GITHUB_REPOSITORY'] + '/compare/main...upstream/flowseal\n')
-              if os.environ['PR_OUTCOME'] != 'success':
+              if os.environ['SYNC_CHANGED'] == 'true' and os.environ['PR_OUTCOME'] != 'success':
                   output.write('\nGitHub did not allow automatic PR creation. The prepared branch will still receive Windows validation; open the comparison link to create its PR.\n')
           PY
 

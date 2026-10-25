@@ -64,6 +64,11 @@ public static class EngineFiles
             if (failures.Count > 1) throw new AggregateException("Не удалось полностью откатить движок. Резервные файлы: " + stage, failures);
             throw;
         }
-        finally { if (!retainBackup && Directory.Exists(stage)) Directory.Delete(stage, recursive: true); }
+        finally
+        {
+            if (!retainBackup && Directory.Exists(stage))
+                try { Directory.Delete(stage, recursive: true); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        }
     }
 }

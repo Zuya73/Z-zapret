@@ -37,7 +37,7 @@ public partial class MainWindow
     internal async Task RefreshShutdownTimerAsync()
     {
         if (shutdownTimer == null || shutdownBusy) return;
-        shutdownBusy = true;
+        shutdownBusy = true; UpdateShutdownCountdown();
         try { shutdownPlan = await shutdownTimer.ReadAsync(lifetime.Token); }
         catch (OperationCanceledException) { }
         catch (Exception error) { ShutdownTimerError.Text = error.Message; }
@@ -46,7 +46,7 @@ public partial class MainWindow
     internal async Task StartShutdownTimerAsync()
     {
         if (shutdownTimer == null || shutdownBusy) return;
-        shutdownBusy = true; ShutdownTimerError.Text = "";
+        shutdownBusy = true; UpdateShutdownCountdown(); ShutdownTimerError.Text = "";
         try
         {
             var delay = ShutdownTimerPolicy.Delay(ShutdownHoursBox.Text, ShutdownMinutesBox.Text);
@@ -60,7 +60,7 @@ public partial class MainWindow
     internal async Task CancelShutdownTimerAsync()
     {
         if (shutdownTimer == null || shutdownBusy) return;
-        shutdownBusy = true; ShutdownTimerError.Text = "";
+        shutdownBusy = true; UpdateShutdownCountdown(); ShutdownTimerError.Text = "";
         try
         {
             await shutdownTimer.CancelAsync(lifetime.Token);
