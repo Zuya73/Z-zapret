@@ -27,7 +27,9 @@ public partial class MainWindow
     }
     internal void ShowDiskTool()
     {
+        if (busy || extendedRunning) return;
         if (pcExporting) { StatusText.Text = "Дождитесь завершения сбора информации или отмените его."; return; }
+        HideExtendedTools();
         PcInfoPanel.Visibility = ShutdownToolPanel.Visibility = Visibility.Collapsed;
         DiskToolPanel.Visibility = Visibility.Visible;
         PcToolButton.Style = TimerToolButton.Style = (Style)FindResource(typeof(Button));

@@ -136,6 +136,13 @@ jobs:
             if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "$mode failed." }
             Get-Content "artifacts/$mode.json"
           }
+      - name: Verify connection monitoring and extended X2 Tools without external traffic
+        shell: pwsh
+        run: |
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--extended-tools-check', 'artifacts/extended-tools-check.json') -PassThru
+          if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Extended tools checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Extended tools checks failed.' }
+          Get-Content artifacts/extended-tools-check.json
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -152,6 +159,15 @@ jobs:
           $process = Start-Process "$directory/x2zapret.exe" -ArgumentList $argument -WorkingDirectory $env:RUNNER_TEMP -PassThru
           if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Root EXE startup timed out.' }
           if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) { throw "Root EXE failed: $($process.ExitCode)" }
+      - name: Verify extended tools in the self-contained root EXE
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'x2zapret root executable test'
+          $receipt = Join-Path $PWD 'artifacts/root-extended-tools-check.json'
+          $process = Start-Process "$directory/x2zapret.exe" -ArgumentList ('--extended-tools-check "' + $receipt + '"') -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Root EXE extended tools checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path "$env:RUNNER_TEMP/smoke-error.txt") { Get-Content "$env:RUNNER_TEMP/smoke-error.txt" }; throw 'Root EXE extended tools checks failed.' }
+          Get-Content $receipt
       - name: Verify built-in monitoring in the self-contained root EXE
         shell: pwsh
         run: |

@@ -69,6 +69,8 @@ public partial class MainWindow : Window
         InitializeTools(shutdownTimer);
         InitializePcInformation(pcInformation);
         InitializeDiskTool(diskBenchmark);
+        InitializeConnectionMonitor();
+        InitializeExtendedTools();
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
@@ -142,6 +144,8 @@ public partial class MainWindow : Window
             LoadSettings();
             CreateTray();
             ready = true;
+            connectionWanted = engine.IsRunning;
+            if (connectionWanted) activeStrategy = (await engine.CaptureAsync(lifetime.Token)).StrategyId;
             LoadUserList();
             Log("x2zapret " + UpdateManifest.CurrentVersion.ToString(3) + ". Подготовлено стратегий: " + strategies.Count);
             if (File.Exists(paths.Recovery))
@@ -154,6 +158,8 @@ public partial class MainWindow : Window
                     var snapshot = startupLaunch && settings.Startup == StartupMode.Tray
                         ? record.Snapshot with { WasRunning = false } : record.Snapshot;
                     await engine.RestoreAsync(snapshot, record.Settings, token);
+                    settings = record.Settings; AtomicFile.WriteJson(paths.Settings, settings); LoadSettings();
+                    activeStrategy = snapshot.StrategyId;
                     File.Delete(paths.Recovery);
                     Log("Восстановление после прерванной проверки завершено.");
                 }, "Восстановление после прерванной проверки");
@@ -166,6 +172,8 @@ public partial class MainWindow : Window
             if (paths.PreservedSeedLists.Count > 0)
                 Log("Изменённые стандартные списки сохранены: " + string.Join(", ", paths.PreservedSeedLists) + ". Версии Flowseal находятся рядом с расширением .upstream.");
             RefreshState(); timer.Start();
+            connectionWanted = engine.IsRunning;
+            ConfigureConnectionMonitor();
             StatusText.Text = "Готово. Выберите профиль или запустите автоподбор.";
             if (settings.AutoUpdate) { updateTimer.Start(); _ = CheckAutomaticUpdatesAsync(); }
         }
@@ -185,6 +193,7 @@ public partial class MainWindow : Window
         {
             await engine.StartAsync(Selected, settings, ct);
             activeStrategy = Selected.Id;
+            connectionWanted = true;
         }, token), "Автоматическое подключение");
     }
 
@@ -260,6 +269,7 @@ public partial class MainWindow : Window
     private async Task Execute(Func<CancellationToken, Task> action, string stage)
     {
         if (busy) return;
+        InvalidateConnectionHealth();
         SetBusy(true);
         ErrorBanner.Visibility = Visibility.Collapsed;
         StatusText.Text = stage;
@@ -279,6 +289,7 @@ public partial class MainWindow : Window
     private void SetBusy(bool value)
     {
         busy = value;
+        if (value) { graphCancellation?.Cancel(); graphHardware.Stop(); }
         foreach (Control control in new Control[] { ConnectButton, ServiceButton, HomeStrategyPicker, StartTestsButton, TestModePicker,
             OnlySelectedCheck, ChooseStrategyButton, StrategiesGrid, DiagnoseButton, ClearCacheButton, SaveSettingsButton,
             SaveListButton, UserListPicker, UpdateIpSetButton, UpdateHostsButton, RemoveHostsButton, CheckUpdatesButton,
@@ -294,6 +305,8 @@ public partial class MainWindow : Window
         OperationProgress.IsIndeterminate = value;
         if (!value) ProgressCounter.Text = "";
         UpdateDiskControls();
+        UpdateExtendedControls();
+        SaveConnectionMonitorButton.IsEnabled = MonitorConnectionSwitch.IsEnabled = AutoReconnectSwitch.IsEnabled = !value;
     }
 
     private void RefreshState()
@@ -309,6 +322,7 @@ public partial class MainWindow : Window
             engine.ServiceInstalled ? "Обнаружена служба zapret из другой сборки. Подробности в диагностике." : "Движок запускается вручную. Можно включить службу Windows.";
         ActiveStrategyText.Text = "Активная стратегия: " + (running ? strategies.FirstOrDefault(x => x.Id == activeStrategy)?.Name ?? "служба Windows" : "—");
         if (tray != null) tray.Text = running ? "x2zapret · движок работает" : "x2zapret · остановлен";
+        RenderConnectionHealth(running);
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
@@ -316,8 +330,8 @@ public partial class MainWindow : Window
         if (!ready || engine == null || busy) return;
         await Execute(async token =>
         {
-            if (engine.IsRunning) { await engine.StopAsync(token); Log("Движок остановлен."); }
-            else { await engine.StartAsync(Selected, settings, token); activeStrategy = Selected.Id; }
+            if (engine.IsRunning) { connectionWanted = false; await engine.StopAsync(token); Log("Движок остановлен."); }
+            else { await engine.StartAsync(Selected, settings, token); activeStrategy = Selected.Id; connectionWanted = true; }
         }, "Переключение подключения");
     }
 
@@ -326,8 +340,8 @@ public partial class MainWindow : Window
         if (!ready || engine == null) return;
         await Execute(async token =>
         {
-            if (engine.OwnsService) await engine.RemoveServiceAsync(token);
-            else { await engine.InstallServiceAsync(Selected, settings, token); activeStrategy = Selected.Id; }
+            if (engine.OwnsService) { connectionWanted = false; await engine.RemoveServiceAsync(token); }
+            else { await engine.InstallServiceAsync(Selected, settings, token); activeStrategy = Selected.Id; connectionWanted = true; }
         }, "Настройка автозапуска");
     }
 
@@ -421,6 +435,7 @@ public partial class MainWindow : Window
                 await engine.StartAsync(selected, settings, token);
                 settings = settings with { StrategyId = id }; AtomicFile.WriteJson(paths.Settings, settings);
                 HomeStrategyPicker.SelectedItem = selected; activeStrategy = id;
+                connectionWanted = true;
             }
             catch
             {

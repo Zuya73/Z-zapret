@@ -31,6 +31,9 @@ public sealed record AppSettings
     public bool MinimizeToTray { get; init; } = true;
     public StartupMode Startup { get; init; } = StartupMode.Disabled;
     public bool AutoUpdate { get; init; }
+    public bool MonitorConnection { get; init; } = true;
+    public bool AutoReconnect { get; init; }
+    public SensorAlert[] SensorAlerts { get; init; } = [];
 }
 
 public sealed record ProbeTarget(string Id, string Name, string Group, string Url, bool Required = false,
