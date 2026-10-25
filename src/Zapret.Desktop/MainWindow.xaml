@@ -115,7 +115,8 @@
           <StackPanel x:Name="ToolsPanel" Visibility="Collapsed">
             <WrapPanel Margin="0,0,0,16">
               <Button x:Name="PcToolButton" Content="Информация о ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,0" />
-              <Button x:Name="TimerToolButton" Content="Таймер выключения" Click="SelectTimerTool_Click" />
+              <Button x:Name="TimerToolButton" Content="Таймер выключения" Click="SelectTimerTool_Click" Margin="0,0,10,0" />
+              <Button x:Name="DiskToolButton" Content="Скорость дисков" Click="SelectDiskTool_Click" />
             </WrapPanel>
             <StackPanel x:Name="PcInfoPanel">
               <StackPanel.Resources><Style x:Key="PcMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
@@ -142,6 +143,37 @@
                 </StackPanel>
                 <TextBlock x:Name="PcWarningText" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,14,0,0" />
                 <TextBlock Text="Серийные номера, сетевые адреса и пути скрыты по умолчанию. Ctrl+C копирует выделенные строки. Встроенные датчики работают без отдельного приложения. Стресс-тестов нет." Style="{StaticResource PcMuted}" FontSize="11" Margin="0,12,0,0" />
+              </StackPanel></Border>
+            </StackPanel>
+            <StackPanel x:Name="DiskToolPanel" Visibility="Collapsed">
+              <StackPanel.Resources><Style x:Key="DiskMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
+              <Border Style="{StaticResource Card}" Padding="16"><StackPanel>
+                <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="2.1*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="1.4*" /></Grid.ColumnDefinitions>
+                  <ComboBox x:Name="DiskDrivePicker" SelectionChanged="DiskDrive_Changed" AutomationProperties.Name="Накопитель для замера скорости" ToolTip="Локальные и съёмные тома. Сетевые пути и физические устройства не используются." />
+                  <ComboBox x:Name="DiskSizePicker" Grid.Column="2" SelectedIndex="1" AutomationProperties.Name="Размер временного тестового файла"><ComboBoxItem Content="256 МиБ" /><ComboBoxItem Content="1 ГиБ" /><ComboBoxItem Content="4 ГиБ" /></ComboBox>
+                  <ComboBox x:Name="DiskModePicker" Grid.Column="4" SelectedIndex="0" AutomationProperties.Name="Режим замера"><ComboBoxItem Content="Быстрый · 1 проход" ToolTip="8 измерений по 3 секунды плюс подготовка файла" /><ComboBoxItem Content="Подробный · 3 прохода" ToolTip="8 измерений по 5 секунд, три прохода плюс подготовка файла" /></ComboBox>
+                </Grid>
+                <WrapPanel Margin="0,0,0,8">
+                  <Button x:Name="DiskStartButton" Content="Запустить" Style="{StaticResource Primary}" Click="StartDisk_Click" FontSize="12" Padding="14,7" Margin="0,0,8,0" />
+                  <Button x:Name="DiskCancelButton" Content="Отменить" IsEnabled="False" Click="CancelDisk_Click" FontSize="12" Padding="14,7" Margin="0,0,8,0" />
+                  <Button x:Name="DiskExportButton" Content="Сохранить результат" IsEnabled="False" Click="SaveDisk_Click" FontSize="12" Padding="14,7" Margin="0,0,8,0" />
+                  <Button x:Name="DiskRefreshButton" Content="Обновить диски" Click="RefreshDisks_Click" FontSize="12" Padding="14,7" />
+                </WrapPanel>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="50" /></Grid.ColumnDefinitions><TextBlock x:Name="DiskStageText" Text="Выберите накопитель и нажмите «Запустить»." Style="{StaticResource DiskMuted}" FontSize="11" /><TextBlock x:Name="DiskElapsedText" Text="00:00" Grid.Column="1" HorizontalAlignment="Right" FontFamily="Consolas" FontSize="11" /></Grid>
+                <ProgressBar x:Name="DiskProgress" Maximum="100" Height="4" Margin="0,6,0,8" />
+                <DataGrid x:Name="DiskResultGrid" Height="264" RowHeight="58" ColumnHeaderHeight="30" CanUserSortColumns="False" SelectionMode="Single" AutomationProperties.Name="Результаты скорости накопителя">
+                  <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="ПРОФИЛЬ" Width="1.1*" MinWidth="125"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Profile.Label}" FontWeight="SemiBold" FontSize="12" /><TextBlock Text="{Binding Profile.Description}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,5,0,0" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="ЧТЕНИЕ · МБ/с" Width="1.6*"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center" ToolTip="{Binding ReadTooltip}"><TextBlock Text="{Binding ReadSpeed}" FontSize="23" FontFamily="Consolas" /><TextBlock Text="{Binding ReadDetails}" FontSize="10" Foreground="{DynamicResource MutedBrush}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="ЗАПИСЬ · МБ/с" Width="1.6*"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center" ToolTip="{Binding WriteTooltip}"><TextBlock Text="{Binding WriteSpeed}" FontSize="23" FontFamily="Consolas" /><TextBlock Text="{Binding WriteDetails}" FontSize="10" Foreground="{DynamicResource MutedBrush}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="18"><StackPanel>
+                <TextBlock Text="Как проходит замер" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,10" />
+                <TextBlock Text="DiskSpd 2.3 от Microsoft. Последовательные операции 1 МиБ и случайные 4 КиБ, один поток и разные очереди. МБ/с = 1 000 000 байт/с. В подсказке результата доступны средняя задержка и P95 худшего прохода." Style="{StaticResource DiskMuted}" FontSize="12" Margin="0,0,0,10" />
+                <TextBlock Text="Используется отдельный временный файл со случайными данными. Нужно место под него и ещё 1 ГиБ резерва. После завершения или отмены файл удаляется; существующие файлы не используются. Кэш Windows обходится, аппаратный кэш работает штатно." Style="{StaticResource DiskMuted}" FontSize="12" Margin="0,0,0,10" />
+                <TextBlock Text="Тест создаёт реальную нагрузку чтения и записи. Для сравнения закройте загрузки и копирование файлов. Размер файла, заполненность, кэш SSD и фоновые задачи влияют на результат. Можно свернуть окно в трей; полный выход отменит замер." Style="{StaticResource DiskMuted}" FontSize="12" />
               </StackPanel></Border>
             </StackPanel>
             <StackPanel x:Name="ShutdownToolPanel" Visibility="Collapsed">

@@ -60,7 +60,7 @@ public partial class MainWindow : Window
         if (preview) { StartupSwitch.IsChecked = true; StartupConnectSwitch.IsChecked = true; }
     }
 
-    public MainWindow(bool preview = false, bool startupLaunch = false, ShutdownTimerController? shutdownTimer = null, IPcInformationSource? pcInformation = null)
+    public MainWindow(bool preview = false, bool startupLaunch = false, ShutdownTimerController? shutdownTimer = null, IPcInformationSource? pcInformation = null, IDiskBenchmarkRunner? diskBenchmark = null)
     {
         this.preview = preview;
         this.startupLaunch = startupLaunch;
@@ -68,6 +68,7 @@ public partial class MainWindow : Window
         WorkAreaBehavior = new WindowWorkArea(this);
         InitializeTools(shutdownTimer);
         InitializePcInformation(pcInformation);
+        InitializeDiskTool(diskBenchmark);
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
@@ -292,6 +293,7 @@ public partial class MainWindow : Window
         OperationProgress.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
         OperationProgress.IsIndeterminate = value;
         if (!value) ProgressCounter.Text = "";
+        UpdateDiskControls();
     }
 
     private void RefreshState()

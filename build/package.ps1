@@ -17,6 +17,7 @@ Copy-Item "$root/LICENSE.txt" $publish
 Copy-Item "$root/docs/THIRD-PARTY-NOTICES.txt" $publish
 Copy-Item "$root/docs/USER-GUIDE.md" "$publish/README.md"
 Copy-Item "$root/vendor/zapret/licenses" $publish -Recurse
+Copy-Item "$root/vendor/diskspd/LICENSE.txt" "$publish/licenses/DiskSpd-MIT.txt"
 $packageCache = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $HOME '.nuget/packages' }
 foreach ($package in @('microsoft.netcore.app.runtime.win-x64', 'microsoft.windowsdesktop.app.runtime.win-x64')) {
     if (-not (Test-Path (Join-Path $packageCache $package))) { continue }
