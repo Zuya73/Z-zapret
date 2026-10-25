@@ -36,7 +36,11 @@ internal static class PcInformationChecks
         Require(window.PcRowsGrid.Items.Count == 0 && window.PcWarningText.Text.Contains("недоступны"), "Missing sensor providers show an explanation without invented readings");
         window.PcCategoryPicker.SelectedItem = PcCategory.Find("summary");
         await WaitFor(() => !window.PcCancelButton.IsEnabled);
+        window.PcStatusText.Text = "Пример интерфейса · демонстрационные характеристики";
         InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "pc-information-preview.png"));
+        var firstRowBottom = window.PcRowsGrid.PointToScreen(new(0, window.PcRowsGrid.ColumnHeaderHeight + window.PcRowsGrid.RowHeight));
+        var viewportBottom = window.PageScroll.PointToScreen(new(0, window.PageScroll.ActualHeight));
+        Require(firstRowBottom.Y <= viewportBottom.Y, "Hardware values are visible immediately at the initial work-area size");
         var monitor = new PcLiveMonitor(); var first = monitor.Read(); await Task.Delay(150); var second = monitor.Read();
         Require(first.CpuPercent == null && second.CpuPercent is >= 0 and <= 100 && second.TotalMemory > 0 && second.MemoryPercent is >= 0 and <= 100,
             "Native live CPU and memory counters return valid values");

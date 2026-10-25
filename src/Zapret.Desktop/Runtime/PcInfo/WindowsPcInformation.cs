@@ -27,7 +27,7 @@ internal sealed class WindowsPcInformation : IPcInformationSource
         try
         {
             var result = await ProcessRunner.RunAsync(ProcessRunner.SystemTool(@"WindowsPowerShell\v1.0\powershell.exe"),
-                ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], TimeSpan.FromSeconds(25), token, input);
+                ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], TimeSpan.FromSeconds(category == "devices" ? 35 : 25), token, input);
             if (result.ExitCode != 0) throw new InvalidOperationException("Windows не смогла собрать этот раздел. Возможно, WMI или PowerShell ограничены политикой системы.");
             var section = PcInformation.Parse(category, result.Output.TrimStart('\uFEFF'));
             if (category == "cpu")

@@ -8,9 +8,9 @@ function Row($device, $property, $value, [bool]$private = $false) {
     if ($value -is [array]) { $value = $value -join ', ' }
     $rows.Add([pscustomobject]@{ Device = [string]$device; Property = [string]$property; Value = [string]$value; Sensitive = $private })
 }
-function Query($class, $namespace = 'root/cimv2', $filter = '') {
+function Query($class, $namespace = 'root/cimv2', $filter = '', $timeoutSeconds = 4) {
     try {
-        $options = @{ ClassName = $class; Namespace = $namespace; OperationTimeoutSec = 4; ErrorAction = 'Stop' }
+        $options = @{ ClassName = $class; Namespace = $namespace; OperationTimeoutSec = $timeoutSeconds; ErrorAction = 'Stop' }
         if ($filter) { $options.Filter = $filter }
         @(Get-CimInstance @options)
     } catch { $warnings.Add("${class}: данные недоступны ($($_.Exception.GetType().Name)).") }
@@ -118,7 +118,11 @@ try { switch ($Category) {
         foreach ($c in (Query 'Win32_NetworkAdapter' 'root/cimv2' 'PhysicalAdapter=True')) { Row $c.Name 'Скорость соединения, Мбит/с' $(if ($c.Speed -gt 0) { '{0:0.##}' -f ($c.Speed / 1000000) } else { '—' }); Row $c.Name 'Состояние' $c.NetConnectionStatus }
     }
     'devices' {
-        foreach ($c in (Query 'Win32_PnPSignedDriver')) {
+        foreach ($c in (Query 'Win32_PnPEntity')) {
+            $d = $c.Name; if (-not $d) { $d = 'Устройство без названия' }
+            Props $d $c ([ordered]@{PNPClass='Класс устройства';Manufacturer='Производитель устройства';Status='Состояние устройства';ConfigManagerErrorCode='Код диспетчера устройств'})
+        }
+        foreach ($c in (Query 'Win32_PnPSignedDriver' 'root/cimv2' '' 15)) {
             $d = $c.DeviceName; if (-not $d) { $d = 'Устройство без названия' }
             Props $d $c ([ordered]@{DeviceClass='Класс';Manufacturer='Производитель';DriverProviderName='Поставщик драйвера';DriverVersion='Версия';InfName='INF';IsSigned='Подписан'})
         }
