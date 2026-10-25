@@ -100,7 +100,7 @@ public partial class MainWindow
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         pcCancellation = cancellation; pcExporting = true;
         bool includePrivate = PcPrivateCheck.IsChecked == true;
-        PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = false;
+        PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = PcPrivateCheck.IsEnabled = false;
         PcCancelButton.IsEnabled = true;
         try
         {
@@ -120,7 +120,7 @@ public partial class MainWindow
         finally
         {
             pcCancellation = null; pcExporting = false; PcCancelButton.IsEnabled = false;
-            PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = true;
+            PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = PcPrivateCheck.IsEnabled = true;
         }
     }
     private async Task SamplePcAsync()
