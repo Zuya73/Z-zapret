@@ -23,8 +23,9 @@ def verify():
             for node in document.iter(kind):
                 existing(project.parent / node.attrib['Include'].replace('\\', '/'))
     for name in json.loads((ROOT / 'build/obsolete-files.json').read_text()):
-        if name != 'README-DESKTOP.md':
-            existing(ROOT / 'legacy/flowseal' / name)
+        # Historical cleanup tombstones remain valid after upstream removes a profile.
+        if Path(name).is_absolute() or '..' in Path(name).parts or '\\' in name:
+            raise ValueError('Unsafe obsolete-file entry: ' + name)
     for name in ['Directory.Build.props', 'global.json', 'resources/catalogs/strategies.json',
                  'resources/catalogs/targets.json', 'build/package.ps1', 'build/installer.nsi',
                  'build/package-legacy.ps1', 'docs/USER-GUIDE.md', 'docs/BUILD.md']:

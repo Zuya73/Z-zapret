@@ -45,7 +45,12 @@ Check("Restoring a window after a monitor change keeps every edge in its work ar
     var result = Zapret.Desktop.Runtime.WindowGeometry.Fit(new(1600, 850, 1600, 1000), new(-1280, 40, 1280, 680));
     Equal(new Zapret.Desktop.Runtime.PixelBounds(-1280, 40, 1280, 680), result);
 });
-Check("All 22 original strategies are imported", () => Equal(22, catalog.Count));
+Check("Every pinned upstream profile is imported exactly once", () =>
+{
+    var sources = Directory.GetFiles(Path.Combine(args.FirstOrDefault() ?? ".", "legacy", "flowseal"), "general*.bat").Select(Path.GetFileName).Order().ToArray();
+    Equal(sources.Length, catalog.Count);
+    Assert(sources.SequenceEqual(catalog.Select(x => x.Source).Order()));
+});
 Check("Portable bundles resolve resources beside the executable", () =>
 {
     string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
@@ -80,20 +85,20 @@ Check("A complete portable layout wins when source folders are also present", ()
 });
 Check("Repeated options and literal exclamation survive import", () =>
 {
-    var fake = catalog.Single(x => x.Id == "general-fake-tls-auto");
+    var fake = new Strategy("fixture", "Fixture", "fixture.bat", "", ["--dpi-desync-fake-tls=!", "--dpi-desync-fake-tls={BIN}a.bin", "--dpi-desync-fake-tls={BIN}b.bin"]);
     Assert(fake.Arguments.Contains("--dpi-desync-fake-tls=!"));
     Assert(fake.Arguments.Count(x => x.StartsWith("--dpi-desync-fake-tls=")) > 2);
 });
 Check("Disabled game filtering retains original disabled port", () =>
 {
-    var args = StrategyCatalog.Expand(catalog[0], "C:/Program Files/Z/bin", "C:/Data/lists", new());
+    var args = StrategyCatalog.Expand(FilterFixture(), "C:/Program Files/Z/bin", "C:/Data/lists", new());
     Assert(args.All(x => !x.Contains('{')));
     Assert(args[0].EndsWith(",12"));
     Assert(args.Any(x => x.Contains("C:/Program Files/Z/bin")));
 });
 Check("TCP and UDP filter ranges expand independently", () =>
 {
-    var args = StrategyCatalog.Expand(catalog[0], "bin", "lists", new() { GameFilter = GameFilterMode.Udp, TcpPorts = "2000-3000", UdpPorts = "4000,5000-6000" });
+    var args = StrategyCatalog.Expand(FilterFixture(), "bin", "lists", new() { GameFilter = GameFilterMode.Udp, TcpPorts = "2000-3000", UdpPorts = "4000,5000-6000" });
     Assert(args[0].EndsWith(",12")); Assert(args[1].EndsWith(",4000,5000-6000"));
 });
 Check("Ports reject injection, malformed input and invalid boundaries", () =>
@@ -327,6 +332,133 @@ if (OperatingSystem.IsWindows())
         finally { Native.LocalFree(data); }
     });
 
+
+Check("Shutdown input accepts hours and minutes and rejects unsafe or empty durations", () =>
+{
+    Equal(TimeSpan.FromMinutes(90), ShutdownTimerPolicy.Delay("1", "30"));
+    Equal(TimeSpan.FromDays(7), ShutdownTimerPolicy.Delay("168", "0"));
+    Throws<FormatException>(() => ShutdownTimerPolicy.Delay("1 & shutdown", "0"));
+    Throws<FormatException>(() => ShutdownTimerPolicy.Delay("0", "60"));
+    Throws<ArgumentOutOfRangeException>(() => ShutdownTimerPolicy.Delay("0", "0"));
+    Throws<ArgumentOutOfRangeException>(() => ShutdownTimerPolicy.Delay("168", "1"));
+});
+Check("Shutdown task is one-shot, non-forced and bound to an absolute UTC deadline", () =>
+{
+    var deadline = new DateTimeOffset(2026, 10, 25, 22, 15, 0, TimeSpan.FromHours(4));
+    string xml = ShutdownTimerPolicy.TaskXml(new(deadline), @"C:\Windows\System32\shutdown.exe", "S-1-5-21-1-2-3-1001");
+    var n = StartupPolicy.TaskNamespace;
+    var doc = System.Xml.Linq.XDocument.Parse(xml);
+    Equal("2026-10-25T18:15:00Z", doc.Descendants(n + "StartBoundary").Single().Value);
+    Assert(!ShutdownTimerPolicy.Arguments.Contains("/f"));
+    Assert(ShutdownTimerPolicy.Arguments.Contains("/t 0"));
+    Equal("false", doc.Descendants(n + "StartWhenAvailable").Single().Value);
+    Equal("false", doc.Descendants(n + "WakeToRun").Single().Value);
+    Equal(deadline.ToUniversalTime(), ShutdownTimerPolicy.ReadOwned(xml, @"C:\Windows\System32\shutdown.exe", "S-1-5-21-1-2-3-1001").Deadline);
+    Equal("1 д 01:00:00", ShutdownTimerPolicy.Remaining(deadline.AddHours(25), deadline));
+    Equal("00:00:00", ShutdownTimerPolicy.Remaining(deadline.AddSeconds(-1), deadline));
+});
+await AsyncCheck("Timer is restored by another controller and cancellation is idempotent", async () =>
+{
+    var backend = new TimerBackend();
+    const string exe = @"C:\Windows\System32\shutdown.exe", sid = "S-1-5-21-1-2-3-1001";
+    var first = new ShutdownTimerController(backend, exe, sid);
+    var now = new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
+    var scheduled = await first.ScheduleAsync(TimeSpan.FromMinutes(75), now, CancellationToken.None);
+    var restored = new ShutdownTimerController(backend, exe, sid);
+    Equal(scheduled, await restored.ReadAsync(CancellationToken.None));
+    await restored.CancelAsync(CancellationToken.None);
+    await restored.CancelAsync(CancellationToken.None);
+    Equal(1, backend.Deletes);
+    Equal<ShutdownPlan?>(null, await restored.ReadAsync(CancellationToken.None));
+});
+await AsyncCheck("Foreign and modified shutdown tasks are never replaced or deleted", async () =>
+{
+    const string exe = @"C:\Windows\System32\shutdown.exe", sid = "S-1-5-21-1-2-3-1001";
+    string own = ShutdownTimerPolicy.TaskXml(new(DateTimeOffset.UtcNow.AddHours(1)), exe, sid);
+    foreach (string foreign in new[] { own.Replace(ShutdownTimerPolicy.Source, "foreign"),
+        own.Replace(ShutdownTimerPolicy.Arguments.Replace("\"", "&quot;"), "/s /f /t 0"),
+        own.Replace(sid, "S-1-5-21-9-9-9-1001") })
+    {
+        // Attribute/text escaping may differ; use XML to change the action explicitly.
+        string xml = foreign;
+        if (xml == own)
+        {
+            var document = System.Xml.Linq.XDocument.Parse(own);
+            document.Descendants(StartupPolicy.TaskNamespace + "Arguments").Single().Value = "/s /f /t 0";
+            xml = document.ToString();
+        }
+        var backend = new TimerBackend { Xml = xml };
+        var timer = new ShutdownTimerController(backend, exe, sid);
+        bool rejectedSchedule = false, rejectedCancel = false;
+        try { await timer.ScheduleAsync(TimeSpan.FromHours(1), DateTimeOffset.UtcNow, CancellationToken.None); }
+        catch (InvalidOperationException) { rejectedSchedule = true; }
+        try { await timer.CancelAsync(CancellationToken.None); }
+        catch (InvalidOperationException) { rejectedCancel = true; }
+        Assert(rejectedSchedule && rejectedCancel);
+        Equal(0, backend.Registers); Equal(0, backend.Deletes);
+    }
+});
+Check("Upstream list updates replace defaults while retaining user edits and lists", () => Temporary(directory =>
+{
+    string source = Path.Combine(directory, "source"), data = Path.Combine(directory, "data");
+    Directory.CreateDirectory(source); Directory.CreateDirectory(data);
+    File.WriteAllText(Path.Combine(source, "list-general.txt"), "old.example\r\n");
+    File.WriteAllText(Path.Combine(data, "list-general.txt"), "old.example\n");
+    File.WriteAllText(Path.Combine(data, "list-general-user.txt"), "my.example\n");
+    string receipt = Path.Combine(directory, "receipt.json");
+    var baseline = new Dictionary<string, string> { ["list-general.txt"] = SeedLists.ContentHash(Path.Combine(data, "list-general.txt")) };
+    File.WriteAllText(Path.Combine(source, "list-general.txt"), "new.example\n");
+    SeedLists.Synchronize(source, data, receipt, baseline);
+    Equal("new.example\n", File.ReadAllText(Path.Combine(data, "list-general.txt")));
+    File.WriteAllText(Path.Combine(data, "list-general.txt"), "new.example\ncustom.example\n");
+    File.WriteAllText(Path.Combine(source, "list-general.txt"), "third.example\n");
+    File.WriteAllText(Path.Combine(source, "list-general-user.txt"), "must-not-overwrite.example\n");
+    var preserved = SeedLists.Synchronize(source, data, receipt, baseline);
+    Assert(preserved.Contains("list-general.txt"));
+    Equal("new.example\ncustom.example\n", File.ReadAllText(Path.Combine(data, "list-general.txt")));
+    Equal("third.example\n", File.ReadAllText(Path.Combine(data, "list-general.txt.upstream")));
+    Equal("my.example\n", File.ReadAllText(Path.Combine(data, "list-general-user.txt")));
+}));
+Check("Bundle migration retains available preferences and replaces only removed components", () =>
+{
+    var saved = new AppSettings { StrategyId = catalog[0].Id, DiscordFake = "known.bin", GameFake = "removed.bin",
+        AutoUpdate = true, Startup = StartupMode.TrayAndConnect, TcpPorts = "12345" };
+    var migrated = SettingsMigration.ForBundle(saved, catalog, ["known.bin", "quic_new.bin"]);
+    Equal(saved.StrategyId, migrated.StrategyId); Equal("known.bin", migrated.DiscordFake); Equal("quic_new.bin", migrated.GameFake);
+    Equal(saved.Startup, migrated.Startup); Equal(saved.TcpPorts, migrated.TcpPorts); Assert(migrated.AutoUpdate);
+});
+Check("Engine integrity is checked before any installed file is changed", () => Temporary(directory =>
+{
+    string source = Path.Combine(directory, "source"), data = Path.Combine(directory, "data");
+    Directory.CreateDirectory(source); Directory.CreateDirectory(data);
+    File.WriteAllText(Path.Combine(source, "a.bin"), "new");
+    File.WriteAllText(Path.Combine(data, "a.bin"), "old");
+    var hashes = new Dictionary<string, string> { ["a.bin"] = new string('0', 64) };
+    Throws<InvalidDataException>(() => EngineFiles.Synchronize(source, data, hashes));
+    Equal("old", File.ReadAllText(Path.Combine(data, "a.bin")));
+}));
+Check("Engine updates preserve active fakes and roll back replacements on a locked file", () => Temporary(directory =>
+{
+    string source = Path.Combine(directory, "source"), data = Path.Combine(directory, "data");
+    Directory.CreateDirectory(source); Directory.CreateDirectory(data);
+    foreach (string name in new[] { "a.bin", "b.bin", "ACTIVE_GAME_UDP.bin" })
+    {
+        File.WriteAllText(Path.Combine(source, name), "new-" + name);
+        File.WriteAllText(Path.Combine(data, name), "old-" + name);
+    }
+    var hashes = Directory.GetFiles(source).ToDictionary(x => Path.GetFileName(x)!, EngineFiles.Hash);
+    if (OperatingSystem.IsWindows())
+    {
+        using (var locked = new FileStream(Path.Combine(data, "b.bin"), FileMode.Open, FileAccess.Read, FileShare.Read))
+            Throws<IOException>(() => EngineFiles.Synchronize(source, data, hashes));
+        Equal("old-a.bin", File.ReadAllText(Path.Combine(data, "a.bin")));
+        Equal(0, Directory.GetDirectories(data, ".update-*").Length);
+    }
+    EngineFiles.Synchronize(source, data, hashes);
+    Equal("new-a.bin", File.ReadAllText(Path.Combine(data, "a.bin")));
+    Equal("old-ACTIVE_GAME_UDP.bin", File.ReadAllText(Path.Combine(data, "ACTIVE_GAME_UDP.bin")));
+}));
+
 if (Array.IndexOf(args, "--published-update") is int publishedIndex && publishedIndex >= 0)
 {
     Check("A client on 0.2.2 discovers the published desktop installer", () =>
@@ -343,6 +475,14 @@ Console.WriteLine($"{passed} passed; {failures.Count} failed.");
 foreach (string failure in failures) Console.Error.WriteLine(failure);
 return failures.Count == 0 ? 0 : 1;
 
+Strategy FilterFixture() => new("fixture", "Fixture", "fixture.bat", "",
+    ["--wf-tcp=80,443,{GAME_TCP}", "--wf-udp=443,{GAME_UDP}", "--dpi-desync-fake-tls={BIN}fake.bin", "--hostlist={LISTS}domains.txt"]);
+void Temporary(Action<string> action)
+{
+    string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(directory);
+    try { action(directory); } finally { Directory.Delete(directory, true); }
+}
 void Check(string name, Action action)
 { try { action(); passed++; Console.WriteLine("PASS " + name); } catch (Exception error) { failures.Add(name + ": " + error); } }
 async Task AsyncCheck(string name, Func<Task> action)
@@ -391,4 +531,13 @@ sealed class DownloadHandler(byte[] bytes, bool fragmented = false) : System.Net
 sealed class FragmentedStream(byte[] bytes) : MemoryStream(bytes)
 {
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => base.ReadAsync(buffer[..Math.Min(1, buffer.Length)], cancellationToken);
+}
+
+sealed class TimerBackend : IShutdownTimerBackend
+{
+    public string? Xml;
+    public int Registers, Deletes;
+    public Task<string?> ReadXmlAsync(CancellationToken token) => Task.FromResult(Xml);
+    public Task RegisterAsync(string xml, CancellationToken token) { Registers++; Xml = xml; return Task.CompletedTask; }
+    public Task DeleteAsync(CancellationToken token) { Deletes++; Xml = null; return Task.CompletedTask; }
 }

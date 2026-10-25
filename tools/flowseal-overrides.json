@@ -1,0 +1,19 @@
+[
+  {
+    "source": "utils/test zapret.ps1",
+    "replacements": [
+      {
+        "before": "if ($score -gt $maxScore) {",
+        "after": "if ($score -gt 0 -and $score -gt $maxScore) {"
+      },
+      {
+        "before": "elseif ($score -eq $maxScore) {",
+        "after": "elseif ($score -gt 0 -and $score -eq $maxScore) {"
+      },
+      {
+        "before": "} finally {\n    Stop-Zapret\n    Restore-WinwsSnapshot -snapshot $originalWinws\n    if ($originalIpsetStatus -ne \"any\") {\n        Write-Host \"[INFO] Restoring original ipset mode...\" -ForegroundColor DarkGray\n        Set-IpsetMode -mode \"restore\"\n    }\n    Remove-Item -Path $ipsetFlagFile -ErrorAction SilentlyContinue\n}",
+        "after": "} finally {\n    Stop-Zapret\n    if ($originalIpsetStatus -ne \"any\") {\n        Write-Host \"[INFO] Restoring original ipset mode...\" -ForegroundColor DarkGray\n        Set-IpsetMode -mode \"restore\"\n    }\n    Restore-WinwsSnapshot -snapshot $originalWinws\n    Remove-Item -Path $ipsetFlagFile -ErrorAction SilentlyContinue\n}"
+      }
+    ]
+  }
+]

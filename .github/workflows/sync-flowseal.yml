@@ -1,0 +1,98 @@
+name: Sync Flowseal components
+
+on:
+  schedule:
+    - cron: '20 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  actions: read
+
+concurrency:
+  group: sync-flowseal
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Prepare stable upstream release
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/sync_flowseal.py --bump-version
+      - name: Open or update component PR
+        id: pr
+        if: steps.sync.outputs.changed == 'true'
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
+        with:
+          branch: upstream/flowseal
+          base: main
+          title: Update Flowseal components
+          commit-message: Update pinned Flowseal components
+          body-path: artifacts/upstream-summary.md
+          add-paths: |
+            vendor/zapret
+            resources
+            legacy/flowseal
+            build/obsolete-files.json
+            Directory.Build.props
+            src/Zapret.Desktop/app.manifest
+            README.md
+            docs/USER-GUIDE.md
+            docs/releases
+      - name: Resolve prepared branch for Windows validation
+        id: source
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          PR_OUTCOME: ${{ steps.pr.outcome }}
+        run: |
+          python - <<'PY'
+          import os, re, subprocess
+          data = subprocess.check_output(['git', 'ls-remote', 'origin', 'refs/heads/upstream/flowseal'], text=True).strip()
+          sha = data.split()[0] if data else ''
+          if not re.fullmatch('[0-9a-f]{40}', sha): raise SystemExit('Prepared branch was not pushed.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output: output.write('sha=' + sha + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('Prepared component branch: https://github.com/' + os.environ['GITHUB_REPOSITORY'] + '/compare/main...upstream/flowseal\n')
+              if os.environ['PR_OUTCOME'] != 'success':
+                  output.write('\nGitHub did not allow automatic PR creation. The prepared branch will still receive Windows validation; open the comparison link to create its PR.\n')
+          PY
+
+  validate:
+    needs: import
+    if: needs.import.outputs.sha != ''
+    uses: ./.github/workflows/desktop.yml
+    with:
+      source_ref: ${{ needs.import.outputs.sha }}
+
+  report:
+    needs: [import, validate]
+    if: always() && needs.import.outputs.sha != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report the Windows result on the exact upstream commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.import.outputs.sha }}
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+        run: |
+          python - <<'PY'
+          import os, subprocess
+          state = 'success' if os.environ['VALIDATION_RESULT'] == 'success' else 'failure'
+          repo = os.environ['GITHUB_REPOSITORY']
+          url = os.environ['GITHUB_SERVER_URL'] + '/' + repo + '/actions/runs/' + os.environ['GITHUB_RUN_ID']
+          subprocess.run(['gh', 'api', '--method', 'POST', 'repos/' + repo + '/statuses/' + os.environ['SOURCE_SHA'],
+              '-f', 'state=' + state, '-f', 'context=Flowseal Windows validation', '-f', 'target_url=' + url,
+              '-f', 'description=Desktop build, regression tests, installer and UI checks'], check=True)
+          PY

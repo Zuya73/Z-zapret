@@ -18,7 +18,7 @@ The driver and DLL remain separate and replaceable. No proprietary modifications
 
 Cygwin runtime (cygwin1.dll), unmodified:
 https://cygwin.com/
-LGPLv3+ with the Cygwin linking exception. Bundled runtime version: 3.4.10-1 (x86_64).
+LGPLv3+ with the Cygwin linking exception. Bundled runtime: x86_64, from the Flowseal release pinned in vendor/zapret/upstream.lock.json.
 License and corresponding source packages:
 https://cygwin.com/licensing.html
 https://cygwin.com/packages/summary/cygwin-src.html

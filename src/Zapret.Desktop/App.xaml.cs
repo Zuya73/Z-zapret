@@ -32,6 +32,9 @@ public partial class App : Application
                 }
                 if (e.Args.Contains("--uninstall-service"))
                 {
+                    var shutdownTimer = ShutdownTimerManager.Create();
+                    try { await shutdownTimer.CancelAsync(timeout.Token); }
+                    catch (InvalidOperationException) { /* Leave a foreign or manually modified task untouched. */ }
                     new Maintenance(paths).ModifyHosts(null);
                     await new StartupTaskManager().ApplyAsync(StartupMode.Disabled, timeout.Token);
                 }
@@ -47,7 +50,8 @@ public partial class App : Application
         bool startupCheck = e.Args.Contains("--startup-check");
         bool boundsCheck = e.Args.Contains("--window-bounds-check");
         bool motionCheck = e.Args.Contains("--motion-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck;
+        bool toolsCheck = e.Args.Contains("--tools-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -82,7 +86,7 @@ public partial class App : Application
             MessageBox.Show(error.Exception.Message, "Ошибка x2zapret", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
-        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation);
+        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null);
         MainWindow = window;
         if (startupInvocation)
         {
@@ -100,6 +104,11 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (toolsCheck)
+            {
+                try { await ToolsChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--tools-check").Skip(1).First()); }
+                catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); return; }
+            }
             if (motionCheck)
             {
                 try { await MotionChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--motion-check").Skip(1).First()); }

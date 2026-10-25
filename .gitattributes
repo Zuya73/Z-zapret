@@ -2,3 +2,9 @@
 *.ps1 text eol=crlf
 *.txt text eol=crlf
 vendor/zapret/licenses/* -whitespace
+
+# Preserve imported upstream files byte-for-byte; do not normalize their line endings.
+legacy/flowseal/** -text
+resources/lists/** -text
+vendor/zapret/bin/** -text
+vendor/zapret/licenses/Flowseal-LICENSE.txt -text
