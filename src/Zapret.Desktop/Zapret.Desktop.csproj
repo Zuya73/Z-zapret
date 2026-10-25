@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Zapret.Core\Zapret.Core.csproj" />
     <Resource Include="Assets\app.ico" />
+    <EmbeddedResource Include="Runtime\PcInfo\Collect.ps1" />
     <Resource Include="Assets\x2air.png" />
     <Content Include="..\..\resources\catalogs\strategies.json" CopyToOutputDirectory="PreserveNewest" Link="strategies.json" />
     <Content Include="..\..\resources\catalogs\upstream-info.json" CopyToOutputDirectory="PreserveNewest" Link="upstream-info.json" />

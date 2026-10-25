@@ -51,7 +51,8 @@ public partial class App : Application
         bool boundsCheck = e.Args.Contains("--window-bounds-check");
         bool motionCheck = e.Args.Contains("--motion-check");
         bool toolsCheck = e.Args.Contains("--tools-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck;
+        bool pcCheck = e.Args.Contains("--pc-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -86,7 +87,7 @@ public partial class App : Application
             MessageBox.Show(error.Exception.Message, "Ошибка x2zapret", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
-        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null);
+        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null, pcInformation: pcCheck ? PcInformationChecks.CreateSource() : null);
         MainWindow = window;
         if (startupInvocation)
         {
@@ -104,6 +105,11 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (pcCheck)
+            {
+                try { await PcInformationChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--pc-check").Skip(1).First()); }
+                catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); return; }
+            }
             if (toolsCheck)
             {
                 try { await ToolsChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--tools-check").Skip(1).First()); }

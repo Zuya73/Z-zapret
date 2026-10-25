@@ -99,6 +99,16 @@ jobs:
           if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Tools checks timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Tools checks failed.' }
           Get-Content artifacts/tools-check.json
+      - name: Verify PC information, privacy and native Windows inventory
+        shell: pwsh
+        run: |
+          $tokens = $null; $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'src/Zapret.Desktop/Runtime/PcInfo/Collect.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { $errors | Format-List; throw 'PC inventory script has syntax errors.' }
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--pc-check', 'artifacts/pc-information-check.json') -PassThru
+          if (-not $process.WaitForExit(480000)) { $process.Kill(); throw 'PC information checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'PC information checks failed.' }
+          Get-Content artifacts/pc-information-check.json
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -230,6 +240,7 @@ jobs:
             artifacts/window-bounds-*.json
             artifacts/motion-check.json
             artifacts/tools-check.json
+            artifacts/pc-information-check.json
           if-no-files-found: error
           retention-days: 30
 

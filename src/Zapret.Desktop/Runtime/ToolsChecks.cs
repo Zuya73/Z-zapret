@@ -14,6 +14,7 @@ internal static class ToolsChecks
     {
         var checks = new List<string>();
         window.SelectPage("Tools");
+        window.ShowShutdownTool();
         await Task.Delay(450);
         Require(window.ToolsPanel.Visibility == Visibility.Visible && window.PageTitle.Text == "X2 Tools", "Tools tab is reachable with the correct title");
         var bottom = window.StartShutdownTimerButton.PointToScreen(new(0, window.StartShutdownTimerButton.ActualHeight));
