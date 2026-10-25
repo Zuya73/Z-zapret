@@ -74,6 +74,7 @@ public partial class MainWindow
         PcMinimumColumn.Visibility = PcMaximumColumn.Visibility = category.Id == "sensors" ? Visibility.Visible : Visibility.Collapsed;
         PcHardwareBar.Visibility = hardwareSource != null && HardwarePcInformation.IsHardware(category.Id) ? Visibility.Visible : Visibility.Collapsed;
         UpdatePawnState();
+        if (!HardwarePcInformation.IsHardware(category.Id)) hardwareSource?.Stop();
         pcCancellation?.Cancel();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         pcCancellation = cancellation;
@@ -83,7 +84,7 @@ public partial class MainWindow
         PcCancelButton.IsEnabled = true;
         try
         {
-            var section = await pcSession.ReadAsync(category.Id, refresh, cancellation.Token);
+            var section = await pcSession.ReadAsync(category.Id, refresh || HardwarePcInformation.IsHardware(category.Id), cancellation.Token);
             if (request != pcRequest) return;
             pcSection = section; ApplyPcFilter();
         }
@@ -167,6 +168,7 @@ public partial class MainWindow
         var driver = PawnDriver.State();
         PcDriverStatus.Text = driver.Ready ? "Встроенные датчики · PawnIO " + driver.Version : "PawnIO: " + driver.Version + ". GPU, диски и батарея доступны без него.";
         if (pawnRebootRequired || !driver.Ready && Version.TryParse(driver.Version, out _)) PcDriverStatus.Text += " Если показания недоступны, перезагрузите Windows.";
+        PcDriverButton.Visibility = PcHardwareBar.Visibility == Visibility.Visible && !driver.Ready ? Visibility.Visible : Visibility.Collapsed;
         PcDriverButton.IsEnabled = !driver.Ready && !pcExporting && PawnDriver.CanInstallOver(driver.Version);
     }
     private async void InstallPawn_Click(object sender, RoutedEventArgs e)

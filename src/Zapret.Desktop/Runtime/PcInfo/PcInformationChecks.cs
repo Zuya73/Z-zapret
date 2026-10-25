@@ -34,6 +34,20 @@ internal static class PcInformationChecks
         window.PcCategoryPicker.SelectedItem = PcCategory.Find("sensors");
         await WaitFor(() => !window.PcCancelButton.IsEnabled);
         Require(window.PcRowsGrid.Items.Count == 0 && window.PcWarningText.Text.Contains("недоступны"), "Missing sensor providers show an explanation without invented readings");
+        var sensorRows = new PcRow[]
+        {
+            new("CPU", "Package", "54 °C", false, "41 °C", "63 °C"),
+            new("GPU", "Core", "47 °C", false, "38 °C", "52 °C"),
+            new("Плата", "CPU Fan", "840 об/мин", false, "720 об/мин", "1100 об/мин")
+        };
+        window.PcRowsGrid.ItemsSource = sensorRows;
+        window.PcDriverButton.Visibility = Visibility.Visible; window.PcDriverButton.IsEnabled = false;
+        window.PcStatusText.Text = "Пример интерфейса · демонстрационные показания";
+        window.UpdateLayout();
+        Require(window.PcMinimumColumn.Visibility == Visibility.Visible && window.PcMaximumColumn.Visibility == Visibility.Visible &&
+            window.PcMinimumColumn.GetCellContent(sensorRows[0]) is System.Windows.Controls.TextBlock { Text: "41 °C" }, "Sensor minimum and maximum bind to the visible WPF columns");
+        InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "hardware-preview.png"));
+        window.PcDriverButton.Visibility = Visibility.Collapsed;
         window.PcCategoryPicker.SelectedItem = PcCategory.Find("summary");
         await WaitFor(() => !window.PcCancelButton.IsEnabled);
         window.PcStatusText.Text = "Пример интерфейса · демонстрационные характеристики";

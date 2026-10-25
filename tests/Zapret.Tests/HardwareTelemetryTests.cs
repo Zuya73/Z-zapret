@@ -25,6 +25,12 @@ internal static class HardwareTelemetryTests
             Assert(!PcInformation.Report([section], false).Contains("SECRET"));
             Assert(PcInformation.Report([section], true).Contains("MIN-SECRET"));
         });
+        check("Native hardware names cannot inject report headings or control characters", () =>
+        {
+            var section = new PcSection("sensors", "Sensors", DateTimeOffset.UtcNow, [new("Device\n[Injected]", "Temperature", "42\u001b")], []);
+            var row = PcInformation.Visible(section, "", false).Single();
+            Assert(!row.Device.Contains('\n') && !row.Value.Contains('\u001b'));
+        });
         check("Sensor units preserve timing and distinguish clocks from throughput", () =>
         {
             Assert(SensorStatistics.Format(12, "Timing").EndsWith("нс"));

@@ -51,7 +51,9 @@ public static class PcInformation
     public static IReadOnlyList<PcRow> Visible(PcSection section, string query, bool includePrivate)
     {
         query = query.Trim();
-        return section.Rows.Select(r => r.Sensitive && !includePrivate ? r with { Value = Hidden, Minimum = r.Minimum.Length > 0 ? Hidden : "", Maximum = r.Maximum.Length > 0 ? Hidden : "" } : r)
+        var safeRows = section.Rows.Select(r => r with { Device = Clean(r.Device), Property = Clean(r.Property), Value = Clean(r.Value),
+            Minimum = string.IsNullOrEmpty(r.Minimum) ? "" : Clean(r.Minimum), Maximum = string.IsNullOrEmpty(r.Maximum) ? "" : Clean(r.Maximum) });
+        return safeRows.Select(r => r.Sensitive && !includePrivate ? r with { Value = Hidden, Minimum = r.Minimum.Length > 0 ? Hidden : "", Maximum = r.Maximum.Length > 0 ? Hidden : "" } : r)
             .Where(r => query.Length == 0 || r.Device.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 r.Property.Contains(query, StringComparison.OrdinalIgnoreCase) || r.Value.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
     }
