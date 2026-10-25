@@ -13,7 +13,7 @@ internal static class MotionChecks
     {
         bool? preference = Motion.EnabledOverride;
         var checks = new List<string>();
-        var pages = new FrameworkElement[] { window.HomePanel, window.TestsPanel, window.StrategiesPanel, window.DiagnosticsPanel, window.SettingsPanel, window.LogsPanel };
+        var pages = new FrameworkElement[] { window.HomePanel, window.TestsPanel, window.StrategiesPanel, window.DiagnosticsPanel, window.SettingsPanel, window.LogsPanel, window.ToolsPanel };
         try
         {
             Motion.EnabledOverride = true; window.ApplyMotionPreferences();

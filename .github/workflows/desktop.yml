@@ -8,12 +8,17 @@ on:
   pull_request:
     paths: ['x2zapret.exe', 'src/**', 'tests/**', 'resources/**', 'vendor/**', 'legacy/**', 'build/**', 'tools/**', 'docs/USER-GUIDE.md', 'docs/THIRD-PARTY-NOTICES.txt', 'Directory.Build.props', 'global.json', 'x2zapret.slnx', '.github/workflows/desktop.yml']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_ref:
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: desktop-${{ github.ref }}
+  group: desktop-${{ inputs.source_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,13 +27,23 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || github.sha }}
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
       - name: Verify repository structure
         run: python tools/verify_repository.py
+      - name: Prevent reusing a released application version
+        run: python tools/verify_release_version.py
       - name: Verify vendored engine manifest
         run: python tools/generate_engine_manifest.py --check
+      - name: Verify pinned Flowseal snapshot
+        run: python tools/verify_upstream.py
+      - name: Verify upstream import round trip
+        run: python tools/sync_flowseal.py --check
+      - name: Test Flowseal update tooling
+        run: python -m unittest discover -s tools -p test_flowseal_sync.py
       - name: Verify imported strategies
         run: python tools/import_flowseal_strategies.py --check
       - name: Verify desktop release version
@@ -77,6 +92,13 @@ jobs:
           $receipt = Get-Content artifacts/motion-check.json -Raw | ConvertFrom-Json
           if ($receipt.passed -lt 10) { throw 'Motion checks are incomplete.' }
           Get-Content artifacts/motion-check.json
+      - name: Verify X2 Tools without shutting down the runner
+        shell: pwsh
+        run: |
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--tools-check', 'artifacts/tools-check.json') -PassThru
+          if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Tools checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Tools checks failed.' }
+          Get-Content artifacts/tools-check.json
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -207,11 +229,12 @@ jobs:
             artifacts/tray-check.json
             artifacts/window-bounds-*.json
             artifacts/motion-check.json
+            artifacts/tools-check.json
           if-no-files-found: error
           retention-days: 30
 
   release:
-    if: startsWith(github.ref, 'refs/tags/desktop-v') || ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main')
+    if: inputs.source_ref == '' && (startsWith(github.ref, 'refs/tags/desktop-v') || ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'))
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -236,7 +259,7 @@ jobs:
         run: dotnet run --project tests/Zapret.Tests -c Release -- . --published-update release/published-releases.json
 
   publish-root-executable:
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    if: inputs.source_ref == '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:

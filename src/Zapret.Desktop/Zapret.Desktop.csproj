@@ -17,6 +17,8 @@
     <Resource Include="Assets\app.ico" />
     <Resource Include="Assets\x2air.png" />
     <Content Include="..\..\resources\catalogs\strategies.json" CopyToOutputDirectory="PreserveNewest" Link="strategies.json" />
+    <Content Include="..\..\resources\catalogs\upstream-info.json" CopyToOutputDirectory="PreserveNewest" Link="upstream-info.json" />
+    <Content Include="..\..\resources\catalogs\legacy-seed-hashes.json" CopyToOutputDirectory="PreserveNewest" Link="legacy-seed-hashes.json" />
     <Content Include="..\..\resources\catalogs\targets.json" CopyToOutputDirectory="PreserveNewest" Link="targets.json" />
   </ItemGroup>
 </Project>

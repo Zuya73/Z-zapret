@@ -1,0 +1,393 @@
+{
+  "schemaVersion": 1,
+  "repository": "Flowseal/zapret-discord-youtube",
+  "version": "1.10.4",
+  "commit": "176f56dc3f11ce5915c26abcdde903f93d835b64",
+  "profileCount": 22,
+  "files": [
+    {
+      "source": ".service/hosts",
+      "path": "legacy/flowseal/.service/hosts",
+      "sourceBlob": "669ae25f1dcd51a4037266b4dc2cb4e111ba997a",
+      "blob": "669ae25f1dcd51a4037266b4dc2cb4e111ba997a"
+    },
+    {
+      "source": ".service/ipset-service.txt",
+      "path": "legacy/flowseal/.service/ipset-service.txt",
+      "sourceBlob": "b15b5f76288c9f90db3741813635c511b2f90158",
+      "blob": "b15b5f76288c9f90db3741813635c511b2f90158"
+    },
+    {
+      "source": ".service/version.txt",
+      "path": "legacy/flowseal/.service/version.txt",
+      "sourceBlob": "5a68790efc2053a0f94f12167de598b38b284d9c",
+      "blob": "5a68790efc2053a0f94f12167de598b38b284d9c"
+    },
+    {
+      "source": "LICENSE.txt",
+      "path": "vendor/zapret/licenses/Flowseal-LICENSE.txt",
+      "sourceBlob": "a6fe023c0ace555229cca38f997e782f2d31643e",
+      "blob": "a6fe023c0ace555229cca38f997e782f2d31643e"
+    },
+    {
+      "source": "README.md",
+      "path": "legacy/flowseal/README.md",
+      "sourceBlob": "d8be6939927fc831d30e4cc3b471bd48f90f0d64",
+      "blob": "d8be6939927fc831d30e4cc3b471bd48f90f0d64"
+    },
+    {
+      "source": "bin/ACTIVE_DISCORD_UDP.bin",
+      "path": "vendor/zapret/bin/ACTIVE_DISCORD_UDP.bin",
+      "sourceBlob": "7c0013b92920c337438b6f3e447152d8033606cf",
+      "blob": "7c0013b92920c337438b6f3e447152d8033606cf"
+    },
+    {
+      "source": "bin/ACTIVE_GAME_UDP.bin",
+      "path": "vendor/zapret/bin/ACTIVE_GAME_UDP.bin",
+      "sourceBlob": "7ad95b5d5a2d362c356494974687ab2c2abdf743",
+      "blob": "7ad95b5d5a2d362c356494974687ab2c2abdf743"
+    },
+    {
+      "source": "bin/WinDivert.dll",
+      "path": "vendor/zapret/bin/WinDivert.dll",
+      "sourceBlob": "50ca874308a916f834e02a749bcce365673426f3",
+      "blob": "50ca874308a916f834e02a749bcce365673426f3"
+    },
+    {
+      "source": "bin/WinDivert64.sys",
+      "path": "vendor/zapret/bin/WinDivert64.sys",
+      "sourceBlob": "218ccaf423ef0a67696226f9ef3a09149e4441d0",
+      "blob": "218ccaf423ef0a67696226f9ef3a09149e4441d0"
+    },
+    {
+      "source": "bin/cygwin1.dll",
+      "path": "vendor/zapret/bin/cygwin1.dll",
+      "sourceBlob": "1bb2e05c6d5458ad7987859a17172b635e87b9c5",
+      "blob": "1bb2e05c6d5458ad7987859a17172b635e87b9c5"
+    },
+    {
+      "source": "bin/quic_initial_4pda_to.bin",
+      "path": "vendor/zapret/bin/quic_initial_4pda_to.bin",
+      "sourceBlob": "7ad95b5d5a2d362c356494974687ab2c2abdf743",
+      "blob": "7ad95b5d5a2d362c356494974687ab2c2abdf743"
+    },
+    {
+      "source": "bin/quic_initial_5ka_ru.bin",
+      "path": "vendor/zapret/bin/quic_initial_5ka_ru.bin",
+      "sourceBlob": "48a6268ad8d27fb976dc57b4c044f010536425f9",
+      "blob": "48a6268ad8d27fb976dc57b4c044f010536425f9"
+    },
+    {
+      "source": "bin/quic_initial_lemana_pro.bin",
+      "path": "vendor/zapret/bin/quic_initial_lemana_pro.bin",
+      "sourceBlob": "59593ba851f0b1b9c8924853154cda30969f3dda",
+      "blob": "59593ba851f0b1b9c8924853154cda30969f3dda"
+    },
+    {
+      "source": "bin/quic_initial_rutube_ru.bin",
+      "path": "vendor/zapret/bin/quic_initial_rutube_ru.bin",
+      "sourceBlob": "6cf95250251d185cdd7e8adaf071c0691f25fe3e",
+      "blob": "6cf95250251d185cdd7e8adaf071c0691f25fe3e"
+    },
+    {
+      "source": "bin/quic_initial_steam_chat_com.bin",
+      "path": "vendor/zapret/bin/quic_initial_steam_chat_com.bin",
+      "sourceBlob": "49f7512835bee040471f23ae0a1a32964c4c043c",
+      "blob": "49f7512835bee040471f23ae0a1a32964c4c043c"
+    },
+    {
+      "source": "bin/quic_initial_steamcommunity_com.bin",
+      "path": "vendor/zapret/bin/quic_initial_steamcommunity_com.bin",
+      "sourceBlob": "7c0013b92920c337438b6f3e447152d8033606cf",
+      "blob": "7c0013b92920c337438b6f3e447152d8033606cf"
+    },
+    {
+      "source": "bin/quic_initial_steamstatic_com.bin",
+      "path": "vendor/zapret/bin/quic_initial_steamstatic_com.bin",
+      "sourceBlob": "85644f49294fda9352bcdf2423a76c17bdc30fd5",
+      "blob": "85644f49294fda9352bcdf2423a76c17bdc30fd5"
+    },
+    {
+      "source": "bin/quic_initial_tencent_com.bin",
+      "path": "vendor/zapret/bin/quic_initial_tencent_com.bin",
+      "sourceBlob": "7a7c04ee3ed2e7cf6e02290d69761c7b7b37c524",
+      "blob": "7a7c04ee3ed2e7cf6e02290d69761c7b7b37c524"
+    },
+    {
+      "source": "bin/quic_initial_www_google_com.bin",
+      "path": "vendor/zapret/bin/quic_initial_www_google_com.bin",
+      "sourceBlob": "80a07cc8870c88be6d8ac7f9bf9dc9bb1979468b",
+      "blob": "80a07cc8870c88be6d8ac7f9bf9dc9bb1979468b"
+    },
+    {
+      "source": "bin/stun.bin",
+      "path": "vendor/zapret/bin/stun.bin",
+      "sourceBlob": "a97b5acbe80be0452011387fa9ae33afb8f87249",
+      "blob": "a97b5acbe80be0452011387fa9ae33afb8f87249"
+    },
+    {
+      "source": "bin/stun2.bin",
+      "path": "vendor/zapret/bin/stun2.bin",
+      "sourceBlob": "5f8619f0949c535c0cb5ca52e6271de54d02182e",
+      "blob": "5f8619f0949c535c0cb5ca52e6271de54d02182e"
+    },
+    {
+      "source": "bin/tls_clienthello_4pda_to.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_4pda_to.bin",
+      "sourceBlob": "21ac37804ff14244d20868d3a5ca62ef0247a9aa",
+      "blob": "21ac37804ff14244d20868d3a5ca62ef0247a9aa"
+    },
+    {
+      "source": "bin/tls_clienthello_5ka_ru.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_5ka_ru.bin",
+      "sourceBlob": "53113a698bc46c3d54ccf0d467f77bc15999b8b3",
+      "blob": "53113a698bc46c3d54ccf0d467f77bc15999b8b3"
+    },
+    {
+      "source": "bin/tls_clienthello_awswaf_com.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_awswaf_com.bin",
+      "sourceBlob": "ebc48bc6d45eaab7524650b04c11ef3c864fcf8e",
+      "blob": "ebc48bc6d45eaab7524650b04c11ef3c864fcf8e"
+    },
+    {
+      "source": "bin/tls_clienthello_max_ru.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_max_ru.bin",
+      "sourceBlob": "64a1af8bd27d0aee0d06b3293aeeeb163999418b",
+      "blob": "64a1af8bd27d0aee0d06b3293aeeeb163999418b"
+    },
+    {
+      "source": "bin/tls_clienthello_sochi_park.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_sochi_park.bin",
+      "sourceBlob": "e5fbaa4ff73fca95045c666fda0c52ebe670f817",
+      "blob": "e5fbaa4ff73fca95045c666fda0c52ebe670f817"
+    },
+    {
+      "source": "bin/tls_clienthello_steam_chat_com.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_steam_chat_com.bin",
+      "sourceBlob": "2aa913dae8036202acd7e58554ea71ec188557ab",
+      "blob": "2aa913dae8036202acd7e58554ea71ec188557ab"
+    },
+    {
+      "source": "bin/tls_clienthello_steamstatic_com.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_steamstatic_com.bin",
+      "sourceBlob": "31cd3e97d85da57312b5fcf83af20ac2bf66bf93",
+      "blob": "31cd3e97d85da57312b5fcf83af20ac2bf66bf93"
+    },
+    {
+      "source": "bin/tls_clienthello_teamspeak_com.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_teamspeak_com.bin",
+      "sourceBlob": "7aaa8d01f37b78349bc7377a5ef3a0d8a6f79798",
+      "blob": "7aaa8d01f37b78349bc7377a5ef3a0d8a6f79798"
+    },
+    {
+      "source": "bin/tls_clienthello_www_google_com.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_www_google_com.bin",
+      "sourceBlob": "62985b63657c9343b805f915e5774a4e26a554d5",
+      "blob": "62985b63657c9343b805f915e5774a4e26a554d5"
+    },
+    {
+      "source": "bin/tls_clienthello_www_sferum_ru.bin",
+      "path": "vendor/zapret/bin/tls_clienthello_www_sferum_ru.bin",
+      "sourceBlob": "3e787b80c73df4914cb232a53da16cac469f2329",
+      "blob": "3e787b80c73df4914cb232a53da16cac469f2329"
+    },
+    {
+      "source": "bin/winws.exe",
+      "path": "vendor/zapret/bin/winws.exe",
+      "sourceBlob": "bc2cc0ff325fd92da4130b9d781992ff49355ccc",
+      "blob": "bc2cc0ff325fd92da4130b9d781992ff49355ccc"
+    },
+    {
+      "source": "general (ALT).bat",
+      "path": "legacy/flowseal/general (ALT).bat",
+      "sourceBlob": "5aad9b669414d30ffc8275fb1bd9b58a6483ded0",
+      "blob": "5aad9b669414d30ffc8275fb1bd9b58a6483ded0"
+    },
+    {
+      "source": "general (ALT10).bat",
+      "path": "legacy/flowseal/general (ALT10).bat",
+      "sourceBlob": "8c3dad12039b500a8682e184b363211999451215",
+      "blob": "8c3dad12039b500a8682e184b363211999451215"
+    },
+    {
+      "source": "general (ALT11).bat",
+      "path": "legacy/flowseal/general (ALT11).bat",
+      "sourceBlob": "505590e1b4a9d50eaba615c88a9f7da7b7486de9",
+      "blob": "505590e1b4a9d50eaba615c88a9f7da7b7486de9"
+    },
+    {
+      "source": "general (ALT12).bat",
+      "path": "legacy/flowseal/general (ALT12).bat",
+      "sourceBlob": "c60458d547b480aa2d705d6b879f278dedd6aad7",
+      "blob": "c60458d547b480aa2d705d6b879f278dedd6aad7"
+    },
+    {
+      "source": "general (ALT13).bat",
+      "path": "legacy/flowseal/general (ALT13).bat",
+      "sourceBlob": "449c8661f953ed1a2d560a7f1e1718fecd5ca135",
+      "blob": "449c8661f953ed1a2d560a7f1e1718fecd5ca135"
+    },
+    {
+      "source": "general (ALT2).bat",
+      "path": "legacy/flowseal/general (ALT2).bat",
+      "sourceBlob": "9735cd6d32bfebd0c7117deb8e63d2a49a8bc696",
+      "blob": "9735cd6d32bfebd0c7117deb8e63d2a49a8bc696"
+    },
+    {
+      "source": "general (ALT3).bat",
+      "path": "legacy/flowseal/general (ALT3).bat",
+      "sourceBlob": "92ee86210d21b7d0d58868ed3177a37d86bf54f0",
+      "blob": "92ee86210d21b7d0d58868ed3177a37d86bf54f0"
+    },
+    {
+      "source": "general (ALT4).bat",
+      "path": "legacy/flowseal/general (ALT4).bat",
+      "sourceBlob": "b479b4590c2722d3ad1d95277b4c13ecd450ec31",
+      "blob": "b479b4590c2722d3ad1d95277b4c13ecd450ec31"
+    },
+    {
+      "source": "general (ALT5).bat",
+      "path": "legacy/flowseal/general (ALT5).bat",
+      "sourceBlob": "ab096d79483892ce736a93d21db9571df2c5f940",
+      "blob": "ab096d79483892ce736a93d21db9571df2c5f940"
+    },
+    {
+      "source": "general (ALT6).bat",
+      "path": "legacy/flowseal/general (ALT6).bat",
+      "sourceBlob": "bf9d64580b586e64ca81dd3269bff6dfe252145a",
+      "blob": "bf9d64580b586e64ca81dd3269bff6dfe252145a"
+    },
+    {
+      "source": "general (ALT7).bat",
+      "path": "legacy/flowseal/general (ALT7).bat",
+      "sourceBlob": "c55fedec0054ce7c40994561e34ebf0b08a9f42d",
+      "blob": "c55fedec0054ce7c40994561e34ebf0b08a9f42d"
+    },
+    {
+      "source": "general (ALT8).bat",
+      "path": "legacy/flowseal/general (ALT8).bat",
+      "sourceBlob": "08273b43815d06a5416efba5006ff0a09de37ad0",
+      "blob": "08273b43815d06a5416efba5006ff0a09de37ad0"
+    },
+    {
+      "source": "general (ALT9).bat",
+      "path": "legacy/flowseal/general (ALT9).bat",
+      "sourceBlob": "f28fdc2eaa03643668123cf6f8a3ab64e11aed24",
+      "blob": "f28fdc2eaa03643668123cf6f8a3ab64e11aed24"
+    },
+    {
+      "source": "general (EXP).bat",
+      "path": "legacy/flowseal/general (EXP).bat",
+      "sourceBlob": "e9071d9dcf3c5d0d4fcc481797e90681bcd96da5",
+      "blob": "e9071d9dcf3c5d0d4fcc481797e90681bcd96da5"
+    },
+    {
+      "source": "general (FAKE TLS AUTO ALT).bat",
+      "path": "legacy/flowseal/general (FAKE TLS AUTO ALT).bat",
+      "sourceBlob": "66b8a60bcbdcd4f36a6b29f7a8099478236166b0",
+      "blob": "66b8a60bcbdcd4f36a6b29f7a8099478236166b0"
+    },
+    {
+      "source": "general (FAKE TLS AUTO ALT2).bat",
+      "path": "legacy/flowseal/general (FAKE TLS AUTO ALT2).bat",
+      "sourceBlob": "8764c7fe0e7c05d85b4aeb7ccb5310af08230016",
+      "blob": "8764c7fe0e7c05d85b4aeb7ccb5310af08230016"
+    },
+    {
+      "source": "general (FAKE TLS AUTO ALT3).bat",
+      "path": "legacy/flowseal/general (FAKE TLS AUTO ALT3).bat",
+      "sourceBlob": "192c87334b28e25059767d58fd7875f18c44da4d",
+      "blob": "192c87334b28e25059767d58fd7875f18c44da4d"
+    },
+    {
+      "source": "general (FAKE TLS AUTO).bat",
+      "path": "legacy/flowseal/general (FAKE TLS AUTO).bat",
+      "sourceBlob": "e6825a98a88076fb5eeec10cd413142a6f5f8b1d",
+      "blob": "e6825a98a88076fb5eeec10cd413142a6f5f8b1d"
+    },
+    {
+      "source": "general (SIMPLE FAKE ALT).bat",
+      "path": "legacy/flowseal/general (SIMPLE FAKE ALT).bat",
+      "sourceBlob": "54678fb11701cc75349ca0ad7fb29a279423703d",
+      "blob": "54678fb11701cc75349ca0ad7fb29a279423703d"
+    },
+    {
+      "source": "general (SIMPLE FAKE ALT2).bat",
+      "path": "legacy/flowseal/general (SIMPLE FAKE ALT2).bat",
+      "sourceBlob": "2ac7977538d2d62ae817fd606a2a8a122be9e27c",
+      "blob": "2ac7977538d2d62ae817fd606a2a8a122be9e27c"
+    },
+    {
+      "source": "general (SIMPLE FAKE).bat",
+      "path": "legacy/flowseal/general (SIMPLE FAKE).bat",
+      "sourceBlob": "ebeb065409dcfc5b10c927f230a8582d48ee3957",
+      "blob": "ebeb065409dcfc5b10c927f230a8582d48ee3957"
+    },
+    {
+      "source": "general.bat",
+      "path": "legacy/flowseal/general.bat",
+      "sourceBlob": "9ad8e359a08d1175e98380e1142ea338f04e153c",
+      "blob": "9ad8e359a08d1175e98380e1142ea338f04e153c"
+    },
+    {
+      "source": "lists/ipset-all.txt",
+      "path": "resources/lists/ipset-all.txt",
+      "sourceBlob": "9d9a09155d386089dec6bc917e71350a43c0bddb",
+      "blob": "9d9a09155d386089dec6bc917e71350a43c0bddb"
+    },
+    {
+      "source": "lists/ipset-all.txt.backup",
+      "path": "resources/lists/ipset-all.txt.backup",
+      "sourceBlob": "f31990049531a8774c1d8e2e1a5b1d0406bf1722",
+      "blob": "f31990049531a8774c1d8e2e1a5b1d0406bf1722"
+    },
+    {
+      "source": "lists/ipset-exclude.txt",
+      "path": "resources/lists/ipset-exclude.txt",
+      "sourceBlob": "7e057573a322e1cf2d5c1d19845a36767be9682e",
+      "blob": "7e057573a322e1cf2d5c1d19845a36767be9682e"
+    },
+    {
+      "source": "lists/list-exclude.txt",
+      "path": "resources/lists/list-exclude.txt",
+      "sourceBlob": "697cf7b31eaec38a40859e2913819aa369bc792c",
+      "blob": "697cf7b31eaec38a40859e2913819aa369bc792c"
+    },
+    {
+      "source": "lists/list-general.txt",
+      "path": "resources/lists/list-general.txt",
+      "sourceBlob": "9cadd6ded77c566fd28be52d5e4302d60b9fd64e",
+      "blob": "9cadd6ded77c566fd28be52d5e4302d60b9fd64e"
+    },
+    {
+      "source": "lists/list-google.txt",
+      "path": "resources/lists/list-google.txt",
+      "sourceBlob": "e08fb6dad3395e9e14ead9c581ce4a5d9fd103f0",
+      "blob": "e08fb6dad3395e9e14ead9c581ce4a5d9fd103f0"
+    },
+    {
+      "source": "service.bat",
+      "path": "legacy/flowseal/service.bat",
+      "sourceBlob": "6257ea8ce01d94a6a2c0d8aad9de804d07921e2d",
+      "blob": "6257ea8ce01d94a6a2c0d8aad9de804d07921e2d"
+    },
+    {
+      "source": "utils/check_updates.enabled",
+      "path": "legacy/flowseal/utils/check_updates.enabled",
+      "sourceBlob": "13fde3cabdcf2217e34b0c45de86d8c70c159992",
+      "blob": "13fde3cabdcf2217e34b0c45de86d8c70c159992"
+    },
+    {
+      "source": "utils/targets.txt",
+      "path": "legacy/flowseal/utils/targets.txt",
+      "sourceBlob": "4a5ca2eeb8bcf40f2a5c993d2a197dbbd03195d9",
+      "blob": "4a5ca2eeb8bcf40f2a5c993d2a197dbbd03195d9"
+    },
+    {
+      "source": "utils/test zapret.ps1",
+      "path": "legacy/flowseal/utils/test zapret.ps1",
+      "sourceBlob": "dfc55744c72d6396a177d5f62ddf1a7c8ac91eef",
+      "blob": "63db77a6c74d49777506139f6e3c07e395c65cda"
+    }
+  ]
+}

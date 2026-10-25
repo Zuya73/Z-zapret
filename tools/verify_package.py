@@ -19,15 +19,17 @@ def verify(directory, legacy=False):
     if legacy:
         needed += ['service.bat', 'general.bat', 'utils/test zapret.ps1', 'utils/targets.txt',
                    'utils/check_updates.enabled', '.service/version.txt', '.service/hosts', '.service/ipset-service.txt']
-        require(len(list(directory.glob('general*.bat'))) == 22, 'Legacy bundle must contain all 22 profiles.')
+        expected = len(list((Path(__file__).resolve().parents[1] / 'legacy/flowseal').glob('general*.bat')))
+        require(len(list(directory.glob('general*.bat'))) == expected, 'Legacy bundle must contain every imported profile.')
     else:
         needed += ['x2zapret.exe', 'x2zapret.dll', 'x2zapret.deps.json', 'x2zapret.runtimeconfig.json',
-                   'Zapret.Core.dll', 'strategies.json', 'targets.json', 'engine-manifest.json']
+                   'Zapret.Core.dll', 'strategies.json', 'targets.json', 'engine-manifest.json', 'upstream-info.json', 'legacy-seed-hashes.json']
         scripts = [p for p in directory.rglob('*') if p.suffix.lower() in {'.bat', '.ps1'}]
         require(not scripts, f'Runtime must not contain legacy scripts: {scripts}')
         require(not (directory / 'utils').exists() and not (directory / '.service').exists(), 'Runtime contains legacy folders.')
         catalog = json.loads((directory / 'strategies.json').read_text(encoding='utf-8-sig'))
-        require(len(catalog) == 22, 'Runtime must contain all 22 strategies.')
+        info = json.loads((directory / 'upstream-info.json').read_text(encoding='utf-8-sig'))
+        require(len(catalog) == info['profileCount'] and len(catalog) > 0, 'Runtime profile count differs from its component version.')
         for strategy in catalog:
             for argument in strategy['arguments']:
                 for folder, name in re.findall(r'\{(BIN|LISTS)\}([^\s"{}]+)', argument):

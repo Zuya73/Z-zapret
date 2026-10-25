@@ -23,7 +23,7 @@ public partial class MainWindow : Window
 {
     internal WindowWorkArea WorkAreaBehavior { get; }
     private readonly PageTransitions pageTransitions;
-    private FrameworkElement[] Pages => [HomePanel, TestsPanel, StrategiesPanel, DiagnosticsPanel, SettingsPanel, LogsPanel];
+    private FrameworkElement[] Pages => [HomePanel, TestsPanel, StrategiesPanel, DiagnosticsPanel, ToolsPanel, SettingsPanel, LogsPanel];
     internal void SelectPage(string page) => Navigate_Click(new Button { Tag = page }, new RoutedEventArgs());
     internal void ApplyMotionPreferences() { pageTransitions.Finish(); Motion.Refresh(this); }
     private void MotionPreferencesChanged(object? sender, PropertyChangedEventArgs e)
@@ -60,12 +60,13 @@ public partial class MainWindow : Window
         if (preview) { StartupSwitch.IsChecked = true; StartupConnectSwitch.IsChecked = true; }
     }
 
-    public MainWindow(bool preview = false, bool startupLaunch = false)
+    public MainWindow(bool preview = false, bool startupLaunch = false, ShutdownTimerController? shutdownTimer = null)
     {
         this.preview = preview;
         this.startupLaunch = startupLaunch;
         InitializeComponent();
         WorkAreaBehavior = new WindowWorkArea(this);
+        InitializeTools(shutdownTimer);
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
@@ -97,18 +98,44 @@ public partial class MainWindow : Window
             targets = AtomicFile.ReadJson<ProbeTarget[]>(Path.Combine(paths.Catalogs, "targets.json"))
                 ?? throw new InvalidDataException("Не найден список проверок.");
             HomeStrategyPicker.ItemsSource = strategies;
+            FullTestModeItem.Content = $"Полный · профилей: {strategies.Count}";
             StrategiesGrid.ItemsSource = strategies;
             if (preview)
             {
                 HomeStrategyPicker.SelectedIndex = 0;
                 ConnectionTitle.Text = "Готов к подключению";
-                StatusText.Text = "22 стратегии · встроенное автотестирование · Windows x64";
+                StatusText.Text = $"Профилей: {strategies.Count} · встроенное автотестирование · Windows x64";
                 StrategyDescription.Text = "Подберите профиль для своей сети и включайте обход одной кнопкой.";
                 return;
             }
-            paths.Initialize();
             settings = AtomicFile.ReadJson<AppSettings>(paths.Settings) ?? new();
+            var bundleFakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
+                .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Select(x => x!).Order().ToArray();
+            var migrated = SettingsMigration.ForBundle(settings, strategies, bundleFakes);
+            if (migrated != settings)
+            {
+                if (File.Exists(paths.Settings) && !File.Exists(paths.Settings + ".before-components-update"))
+                    File.Copy(paths.Settings, paths.Settings + ".before-components-update");
+                settings = migrated;
+                AtomicFile.WriteJson(paths.Settings, settings);
+                Log("Некоторые профили или фейки больше не входят в комплект Flowseal. Выбраны доступные замены; прежние настройки сохранены в резервной копии.");
+            }
             engine = new(paths, strategies, Log);
+            EngineSnapshot? componentSnapshot = null;
+            if (paths.EngineUpdateRequired && engine.OwnsService && engine.IsRunning)
+            {
+                componentSnapshot = await engine.CaptureAsync(lifetime.Token);
+                await engine.StopAsync(lifetime.Token);
+            }
+            try { paths.Initialize(); }
+            catch (Exception componentError)
+            {
+                // EngineFiles rolls back file replacements before an old service is resumed.
+                if (componentError is not AggregateException && componentSnapshot is { WasRunning: true })
+                    using (var recovery = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                        await engine.RestoreAsync(componentSnapshot with { StrategyId = settings.StrategyId }, settings, recovery.Token);
+                throw;
+            }
             maintenance = new(paths);
             LoadSettings();
             CreateTray();
@@ -129,6 +156,13 @@ public partial class MainWindow : Window
                     Log("Восстановление после прерванной проверки завершено.");
                 }, "Восстановление после прерванной проверки");
             }
+            if (componentSnapshot is { WasRunning: true })
+            {
+                await engine.StartAsync(Selected, settings, lifetime.Token);
+                Log("Компоненты движка обновлены, подключение восстановлено.");
+            }
+            if (paths.PreservedSeedLists.Count > 0)
+                Log("Изменённые стандартные списки сохранены: " + string.Join(", ", paths.PreservedSeedLists) + ". Версии Flowseal находятся рядом с расширением .upstream.");
             RefreshState(); timer.Start();
             StatusText.Text = "Готово. Выберите профиль или запустите автоподбор.";
             if (settings.AutoUpdate) { updateTimer.Start(); _ = CheckAutomaticUpdatesAsync(); }
@@ -171,6 +205,7 @@ public partial class MainWindow : Window
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Открыть x2zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Включить / выключить", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
+        menu.Items.Add("X2 Tools", null, (_, _) => Dispatcher.Invoke(() => { SelectPage("Tools"); ShowFromTray(); }));
         menu.Items.Add("Проверить обновления", null, (_, _) => Dispatcher.Invoke(() => CheckUpdates_Click(this, new RoutedEventArgs())));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Выход", null, (_, _) => Dispatcher.Invoke(() => { forceExit = true; Close(); }));
@@ -200,6 +235,7 @@ public partial class MainWindow : Window
     private void Navigate_Click(object sender, RoutedEventArgs e)
     {
         string page = (sender as Button)?.Tag as string ?? "Home";
+        if (page == "Tools") _ = RefreshShutdownTimerAsync();
         var buttons = NavigationPanel.Children.OfType<Button>().Where(b => b.Tag is string).ToArray();
         var button = buttons.FirstOrDefault(b => (string)b.Tag == page) ?? buttons[0];
         page = (string)button.Tag;
@@ -212,6 +248,7 @@ public partial class MainWindow : Window
                 "Strategies" => ("Стратегии", "Все исходные профили в одном месте."),
                 "Diagnostics" => ("Диагностика", "Найдём причину проблем с подключением."),
                 "Settings" => ("Настройки", "Точная настройка без командной строки."),
+                "Tools" => ("X2 Tools", "Полезные инструменты для вашего компьютера."),
                 "Logs" => ("Журнал", "История работы и подробности ошибок."),
                 _ => ("Обзор", "Ваше подключение. Ваши правила.")
             };
@@ -310,7 +347,7 @@ public partial class MainWindow : Window
         if (!ready || busy || engine == null || maintenance == null) return;
         TestMode mode = TestModePicker.SelectedIndex switch { 1 => TestMode.Full, 2 => TestMode.Dpi, _ => TestMode.Quick };
         var chosen = OnlySelectedCheck.IsChecked == true ? new[] { Selected } : mode == TestMode.Quick
-            ? new[] { Selected }.Concat(strategies.Where(x => new[] { "general", "general-alt", "general-alt2", "general-alt6", "general-fake-tls-auto" }.Contains(x.Id))).DistinctBy(x => x.Id).Take(5).ToArray()
+            ? new[] { Selected }.Concat(strategies.Where(x => new[] { "general", "general-alt", "general-alt2", "general-alt6", "general-fake-tls-auto" }.Contains(x.Id))).Concat(strategies).DistinctBy(x => x.Id).Take(5).ToArray()
             : strategies.ToArray();
         await Execute(async token =>
         {
@@ -425,7 +462,8 @@ public partial class MainWindow : Window
         var fakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
             .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Order().ToArray();
         DiscordFakePicker.ItemsSource = fakes; GameFakePicker.ItemsSource = fakes;
-        DiscordFakePicker.SelectedItem = settings.DiscordFake; GameFakePicker.SelectedItem = settings.GameFake;
+        DiscordFakePicker.SelectedItem = fakes.Contains(settings.DiscordFake) ? settings.DiscordFake : fakes.FirstOrDefault();
+        GameFakePicker.SelectedItem = fakes.Contains(settings.GameFake) ? settings.GameFake : fakes.FirstOrDefault();
     }
 
     private void StartupSwitch_Changed(object sender, RoutedEventArgs e)

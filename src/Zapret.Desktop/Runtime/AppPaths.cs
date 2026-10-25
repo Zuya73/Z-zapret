@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Zapret.Core;
 
 namespace Zapret.Desktop.Runtime;
@@ -24,23 +23,9 @@ public sealed class AppPaths
     {
         foreach (string dir in new[] { Root, Bin, Lists, PreparedLists, Results, Path.GetDirectoryName(Log)! }) Directory.CreateDirectory(dir);
         if (File.Exists(Log) && new FileInfo(Log).Length > 2_000_000) File.Move(Log, Log + ".previous", true);
-        string manifest = layout.Manifest;
-        var hashes = AtomicFile.ReadJson<Dictionary<string, string>>(manifest)
-            ?? throw new FileNotFoundException("Нет комплекта движка. Распакуйте весь архив приложения.", manifest);
-        foreach (var (name, expected) in hashes)
-        {
-            if (Path.GetFileName(name) != name) throw new InvalidDataException("Некорректный манифест движка.");
-            string source = Path.Combine(BinarySource, name), destination = Path.Combine(Bin, name);
-            if (!File.Exists(source) || !string.Equals(Hash(source), expected, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException($"Не пройдена проверка целостности: {name}. Загрузите полный архив приложения.");
-            if (!File.Exists(destination) || !name.StartsWith("ACTIVE_", StringComparison.Ordinal) && !string.Equals(Hash(destination), expected, StringComparison.OrdinalIgnoreCase))
-                File.Copy(source, destination, overwrite: true);
-        }
-        foreach (string source in Directory.GetFiles(ListSource))
-        {
-            string destination = Path.Combine(Lists, Path.GetFileName(source));
-            if (!File.Exists(destination)) File.Copy(source, destination);
-        }
+        EngineFiles.Synchronize(BinarySource, Bin, ReadEngineHashes());
+        var legacy = AtomicFile.ReadJson<Dictionary<string, string>>(Path.Combine(Catalogs, "legacy-seed-hashes.json"));
+        PreservedSeedLists = SeedLists.Synchronize(ListSource, Lists, Path.Combine(Root, "seed-list-receipt.json"), legacy);
         foreach (string file in new[] { "list-general-user.txt", "list-exclude-user.txt", "ipset-exclude-user.txt", "ipset-include-user.txt" })
             if (!File.Exists(Path.Combine(Lists, file))) AtomicFile.Write(Path.Combine(Lists, file), "# Пользовательские адреса\n");
     }
@@ -75,9 +60,9 @@ public sealed class AppPaths
         }
     }
 
-    private static string Hash(string path)
-    {
-        using var stream = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(stream));
-    }
+    public IReadOnlyList<string> PreservedSeedLists { get; private set; } = [];
+    private Dictionary<string, string> ReadEngineHashes() =>
+        AtomicFile.ReadJson<Dictionary<string, string>>(layout.Manifest) ??
+        throw new FileNotFoundException("Нет комплекта движка. Распакуйте весь архив приложения.", layout.Manifest);
+    public bool EngineUpdateRequired => EngineFiles.NeedsUpdate(BinarySource, Bin, ReadEngineHashes());
 }

@@ -17,10 +17,10 @@ def generate():
     paths = sorted((ROOT / "legacy/flowseal").glob("general*.bat"), key=lambda p: (
         p.name != "general.bat",
         [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", p.name)]))
-    if len(paths) != 22:
-        raise ValueError(f"Expected 22 upstream profiles, found {len(paths)}")
+    if not paths:
+        raise ValueError("No upstream profiles found")
     for path in paths:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8-sig")
         marker = '"%BIN%winws.exe"'
         if text.count(marker) != 1:
             raise ValueError(f"Expected a single engine invocation: {path.name}")
@@ -32,6 +32,8 @@ def generate():
         arguments = [x.replace('"', '').replace('%BIN%', '{BIN}').replace('%LISTS%', '{LISTS}')
                      .replace('%GameFilterTCP%', '{GAME_TCP}').replace('%GameFilterUDP%', '{GAME_UDP}')
                      for x in tokens]
+        if any(re.search(r"%[^%]+%", x) for x in arguments):
+            raise ValueError(f"Unsupported upstream variable in {path.name}; review the importer.")
         if not all(x.startswith('--') for x in arguments):
             raise ValueError(f"Unsupported command syntax in {path.name}")
         identifier = 'general' if path.stem == 'general' else re.sub('[^a-z0-9]+', '-', path.stem.lower()).strip('-')
@@ -40,6 +42,8 @@ def generate():
                              description='Экспериментальная стратегия' if '(EXP)' in path.name else
                              'Расширенный охват IPv4; используйте при необходимости' if '(ALT5)' in path.name else
                              'Оригинальный профиль Flowseal', arguments=arguments))
+    if len({p["id"] for p in profiles}) != len(profiles):
+        raise ValueError("Upstream profile names produce repeated IDs.")
     return profiles
 
 
