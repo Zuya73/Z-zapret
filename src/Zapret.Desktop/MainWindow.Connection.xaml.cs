@@ -104,7 +104,7 @@ public partial class MainWindow
                         var updated = previous with { StrategyId = candidate.Id };
                         AtomicFile.WriteJson(paths.Settings, updated); settings = updated;
                         activeStrategy = candidate.Id; HomeStrategyPicker.SelectedItem = candidate; connectionHealth = health;
-                    }, message => Log("Переподключение: " + message), ct);
+                    }, message => Log("Переподключение: " + message), ct, engineRunning: () => engine.IsRunning);
                 completedNormally = true;
                 if (committed)
                 {

@@ -6,7 +6,7 @@ public static class ConnectionRecovery
         Func<CancellationToken, Task> stop, Func<Strategy, CancellationToken, Task> start,
         Func<CancellationToken, Task<ConnectionHealth>> probe, Func<CancellationToken, Task> restore,
         Action<Strategy, ConnectionHealth> commit, Action<string> log, CancellationToken token,
-        TimeSpan? confirmationDelay = null)
+        TimeSpan? confirmationDelay = null, Func<bool>? engineRunning = null)
     {
         bool committed = false;
         try
@@ -17,10 +17,12 @@ public static class ConnectionRecovery
                 try { await start(candidate, token); }
                 catch (InvalidOperationException error) { log(error.Message); continue; }
                 var health = await probe(token);
+                if (engineRunning?.Invoke() == false) continue;
                 if (!health.InternetAvailable) break;
                 if (!health.ServicesAvailable) continue;
                 await Task.Delay(confirmationDelay ?? TimeSpan.FromSeconds(1), token);
                 health = await probe(token);
+                if (engineRunning?.Invoke() == false) continue;
                 if (!health.InternetAvailable) break;
                 if (!health.ServicesAvailable) continue;
                 token.ThrowIfCancellationRequested(); commit(candidate, health); committed = true; return true;

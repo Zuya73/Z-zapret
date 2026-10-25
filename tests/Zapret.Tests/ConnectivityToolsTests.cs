@@ -70,6 +70,15 @@ internal static class ConnectivityToolsTests
                 _ => { restored++; return Task.CompletedTask; }, (_, _) => throw new Exception("Must not commit"), _ => { }, CancellationToken.None, TimeSpan.Zero).GetAwaiter().GetResult();
             Assert(!ok && started == 1 && restored == 1);
         });
+        check("Available sites cannot confirm recovery if the engine exits during the checks", () =>
+        {
+            int restored = 0; bool committed = false;
+            bool ok = ConnectionRecovery.RunAsync([new("crashed", "", "", "", [])], _ => Task.CompletedTask,
+                (_, _) => Task.CompletedTask, _ => Task.FromResult(Health(0, true)),
+                _ => { restored++; return Task.CompletedTask; }, (_, _) => committed = true, _ => { }, CancellationToken.None,
+                TimeSpan.Zero, () => false).GetAwaiter().GetResult();
+            Assert(!ok && !committed && restored == 1);
+        });
         check("Recovery cancellation restores with a fresh token", () =>
         {
             using var cancel = new CancellationTokenSource(); bool restored = false;
