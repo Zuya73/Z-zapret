@@ -67,6 +67,7 @@ public partial class MainWindow
     internal async Task RunDiskBenchmarkAsync()
     {
         if (busy || pcExporting || diskRunner == null || DiskDrivePicker.SelectedItem is not DiskDriveChoice drive) return;
+        var runner = diskRunner;
         long size = DiskSizePicker.SelectedIndex switch { 0 => 256 * DiskBenchmarkOptions.MiB, 2 => 4096 * DiskBenchmarkOptions.MiB, _ => 1024 * DiskBenchmarkOptions.MiB };
         var options = new DiskBenchmarkOptions(size, DiskModePicker.SelectedIndex == 1 ? 5 : 3, DiskModePicker.SelectedIndex == 1 ? 3 : 1);
         int run = ++diskRun;
@@ -86,7 +87,7 @@ public partial class MainWindow
             });
             try
             {
-                diskReport = await diskRunner.RunAsync(drive.Root, options, progress, token);
+                diskReport = await Task.Run(() => runner.RunAsync(drive.Root, options, progress, token));
                 diskMeasurements.Clear(); diskMeasurements.AddRange(diskReport.Measurements); RenderDiskResults();
                 DiskProgress.Value = diskReport.Outcome == "Completed" ? 100 : DiskProgress.Value;
                 DiskStageText.Text = diskReport.Outcome switch { "Completed" => diskReport.CleanupNote.Length == 0 ? "Замер завершён. Тестовый файл удалён." : "Замер завершён.", "Cancelled" => "Замер отменён. Выполненные измерения сохранены.", _ => "Ошибка: " + diskReport.Error };

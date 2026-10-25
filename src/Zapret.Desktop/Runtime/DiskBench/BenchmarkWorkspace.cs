@@ -45,7 +45,7 @@ internal sealed class BenchmarkWorkspace : IDisposable
             1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
         if ((File.GetAttributes(FilePath) & (FileAttributes.ReparsePoint | FileAttributes.Compressed | FileAttributes.Encrypted | FileAttributes.SparseFile)) != 0)
             throw new IOException("Для точного замера нужен обычный файл без сжатия, EFS и разреженного размещения.");
-        byte[] buffer = new byte[4 * 1024 * 1024]; long completed = 0;
+        byte[] buffer = new byte[4 * 1024 * 1024]; long completed = 0, reported = 0;
         while (completed < bytes)
         {
             token.ThrowIfCancellationRequested();
@@ -53,6 +53,8 @@ internal sealed class BenchmarkWorkspace : IDisposable
             int count = (int)Math.Min(buffer.Length, bytes - completed);
             await file.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false);
             completed += count;
+            if (completed != bytes && completed - reported < 16 * 1024 * 1024) continue;
+            reported = completed;
             progress.Report(new("Подготовка файла: " + (completed / 1048576) + " / " + (bytes / 1048576) + " МиБ", 0, total, (int)(15 * completed / bytes)));
         }
         await file.FlushAsync(token).ConfigureAwait(false); file.Flush(flushToDisk: true);
