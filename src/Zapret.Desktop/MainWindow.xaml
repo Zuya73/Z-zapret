@@ -131,7 +131,7 @@
               <Border Style="{StaticResource Card}" Padding="22"><StackPanel>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="14" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                   <StackPanel><TextBlock Text="Раздел" Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,7" /><ComboBox x:Name="PcCategoryPicker" SelectionChanged="PcCategory_Changed" AutomationProperties.Name="Раздел информации о ПК" /></StackPanel>
-                  <StackPanel Grid.Column="2"><TextBlock Text="Поиск в разделе" Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,7" /><TextBox x:Name="PcSearchBox" TextChanged="SearchPc_Changed" AutomationProperties.Name="Поиск по устройству, параметру или значению" /></StackPanel>
+                  <StackPanel Grid.Column="2"><TextBlock Text="Поиск в разделе" Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,7" /><TextBox x:Name="PcSearchBox" MaxLength="256" TextChanged="SearchPc_Changed" AutomationProperties.Name="Поиск по устройству, параметру или значению" /></StackPanel>
                 </Grid>
                 <WrapPanel Margin="0,14,0,4"><Button x:Name="PcRefreshButton" Content="Обновить" Click="RefreshPc_Click" Margin="0,0,10,8" /><Button x:Name="PcExportButton" Content="Сохранить полный отчёт" Click="ExportPc_Click" Margin="0,0,10,8" /><Button x:Name="PcCancelButton" Content="Отменить сбор" Click="CancelPc_Click" IsEnabled="False" Margin="0,0,0,8" /></WrapPanel>
                 <CheckBox x:Name="PcPrivateCheck" Content="Показывать личные данные и включать их в отчёт" Checked="FilterPc_Changed" Unchecked="FilterPc_Changed" Margin="0,0,0,10" />
@@ -147,7 +147,7 @@
             <StackPanel x:Name="ShutdownToolPanel" Visibility="Collapsed">
             <Border Style="{StaticResource Card}" Padding="28">
               <StackPanel>
-                <TextBlock Text="01 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,14" />
+                <TextBlock Text="02 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,14" />
                 <TextBlock Text="Выключение по таймеру" Style="{StaticResource Heading}" />
                 <TextBlock Text="Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret." Style="{StaticResource Muted}" Margin="0,0,0,22" />
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

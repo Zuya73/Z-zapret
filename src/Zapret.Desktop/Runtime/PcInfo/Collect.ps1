@@ -158,8 +158,13 @@ try { switch ($Category) {
         $warnings.Add('Снимок Win32_StartupCommand. Задачи планировщика и все механизмы автозапуска в этот список не входят.')
     }
     'sensors' {
+        $labels = @{Voltage='Напряжение, В';Current='Ток, А';Power='Мощность, Вт';Clock='Частота, МГц';Temperature='Температура, °C';Load='Загрузка, %';Frequency='Частота, Гц';Fan='Вентилятор, об/мин';Flow='Поток, л/ч';Control='Управление, %';Level='Уровень, %'}
         foreach ($namespace in @('root/LibreHardwareMonitor','root/OpenHardwareMonitor')) {
-            foreach ($c in (Query 'Sensor' $namespace)) { Row "$($c.Parent) · $($c.Name)" $c.SensorType $c.Value }
+            foreach ($c in (Query 'Sensor' $namespace)) {
+                $label = [string]$c.SensorType; if ($labels.ContainsKey($label)) { $label = $labels[$label] }
+                $value = $null; if ($null -ne $c.Value) { $value = '{0:0.###}' -f $c.Value }
+                Row "$($c.Parent) · $($c.Name)" $label $value
+            }
         }
         foreach ($c in (Query 'MSAcpi_ThermalZoneTemperature' 'root/wmi')) {
             if ($c.CurrentTemperature -gt 0) { $t = $c.CurrentTemperature / 10 - 273.15; if ($t -gt -30 -and $t -lt 150) { Row "ACPI · $($c.InstanceName)" 'Температура зоны, °C (не CPU)' ('{0:0.0}' -f $t) } }
