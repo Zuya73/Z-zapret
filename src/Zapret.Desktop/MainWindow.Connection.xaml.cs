@@ -88,7 +88,7 @@ public partial class MainWindow
             var ct = deadline.Token;
             var snapshot = await engine.CaptureAsync(ct);
             string originalId = snapshot.StrategyId ?? activeStrategy ?? settings.StrategyId;
-            snapshot = snapshot with { WasRunning = true, StrategyId = originalId };
+            snapshot = snapshot with { WasRunning = true, StrategyId = originalId, ServiceMode = snapshot.ServiceMode || engine.OwnsService };
             var previous = settings;
             AtomicFile.WriteJson(paths.Recovery, new RecoveryRecord(snapshot, previous));
             bool committed = false, completedNormally = false;
