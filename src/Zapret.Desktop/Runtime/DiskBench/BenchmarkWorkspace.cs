@@ -38,13 +38,13 @@ internal sealed class BenchmarkWorkspace : IDisposable
         }
         directoryGuard = OpenDirectory(DirectoryPath, 0x80, 3, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
         if (directoryGuard.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), "Не удалось защитить папку теста от переименования.");
-        if (File.GetAttributes(DirectoryPath).HasFlag(FileAttributes.ReparsePoint)) throw new IOException("Ссылки и точки перенаправления не используются для теста.");
+        if (File.GetAttributes(DirectoryPath).HasFlag(FileAttributes.ReparsePoint)) throw new IOException("Папка теста оказалась ссылкой на другое место. Проверка остановлена; выберите другой диск.");
         using (var marker = new FileStream(MarkerPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
             JsonSerializer.Serialize(marker, new { kind = "x2zapret.diskbench.v1", directory = Path.GetFileName(DirectoryPath), user = WindowsIdentity.GetCurrent().User!.Value, created = DateTimeOffset.UtcNow });
         file = new FileStream(FilePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite,
             1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
         if ((File.GetAttributes(FilePath) & (FileAttributes.ReparsePoint | FileAttributes.Compressed | FileAttributes.Encrypted | FileAttributes.SparseFile)) != 0)
-            throw new IOException("Для точного замера нужен обычный файл без сжатия, EFS и разреженного размещения.");
+            throw new IOException("Выбранный диск сжимает или шифрует тестовый файл. Для точного замера выберите обычный диск без этих настроек.");
         byte[] buffer = new byte[4 * 1024 * 1024]; long completed = 0, reported = 0;
         while (completed < bytes)
         {
@@ -66,7 +66,7 @@ internal sealed class BenchmarkWorkspace : IDisposable
         if (!ownsDirectory) return;
         try
         {
-            if (File.GetAttributes(DirectoryPath).HasFlag(FileAttributes.ReparsePoint)) throw new IOException("Папка теста была перенаправлена; очистка остановлена.");
+            if (File.GetAttributes(DirectoryPath).HasFlag(FileAttributes.ReparsePoint)) throw new IOException("Расположение папки теста изменилось. Автоматическое удаление остановлено, чтобы не затронуть другие файлы.");
             // Only the two files created by this instance may be removed. Never recurse through a volume or directory.
             if (File.Exists(FilePath)) File.Delete(FilePath);
             if (File.Exists(MarkerPath)) File.Delete(MarkerPath);
@@ -75,7 +75,7 @@ internal sealed class BenchmarkWorkspace : IDisposable
             ownsDirectory = false;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { CleanupNote = "Не удалось полностью убрать временную папку " + DirectoryPath + ". Посторонние файлы не удаляются. " + error.Message; }
+        { CleanupNote = "Не удалось удалить временную папку целиком: " + DirectoryPath + ". Посторонние файлы не удаляются. " + error.Message; }
         finally { directoryGuard?.Dispose(); directoryGuard = null; }
     }
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "CreateDirectoryW")]

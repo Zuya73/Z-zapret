@@ -1,7 +1,7 @@
 [
   {
     "id": "DiscordMain",
-    "name": "DiscordMain",
+    "name": "Discord — сайт",
     "group": "Discord",
     "url": "https://discord.com",
     "required": true,
@@ -10,7 +10,7 @@
   },
   {
     "id": "DiscordGateway",
-    "name": "DiscordGateway",
+    "name": "Discord — сервер сообщений",
     "group": "Discord",
     "url": "https://gateway.discord.gg",
     "required": false,
@@ -28,7 +28,7 @@
   },
   {
     "id": "DiscordCDN",
-    "name": "DiscordCDN",
+    "name": "Discord — файлы",
     "group": "Discord",
     "url": "https://cdn.discordapp.com",
     "required": false,
@@ -46,7 +46,7 @@
   },
   {
     "id": "DiscordUpdates",
-    "name": "DiscordUpdates",
+    "name": "Discord — обновления",
     "group": "Discord",
     "url": "https://updates.discord.com",
     "required": false,
@@ -64,7 +64,7 @@
   },
   {
     "id": "YouTubeWeb",
-    "name": "YouTubeWeb",
+    "name": "YouTube — сайт",
     "group": "YouTube",
     "url": "https://www.youtube.com",
     "required": true,
@@ -73,7 +73,7 @@
   },
   {
     "id": "YouTubeShort",
-    "name": "YouTubeShort",
+    "name": "YouTube — короткие ссылки",
     "group": "YouTube",
     "url": "https://youtu.be",
     "required": false,
@@ -82,7 +82,7 @@
   },
   {
     "id": "YouTubeImage",
-    "name": "YouTubeImage",
+    "name": "YouTube — изображения",
     "group": "YouTube",
     "url": "https://i.ytimg.com",
     "required": false,
@@ -100,7 +100,7 @@
   },
   {
     "id": "YouTubeVideoRedirect",
-    "name": "YouTubeVideoRedirect",
+    "name": "YouTube — видеосервер",
     "group": "YouTube",
     "url": "https://redirector.googlevideo.com",
     "required": false,
@@ -118,7 +118,7 @@
   },
   {
     "id": "GoogleMain",
-    "name": "GoogleMain",
+    "name": "Google — сайт",
     "group": "Google",
     "url": "https://www.google.com",
     "required": false,
@@ -127,7 +127,7 @@
   },
   {
     "id": "GoogleGstatic",
-    "name": "GoogleGstatic",
+    "name": "Google — служебные файлы",
     "group": "Google",
     "url": "https://www.gstatic.com",
     "required": false,
@@ -145,7 +145,7 @@
   },
   {
     "id": "CloudflareWeb",
-    "name": "CloudflareWeb",
+    "name": "Cloudflare — сайт",
     "group": "Cloudflare",
     "url": "https://www.cloudflare.com",
     "required": false,
@@ -154,7 +154,7 @@
   },
   {
     "id": "CloudflareCDN",
-    "name": "CloudflareCDN",
+    "name": "Cloudflare — файлы",
     "group": "Cloudflare",
     "url": "https://cdnjs.cloudflare.com",
     "required": false,
@@ -172,7 +172,7 @@
   },
   {
     "id": "CloudflareDNS1111",
-    "name": "CloudflareDNS1111",
+    "name": "DNS-сервер 1.1.1.1",
     "group": "Cloudflare",
     "url": "1.1.1.1",
     "required": false,
@@ -181,7 +181,7 @@
   },
   {
     "id": "CloudflareDNS1001",
-    "name": "CloudflareDNS1001",
+    "name": "DNS-сервер 1.0.0.1",
     "group": "Cloudflare",
     "url": "1.0.0.1",
     "required": false,
@@ -190,7 +190,7 @@
   },
   {
     "id": "GoogleDNS8888",
-    "name": "GoogleDNS8888",
+    "name": "DNS-сервер 8.8.8.8",
     "group": "Google",
     "url": "8.8.8.8",
     "required": false,
@@ -199,7 +199,7 @@
   },
   {
     "id": "GoogleDNS8844",
-    "name": "GoogleDNS8844",
+    "name": "DNS-сервер 8.8.4.4",
     "group": "Google",
     "url": "8.8.4.4",
     "required": false,

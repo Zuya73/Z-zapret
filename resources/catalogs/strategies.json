@@ -1,9 +1,9 @@
 [
   {
     "id": "general",
-    "name": "Основная",
+    "name": "Основной",
     "source": "general.bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -97,9 +97,9 @@
   },
   {
     "id": "general-alt2",
-    "name": "Основная (ALT2)",
+    "name": "Основной (ALT2)",
     "source": "general (ALT2).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -193,9 +193,9 @@
   },
   {
     "id": "general-alt3",
-    "name": "Основная (ALT3)",
+    "name": "Основной (ALT3)",
     "source": "general (ALT3).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -293,9 +293,9 @@
   },
   {
     "id": "general-alt4",
-    "name": "Основная (ALT4)",
+    "name": "Основной (ALT4)",
     "source": "general (ALT4).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -402,9 +402,9 @@
   },
   {
     "id": "general-alt5",
-    "name": "Основная (ALT5)",
+    "name": "Основной (ALT5)",
     "source": "general (ALT5).bat",
-    "description": "Расширенный охват IPv4; используйте при необходимости",
+    "description": "Обрабатывает больше IP-адресов. Используйте, если другие профили не помогли, и проверьте обычные сайты.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -463,9 +463,9 @@
   },
   {
     "id": "general-alt6",
-    "name": "Основная (ALT6)",
+    "name": "Основной (ALT6)",
     "source": "general (ALT6).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -559,9 +559,9 @@
   },
   {
     "id": "general-alt7",
-    "name": "Основная (ALT7)",
+    "name": "Основной (ALT7)",
     "source": "general (ALT7).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -649,9 +649,9 @@
   },
   {
     "id": "general-alt8",
-    "name": "Основная (ALT8)",
+    "name": "Основной (ALT8)",
     "source": "general (ALT8).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -754,9 +754,9 @@
   },
   {
     "id": "general-alt9",
-    "name": "Основная (ALT9)",
+    "name": "Основной (ALT9)",
     "source": "general (ALT9).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -850,9 +850,9 @@
   },
   {
     "id": "general-alt10",
-    "name": "Основная (ALT10)",
+    "name": "Основной (ALT10)",
     "source": "general (ALT10).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -955,9 +955,9 @@
   },
   {
     "id": "general-alt11",
-    "name": "Основная (ALT11)",
+    "name": "Основной (ALT11)",
     "source": "general (ALT11).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1074,9 +1074,9 @@
   },
   {
     "id": "general-alt12",
-    "name": "Основная (ALT12)",
+    "name": "Основной (ALT12)",
     "source": "general (ALT12).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1190,9 +1190,9 @@
   },
   {
     "id": "general-alt13",
-    "name": "Основная (ALT13)",
+    "name": "Основной (ALT13)",
     "source": "general (ALT13).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1298,9 +1298,9 @@
   },
   {
     "id": "general-alt",
-    "name": "Основная (ALT)",
+    "name": "Основной (ALT)",
     "source": "general (ALT).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1407,9 +1407,9 @@
   },
   {
     "id": "general-exp",
-    "name": "Основная (EXP)",
+    "name": "Основной (EXP)",
     "source": "general (EXP).bat",
-    "description": "Экспериментальная стратегия",
+    "description": "Экспериментальный профиль. Если подключение нестабильно, попробуйте другой.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1525,9 +1525,9 @@
   },
   {
     "id": "general-fake-tls-auto-alt2",
-    "name": "Основная (FAKE TLS AUTO ALT2)",
+    "name": "Основной (FAKE TLS AUTO ALT2)",
     "source": "general (FAKE TLS AUTO ALT2).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1645,9 +1645,9 @@
   },
   {
     "id": "general-fake-tls-auto-alt3",
-    "name": "Основная (FAKE TLS AUTO ALT3)",
+    "name": "Основной (FAKE TLS AUTO ALT3)",
     "source": "general (FAKE TLS AUTO ALT3).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1760,9 +1760,9 @@
   },
   {
     "id": "general-fake-tls-auto-alt",
-    "name": "Основная (FAKE TLS AUTO ALT)",
+    "name": "Основной (FAKE TLS AUTO ALT)",
     "source": "general (FAKE TLS AUTO ALT).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1870,9 +1870,9 @@
   },
   {
     "id": "general-fake-tls-auto",
-    "name": "Основная (FAKE TLS AUTO)",
+    "name": "Основной (FAKE TLS AUTO)",
     "source": "general (FAKE TLS AUTO).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -1986,9 +1986,9 @@
   },
   {
     "id": "general-simple-fake-alt2",
-    "name": "Основная (SIMPLE FAKE ALT2)",
+    "name": "Основной (SIMPLE FAKE ALT2)",
     "source": "general (SIMPLE FAKE ALT2).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -2090,9 +2090,9 @@
   },
   {
     "id": "general-simple-fake-alt",
-    "name": "Основная (SIMPLE FAKE ALT)",
+    "name": "Основной (SIMPLE FAKE ALT)",
     "source": "general (SIMPLE FAKE ALT).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",
@@ -2199,9 +2199,9 @@
   },
   {
     "id": "general-simple-fake",
-    "name": "Основная (SIMPLE FAKE)",
+    "name": "Основной (SIMPLE FAKE)",
     "source": "general (SIMPLE FAKE).bat",
-    "description": "Оригинальный профиль Flowseal",
+    "description": "Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.",
     "arguments": [
       "--wf-tcp=80,443,2053,2083,2087,2096,8443,{GAME_TCP}",
       "--wf-udp=443,19294-19344,50000-50100,{GAME_UDP}",

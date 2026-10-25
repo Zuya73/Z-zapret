@@ -43,7 +43,7 @@ public partial class MainWindow
             ConfigureConnectionMonitor(); RefreshState();
             StatusText.Text = "Настройки проверки подключения сохранены.";
         }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
         await Task.CompletedTask;
     }
     private async void CheckConnection_Click(object sender, RoutedEventArgs e) => await CheckConnectionAsync(manual: true);
@@ -70,14 +70,14 @@ public partial class MainWindow
     private void RenderConnectionHealth(bool running)
     {
         if (connectionHealth == null)
-        { ConnectionDetail.Text = running ? "Доступность сервисов ещё не проверена." : "Выберите стратегию или запустите автоподбор."; return; }
+        { ConnectionDetail.Text = running ? "Обход включён. Доступ к сайтам ещё не проверен." : "Выберите профиль или запустите автоподбор."; return; }
         bool fresh = DateTimeOffset.UtcNow - connectionHealth.CapturedAt < TimeSpan.FromMinutes(2);
-        ConnectionTitle.Text = !running ? "Движок остановлен" : !fresh ? "Ожидается проверка" :
-            connectionHealth.ServicesAvailable ? "Сервисы доступны" : connectionHealth.InternetAvailable ? "Есть проблемы с доступом" : "Интернет не подтверждён";
-        ConnectionDetail.Text = connectionHealth.Summary + $"\nHTTPS · проверено {connectionHealth.CapturedAt.ToLocalTime():HH:mm:ss}" +
+        ConnectionTitle.Text = !running ? "Обход отключён" : !fresh ? "Ожидается проверка" :
+            connectionHealth.ServicesAvailable ? "Сайты отвечают" : connectionHealth.InternetAvailable ? "Есть проблемы с доступом" : "Интернет не проверен";
+        ConnectionDetail.Text = connectionHealth.Summary + $"\nПроверено в {connectionHealth.CapturedAt.ToLocalTime():HH:mm:ss}" +
             (fresh ? "" : " · результат устарел");
         if (running && (!fresh || !connectionHealth.ServicesAvailable)) StateDot.Fill = new SolidColorBrush(Color.FromRgb(153, 153, 153));
-        if (tray != null) tray.Text = "x2zapret · " + (running && fresh && connectionHealth.ServicesAvailable ? "сервисы доступны" : running ? "движок работает" : "остановлен");
+        if (tray != null) tray.Text = "x2zapret · " + (running && fresh && connectionHealth.ServicesAvailable ? "сайты отвечают" : running ? "обход включён" : "остановлен");
     }
     private async Task RecoverConnectionAsync()
     {
@@ -109,13 +109,13 @@ public partial class MainWindow
                 if (committed)
                 {
                     File.Delete(paths.Recovery);
-                    Log("Подключение восстановлено: " + activeStrategy);
+                    Log("Подключение восстановлено. Профиль: " + (strategies.FirstOrDefault(s => s.Id == activeStrategy)?.Name ?? activeStrategy));
                     tray?.ShowBalloonTip(5000, "x2zapret", "Доступ к сервисам восстановлен.", System.Windows.Forms.ToolTipIcon.Info);
                 }
                 else
                 {
-                    Log("Рабочая замена не подтверждена. Прежняя стратегия восстановлена; следующая попытка ограничена паузой.");
-                    tray?.ShowBalloonTip(6000, "x2zapret", "Не удалось подтвердить доступ к сервисам. Прежняя стратегия восстановлена. Откройте диагностику.", System.Windows.Forms.ToolTipIcon.Warning);
+                    Log("Другой подходящий профиль не найден. Возвращён прежний профиль; перед новой попыткой будет пауза.");
+                    tray?.ShowBalloonTip(6000, "x2zapret", "Сайты пока не отвечают на проверку. Возвращён прежний профиль. Откройте «Диагностику».", System.Windows.Forms.ToolTipIcon.Warning);
                 }
             }
             finally

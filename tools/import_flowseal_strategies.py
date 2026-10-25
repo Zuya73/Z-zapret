@@ -37,11 +37,11 @@ def generate():
         if not all(x.startswith('--') for x in arguments):
             raise ValueError(f"Unsupported command syntax in {path.name}")
         identifier = 'general' if path.stem == 'general' else re.sub('[^a-z0-9]+', '-', path.stem.lower()).strip('-')
-        profiles.append(dict(id=identifier, name=path.stem.replace('general', 'Основная', 1),
+        profiles.append(dict(id=identifier, name=path.stem.replace('general', 'Основной', 1),
                              source=path.name,
-                             description='Экспериментальная стратегия' if '(EXP)' in path.name else
-                             'Расширенный охват IPv4; используйте при необходимости' if '(ALT5)' in path.name else
-                             'Оригинальный профиль Flowseal', arguments=arguments))
+                             description='Экспериментальный профиль. Если подключение нестабильно, попробуйте другой.' if '(EXP)' in path.name else
+                             'Обрабатывает больше IP-адресов. Используйте, если другие профили не помогли, и проверьте обычные сайты.' if '(ALT5)' in path.name else
+                             'Готовые настройки Flowseal. Автоподбор проверит, подходят ли они вашей сети.', arguments=arguments))
     if len({p["id"] for p in profiles}) != len(profiles):
         raise ValueError("Upstream profile names produce repeated IDs.")
     return profiles

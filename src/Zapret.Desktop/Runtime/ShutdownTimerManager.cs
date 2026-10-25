@@ -9,7 +9,7 @@ internal static class ShutdownTimerManager
 {
     internal static ShutdownTimerController Create()
     {
-        string sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Не найден пользователь Windows.");
+        string sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Не удалось определить вашу учётную запись Windows. Перезапустите программу.");
         return new(new ScheduledShutdownBackend(ShutdownTimerPolicy.TaskName(sid)), ProcessRunner.SystemTool("shutdown.exe"), sid);
     }
 }
@@ -51,6 +51,6 @@ internal sealed class ScheduledShutdownBackend(string taskName) : IShutdownTimer
     {
         var result = await ProcessRunner.RunAsync(ProcessRunner.SystemTool("schtasks.exe"), arguments, TimeSpan.FromSeconds(20), token);
         if (result.ExitCode != 0)
-            throw new InvalidOperationException("Не удалось изменить таймер Windows: " + result.Output.Trim() + " " + result.Error.Trim());
+            throw new InvalidOperationException("Windows не смогла сохранить или отменить таймер. Подробности: " + result.Output.Trim() + " " + result.Error.Trim());
     }
 }

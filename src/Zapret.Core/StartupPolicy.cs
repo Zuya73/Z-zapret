@@ -25,11 +25,11 @@ public static class StartupPolicy
     {
         if (string.IsNullOrWhiteSpace(executable) || string.IsNullOrWhiteSpace(workingDirectory) ||
             !System.Text.RegularExpressions.Regex.IsMatch(userSid, @"^S-1-\d+(-\d+)+$"))
-            throw new ArgumentException("Недопустимые параметры автозапуска.");
+            throw new ArgumentException("Не удалось прочитать параметры запуска с Windows. Откройте настройки и сохраните автозапуск заново.");
         var n = TaskNamespace;
         XElement Element(string name, object value) => new(n + name, value);
         return new XDocument(new XElement(n + "Task", new XAttribute("version", "1.2"),
-            Element("RegistrationInfo", new[] { Element("Description", "Запуск x2zapret в трее при входе пользователя в Windows"), Element("Source", TaskSource) }),
+            Element("RegistrationInfo", new[] { Element("Description", "Запуск x2zapret без открытия окна при входе пользователя в Windows"), Element("Source", TaskSource) }),
             Element("Triggers", new XElement(n + "LogonTrigger", Element("Enabled", "true"), Element("UserId", userSid), Element("Delay", "PT5S"))),
             Element("Principals", new XElement(n + "Principal", new XAttribute("id", "Owner"),
                 Element("UserId", userSid), Element("LogonType", "InteractiveToken"), Element("RunLevel", "HighestAvailable"))),

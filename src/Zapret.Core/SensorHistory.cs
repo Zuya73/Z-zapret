@@ -46,11 +46,11 @@ public sealed class SensorHistory
     public void Clear() => series.Clear();
     public string Csv()
     {
-        var result = new StringBuilder("TimestampUTC,Device,Sensor,Kind,Value\r\n");
+        var result = new StringBuilder("Время (UTC),Устройство,Датчик,Показатель и единицы,Значение\r\n");
         static string Cell(string s) => "\"" + (s.StartsWith('=') || s.StartsWith('+') || s.StartsWith('-') || s.StartsWith('@') ? "'" : "") + s.Replace("\"", "\"\"") + "\"";
         foreach (var sensor in Series)
             foreach (var point in sensor.Points)
-                result.AppendLine(string.Join(',', Cell(point.At.UtcDateTime.ToString("O")), Cell(sensor.Device), Cell(sensor.Name), Cell(sensor.Kind), point.Value.ToString("R", CultureInfo.InvariantCulture)));
+                result.AppendLine(string.Join(',', Cell(point.At.UtcDateTime.ToString("O")), Cell(sensor.Device), Cell(sensor.Name), Cell(SensorStatistics.KindTitle(sensor.Kind)), point.Value.ToString("R", CultureInfo.InvariantCulture)));
         return result.ToString();
     }
 }

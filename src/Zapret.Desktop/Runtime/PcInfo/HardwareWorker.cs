@@ -34,10 +34,10 @@ internal static class HardwareWorker
                         StorageDevice.ThrottleInterval = TimeSpan.FromSeconds(30);
                         computer.Open();
                     }
-                    if (!driver.Ready) warnings.Add("Для датчиков процессора, платы и SPD включите подписанный драйвер PawnIO. Доступные GPU, диски и батарея работают независимо.");
+                    if (!driver.Ready) warnings.Add("Для чтения датчиков процессора, платы и памяти нужен драйвер PawnIO. Его можно установить кнопкой в разделе «О ПК». Показания видеокарты, дисков и батареи могут быть доступны и без него.");
                     var readings = new List<HardwareReading>(); var smart = new List<PcRow>(); var spd = new List<PcRow>();
                     foreach (var hardware in computer.Hardware) Visit(hardware);
-                    if (readings.Count == 0) warnings.Add("Оборудование или драйверы не предоставили показания. Значения не подменяются нулями.");
+                    if (readings.Count == 0) warnings.Add("Показания недоступны на этом оборудовании. Это не означает нулевую температуру или нагрузку.");
                     Write(new(DateTimeOffset.UtcNow, driver.Version, driver.Ready, readings, smart, spd, warnings));
 
                     void Visit(IHardware hardware)
@@ -73,7 +73,7 @@ internal static class HardwareWorker
                                 }
                                 foreach (var sensor in storage.Sensors.Where(s => Available(storage, s) && s.SensorType is not SensorType.Throughput and not SensorType.Load))
                                     smart.Add(new(device, sensor.Name, SensorStatistics.Format(sensor.Value!.Value, sensor.SensorType.ToString())));
-                                if (storage.Attributes.Count == 0) warnings.Add("Не все устройства предоставляют таблицу SMART через текущий контроллер. Для NVMe могут быть доступны только отдельные показатели здоровья.");
+                                if (storage.Attributes.Count == 0) warnings.Add("Некоторые диски и переходники не передают все показатели самодиагностики. У NVMe-дисков могут отображаться только отдельные сведения о состоянии.");
                             }
                         }
                         catch (Exception error) { warnings.Add(hardware.HardwareType + ": " + error.GetType().Name); }
@@ -81,7 +81,7 @@ internal static class HardwareWorker
                     }
                 }
                 catch (Exception error)
-                { Write(new(DateTimeOffset.UtcNow, driver.Version, driver.Ready, [], [], [], ["Не удалось открыть мониторинг: " + error.GetType().Name])); return; }
+                { Write(new(DateTimeOffset.UtcNow, driver.Version, driver.Ready, [], [], [], ["Не удалось начать чтение датчиков. Технический код: " + error.GetType().Name])); return; }
             }
         }
         finally { try { computer?.Close(); } catch (Exception) { } }

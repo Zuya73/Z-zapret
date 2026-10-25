@@ -95,7 +95,7 @@ public partial class MainWindow
                 DiskStageText.Text = diskReport.Outcome switch { "Completed" => diskReport.CleanupNote.Length == 0 ? "Замер завершён. Тестовый файл удалён." : "Замер завершён.", "Cancelled" => "Замер отменён. Выполненные измерения сохранены.", _ => "Ошибка: " + diskReport.Error };
                 if (diskReport.CleanupNote.Length > 0) DiskStageText.Text += " " + diskReport.CleanupNote;
                 DiskElapsedText.Text = elapsed.Elapsed.ToString(@"mm\:ss");
-                Log("X2 Tools: замер диска " + drive.Root + ": " + diskReport.Outcome + ".");
+                Log("X2 Tools: диск " + drive.Root + ". " + DiskBenchmarkPolicy.OutcomeText(diskReport.Outcome) + ".");
                 if (diskReport.Outcome == "Cancelled") throw new OperationCanceledException(token);
                 if (diskReport.Outcome == "Failed") throw new IOException(diskReport.Error);
             }
@@ -138,7 +138,7 @@ public partial class MainWindow
         }
         private static string Speed(DiskMeasurement? value) => value == null ? "—" : value.MegabytesPerSecond.ToString("0.00");
         private static string Latency(double value) => value == 0 ? "<0.001" : value.ToString("0.###");
-        private static string Details(DiskMeasurement? value) => value == null ? "Ожидание" : $"{value.Iops:0} IOPS · {Latency(value.AverageLatencyMs)} мс";
-        private static string Tooltip(DiskMeasurement? value) => value == null ? "Ещё не измерено" : $"Средняя задержка: {Latency(value.AverageLatencyMs)} мс\nP95 худшего прохода: {(value.P95LatencyMs.HasValue ? Latency(value.P95LatencyMs.Value) : "—")} мс\nЗавершено проходов: {value.Pass}";
+        private static string Details(DiskMeasurement? value) => value == null ? "Ожидание" : $"{value.Iops:0} операций/с · {Latency(value.AverageLatencyMs)} мс";
+        private static string Tooltip(DiskMeasurement? value) => value == null ? "Проверка ещё не выполнена" : $"Среднее время одной операции: {Latency(value.AverageLatencyMs)} мс\nВремя для 95% операций (P95): {(value.P95LatencyMs.HasValue ? Latency(value.P95LatencyMs.Value) : "—")} мс, самый медленный проход\nЗавершено проходов: {value.Pass}\nЧем меньше время, тем быстрее диск отвечает на запросы.";
     }
 }

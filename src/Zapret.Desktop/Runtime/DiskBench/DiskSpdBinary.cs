@@ -37,7 +37,7 @@ internal static class DiskSpdBinary
         try
         {
             if (locked.Length != info.Size || !Convert.ToHexString(SHA256.HashData(locked)).Equals(info.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Встроенный движок DiskSpd не прошёл проверку SHA256. Удалите повреждённую копию: " + path);
+                throw new InvalidDataException("Временная копия инструмента проверки диска повреждена. Удалите этот файл и повторите проверку: " + path);
             return locked;
         }
         catch { locked.Dispose(); throw; }

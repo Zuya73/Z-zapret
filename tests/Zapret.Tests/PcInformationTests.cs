@@ -28,7 +28,7 @@ internal static class PcInformationTests
         {
             var section = Example();
             string safe = PcInformation.Report([section], false), full = PcInformation.Report([section], true);
-            Assert(!safe.Contains("SECRET-123") && safe.Contains("Ryzen") && safe.Contains("1/" + PcCategory.All.Count));
+            Assert(!safe.Contains("SECRET-123") && safe.Contains("Ryzen") && safe.Contains("Собрано разделов: 1 из " + PcCategory.All.Count));
             Assert(full.Contains("SECRET-123"));
             Assert(section.Rows[1].Value == "SECRET-123");
         });

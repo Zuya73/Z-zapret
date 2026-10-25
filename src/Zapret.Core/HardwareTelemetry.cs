@@ -8,6 +8,14 @@ public sealed record HardwareFrame(DateTimeOffset CapturedAt, string Driver, boo
 
 public sealed class SensorStatistics
 {
+    public static string KindTitle(string kind) => kind switch
+    {
+        "Temperature" => "Температура, °C", "Voltage" => "Напряжение, В", "Current" => "Ток, А", "Power" => "Мощность, Вт",
+        "Clock" => "Частота, МГц", "Frequency" => "Частота, Гц", "Load" => "Загрузка, %", "Control" => "Управление, %",
+        "Level" => "Уровень, %", "Humidity" => "Влажность, %", "Fan" => "Вентилятор, об/мин", "Flow" => "Поток, л/ч",
+        "Data" => "Объём, ГиБ", "SmallData" => "Объём, МиБ", "Throughput" => "Скорость, Б/с", "TimeSpan" => "Время, с",
+        "Timing" => "Задержка, нс", "Energy" => "Энергия, мВт·ч", "Noise" => "Шум, дБА", _ => kind
+    };
     private readonly Dictionary<string, (double Min, double Max)> ranges = new();
     public IReadOnlyList<PcRow> Rows(IEnumerable<HardwareReading> readings)
     {

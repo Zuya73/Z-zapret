@@ -29,18 +29,18 @@ public sealed class StartupTaskManager
 
     public async Task ApplyAsync(StartupMode mode, CancellationToken cancellationToken)
     {
-        if (!Enum.IsDefined(mode)) throw new ArgumentException("Неизвестный режим автозапуска.");
+        if (!Enum.IsDefined(mode)) throw new ArgumentException("Режим запуска с Windows не распознан. Выберите его в настройках и сохраните ещё раз.");
         string? existing = ExistingXml();
         if (existing != null && !StartupPolicy.OwnsTask(existing))
-            throw new InvalidOperationException("Задача «Z-zapret Desktop» принадлежит другой программе. Она не изменялась.");
+            throw new InvalidOperationException("В планировщике Windows уже есть чужая задача «Z-zapret Desktop». x2zapret не менял её. Проверьте задачу перед включением автозапуска.");
         if (mode == StartupMode.Disabled)
         {
             if (existing != null) await CommandAsync(["/Delete", "/TN", StartupPolicy.TaskName, "/F"], cancellationToken);
             return;
         }
         string executable = Path.Combine(AppContext.BaseDirectory, "x2zapret.exe");
-        if (!File.Exists(executable)) throw new FileNotFoundException("Не найден файл приложения для автозапуска.", executable);
-        string userSid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Не удалось определить пользователя Windows.");
+        if (!File.Exists(executable)) throw new FileNotFoundException("Не найден файл программы для запуска с Windows. Запустите x2zapret.exe из его постоянной папки и сохраните автозапуск ещё раз.", executable);
+        string userSid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Не удалось определить вашу учётную запись Windows. Перезапустите программу.");
         string xml = StartupPolicy.TaskXml(executable, AppContext.BaseDirectory, userSid);
         string temporary = Path.Combine(Path.GetTempPath(), "Z-zapret-task-" + Guid.NewGuid().ToString("N") + ".xml");
         try
@@ -54,6 +54,6 @@ public sealed class StartupTaskManager
     private static async Task CommandAsync(string[] arguments, CancellationToken cancellationToken)
     {
         var result = await ProcessRunner.RunAsync(ProcessRunner.SystemTool("schtasks.exe"), arguments, TimeSpan.FromSeconds(20), cancellationToken);
-        if (result.ExitCode != 0) throw new InvalidOperationException("Не удалось настроить автозапуск: " + result.Output.Trim() + " " + result.Error.Trim());
+        if (result.ExitCode != 0) throw new InvalidOperationException("Windows не смогла сохранить автозапуск. Подробности: " + result.Output.Trim() + " " + result.Error.Trim());
     }
 }

@@ -106,7 +106,7 @@ public partial class App : Application
                 File.WriteAllText("smoke-error.txt", error.Exception.ToString());
                 error.Handled = true; Shutdown(1); return;
             }
-            MessageBox.Show(error.Exception.Message, "Ошибка x2zapret", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(UserMessages.Error(error.Exception), "Не удалось выполнить действие", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
         var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null, pcInformation: pcCheck ? PcInformationChecks.CreateSource() : null, diskBenchmark: diskCheck ? DiskBenchmarkChecks.CreateRunner() : null);

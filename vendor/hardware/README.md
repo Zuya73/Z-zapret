@@ -1,19 +1,26 @@
-# Hardware monitoring dependencies
+# Компоненты чтения датчиков
 
-LibreHardwareMonitorLib 0.9.6 is restored from NuGet and used unmodified.
-Source: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701
-It includes DiskInfoToolkit 1.1.2, RAMSPDToolkit-NDD 1.4.2 and signed PawnIO modules.
-Module source: https://github.com/namazso/PawnIO.Modules
+Этот раздел описывает сторонние библиотеки для разработчиков. Пользователю не нужно устанавливать их вручную: необходимые части уже включены в x2zapret.
 
-Full MPL/LGPL notices are in `licenses/` and are embedded in the root executable.
-The portable/installed application also includes these files in `licenses/hardware`.
-Resolved NuGet package versions and their licence metadata are copied into that folder at packaging time.
-Rebuilding this public project with a replacement LibreHardwareMonitor assembly/package is supported; no modified vendor library is shipped.
+## Библиотека мониторинга
 
-PawnIO itself is NOT bundled or installed by the application installer. The dedicated
-button downloads official PawnIO Setup 2.2.0, checks exact size, SHA256 and Authenticode,
-then runs the standard signed installer. It does not select unrestricted mode, disable
-Windows security features, or uninstall a shared PawnIO installation on app removal.
-Pinned download metadata: `src/Zapret.Desktop/Assets/Hardware/components.json`.
-Driver source and exception: https://github.com/namazso/PawnIO
-Official distribution: https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0
+Приложение получает LibreHardwareMonitorLib 0.9.6 из NuGet — хранилища пакетов .NET — и использует её без изменений.
+
+- [Точный исходный код](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701)
+- В состав зависимостей входят DiskInfoToolkit 1.1.2, RAMSPDToolkit-NDD 1.4.2 и подписанные модули PawnIO.
+- [Исходники модулей PawnIO](https://github.com/namazso/PawnIO.Modules)
+
+Полные уведомления MPL/LGPL находятся в `licenses/`. Они встроены в корневой EXE и также поставляются в `licenses/hardware` установленной программы и архива без установки. При сборке туда добавляются сведения о реально использованных версиях пакетов и их лицензиях.
+
+Изменённые сторонние библиотеки не распространяются. Этот открытый проект можно пересобрать с заменённой библиотекой или пакетом LibreHardwareMonitor.
+
+## Драйвер PawnIO
+
+Сам драйвер **не входит в установщик x2zapret и не ставится автоматически**. Отдельная кнопка скачивает официальный PawnIO Setup 2.2.0, проверяет размер файла, SHA256 — его контрольную сумму — и цифровую подпись. Затем запускается обычный подписанный установщик.
+
+Программа не включает неограниченный режим драйвера и не отключает защиту Windows. При удалении x2zapret общая установка PawnIO остаётся: она может быть нужна другим программам.
+
+Параметры проверенной загрузки записаны в `src/Zapret.Desktop/Assets/Hardware/components.json`.
+
+- [Исходники драйвера и сведения об исключении к лицензии](https://github.com/namazso/PawnIO)
+- [Официальный установщик 2.2.0](https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0)

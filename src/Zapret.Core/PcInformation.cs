@@ -15,12 +15,12 @@ public sealed record PcCategory(string Id, string Title)
         new("display", "Мониторы"), new("audio", "Звуковые устройства"),
         new("network", "Сеть"), new("devices", "Устройства и драйверы"),
         new("windows", "Windows"), new("software", "Установленные программы"),
-        new("processes", "Процессы"), new("services", "Службы"),
-        new("startup", "Автозагрузка"), new("sensors", "Живые датчики и питание"),
-        new("smart", "SMART / NVMe"), new("spd", "Память · SPD и тайминги")
+        new("processes", "Программы и процессы"), new("services", "Службы Windows"),
+        new("startup", "Автозагрузка"), new("sensors", "Датчики и питание"),
+        new("smart", "Состояние дисков (SMART)"), new("spd", "Модули памяти (SPD)")
     });
     public static PcCategory Find(string id) => All.FirstOrDefault(c => c.Id == id)
-        ?? throw new ArgumentException("Неизвестный раздел информации о ПК.", nameof(id));
+        ?? throw new ArgumentException("Этот раздел информации о ПК не поддерживается. Откройте другой раздел или перезапустите программу.", nameof(id));
 }
 
 public sealed record PcRow(string Device, string Property, string Value, bool Sensitive = false, string Minimum = "", string Maximum = "");
@@ -32,7 +32,7 @@ public static class PcInformation
     public static PcSection Parse(string id, string json)
     {
         var category = PcCategory.Find(id);
-        if (json.Length > 8 * 1024 * 1024) throw new InvalidDataException("Ответ системы слишком большой.");
+        if (json.Length > 8 * 1024 * 1024) throw new InvalidDataException("Windows вернула слишком большой список данных. Сбор остановлен; откройте другой раздел или повторите запрос.");
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         var rows = new List<PcRow>();
@@ -62,8 +62,8 @@ public static class PcInformation
         var items = sections.ToArray();
         var text = new StringBuilder("x2zapret / X2 Tools - Информация о ПК\n");
         text.AppendLine("Сформировано: " + DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture));
-        text.AppendLine(includePrivate ? "Личные идентификаторы включены." : "Серийные номера, адреса и личные идентификаторы скрыты.");
-        text.AppendLine($"Разделов: {items.Length}/{PcCategory.All.Count}. Это снимки данных Windows; недоступные показания не вычисляются.");
+        text.AppendLine(includePrivate ? "В отчёт включены личные данные: серийные номера, сетевые адреса и пути." : "Серийные номера, сетевые адреса и другие личные данные скрыты.");
+        text.AppendLine($"Собрано разделов: {items.Length} из {PcCategory.All.Count}. Данные получены от Windows и оборудования. Если показатель недоступен, это указано в примечаниях.");
         foreach (var section in items)
         {
             text.AppendLine().AppendLine("[" + section.Title + "] " + section.CapturedAt.ToLocalTime().ToString("HH:mm:ss"));

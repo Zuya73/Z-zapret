@@ -5,6 +5,7 @@ $rows = New-Object 'System.Collections.Generic.List[object]'
 $warnings = New-Object 'System.Collections.Generic.List[string]'
 function Row($device, $property, $value, [bool]$private = $false) {
     if ($null -eq $value -or "$value".Trim() -eq '') { $value = '—' }
+    if ($value -is [bool]) { $value = if ($value) { 'Да' } else { 'Нет' } }
     if ($value -is [array]) { $value = $value -join ', ' }
     $rows.Add([pscustomobject]@{ Device = [string]$device; Property = [string]$property; Value = [string]$value; Sensitive = $private })
 }
@@ -41,27 +42,27 @@ try { switch ($Category) {
     'cpu' {
         foreach ($c in (Query 'Win32_Processor')) {
             $d = "$($c.DeviceID) · $($c.Name)"
-            Props $d $c ([ordered]@{ Manufacturer='Производитель'; SocketDesignation='Сокет'; NumberOfCores='Физические ядра'; NumberOfEnabledCore='Включённые ядра'; NumberOfLogicalProcessors='Потоки'; AddressWidth='Разрядность'; Family='Семейство (SMBIOS)'; Revision='Ревизия'; VirtualizationFirmwareEnabled='Виртуализация в BIOS'; VMMonitorModeExtensions='Аппаратная виртуализация'; SecondLevelAddressTranslationExtensions='SLAT'; ProcessorId='Идентификатор процессора' }) @('ProcessorId')
+            Props $d $c ([ordered]@{ Manufacturer='Производитель'; SocketDesignation='Сокет'; NumberOfCores='Физические ядра'; NumberOfEnabledCore='Включённые ядра'; NumberOfLogicalProcessors='Потоки'; AddressWidth='Разрядность'; Family='Семейство (SMBIOS)'; Revision='Ревизия'; VirtualizationFirmwareEnabled='Виртуализация в BIOS'; VMMonitorModeExtensions='Аппаратная виртуализация'; SecondLevelAddressTranslationExtensions='Виртуализация памяти (SLAT)'; ProcessorId='Идентификатор процессора' }) @('ProcessorId')
             Row $d 'Максимальная частота по SMBIOS, МГц' $c.MaxClockSpeed
             Row $d 'Кэш L2' (FormatBytes ([double]$c.L2CacheSize * 1024)); Row $d 'Кэш L3' (FormatBytes ([double]$c.L3CacheSize * 1024))
         }
-        $warnings.Add('Частота из SMBIOS не отражает текущий Turbo Boost. Загрузка CPU показывается отдельно в реальном времени.')
+        $warnings.Add('Здесь указана частота из сведений BIOS, а не текущая частота процессора. Текущая загрузка показана в верхней карточке.')
     }
     'memory' {
         $types = @{20='DDR';21='DDR2';24='DDR3';26='DDR4';27='LPDDR';28='LPDDR2';29='LPDDR3';30='LPDDR4';34='DDR5';35='LPDDR5'}
         foreach ($c in (Query 'Win32_PhysicalMemory')) {
             $d = "$($c.DeviceLocator) · $($c.BankLabel)"
             Row $d 'Объём' (FormatBytes $c.Capacity); Row $d 'Тип' (FormatEnum $types $c.SMBIOSMemoryType)
-            Props $d $c ([ordered]@{Manufacturer='Производитель';PartNumber='Артикул';SerialNumber='Серийный номер';Speed='Скорость по SMBIOS';ConfiguredClockSpeed='Настроенная скорость по SMBIOS';DataWidth='Разрядность данных';TotalWidth='Полная разрядность'}) @('SerialNumber')
+            Props $d $c ([ordered]@{Manufacturer='Производитель';PartNumber='Артикул';SerialNumber='Серийный номер';Speed='Скорость по данным BIOS';ConfiguredClockSpeed='Настроенная скорость по данным BIOS';DataWidth='Ширина шины данных памяти';TotalWidth='Полная ширина шины памяти'}) @('SerialNumber')
             if ($c.ConfiguredVoltage -gt 0) { Row $d 'Настроенное напряжение, В' ('{0:0.###}' -f ($c.ConfiguredVoltage / 1000)) }
         }
-        foreach ($c in (Query 'Win32_PhysicalMemoryArray')) { Row 'Массив памяти' 'Всего слотов по SMBIOS' $c.MemoryDevices; Row 'Массив памяти' 'Максимум по SMBIOS' (FormatBytes ([double]$c.MaxCapacityEx * 1024)) }
+        foreach ($c in (Query 'Win32_PhysicalMemoryArray')) { Row 'Слоты памяти' 'Всего слотов по данным BIOS' $c.MemoryDevices; Row 'Слоты памяти' 'Предельный объём по данным BIOS' (FormatBytes ([double]$c.MaxCapacityEx * 1024)) }
     }
     'board' {
         foreach ($c in (Query 'Win32_BaseBoard')) { Props 'Материнская плата' $c ([ordered]@{Manufacturer='Производитель';Product='Модель';Version='Ревизия';SerialNumber='Серийный номер'}) @('SerialNumber') }
-        foreach ($c in (Query 'Win32_BIOS')) { Props 'BIOS / UEFI' $c ([ordered]@{Manufacturer='Производитель';SMBIOSBIOSVersion='Версия';SMBIOSMajorVersion='SMBIOS major';SMBIOSMinorVersion='SMBIOS minor';SerialNumber='Серийный номер'}) @('SerialNumber'); Row 'BIOS / UEFI' 'Дата выпуска' (FormatDate $c.ReleaseDate) }
+        foreach ($c in (Query 'Win32_BIOS')) { Props 'BIOS / UEFI' $c ([ordered]@{Manufacturer='Производитель';SMBIOSBIOSVersion='Версия';SMBIOSMajorVersion='Основная версия SMBIOS';SMBIOSMinorVersion='Дополнительная версия SMBIOS';SerialNumber='Серийный номер'}) @('SerialNumber'); Row 'BIOS / UEFI' 'Дата выпуска' (FormatDate $c.ReleaseDate) }
         foreach ($c in (Query 'Win32_ComputerSystemProduct')) { Props 'Система' $c ([ordered]@{Vendor='Производитель';Name='Модель';Version='Версия';UUID='UUID';IdentifyingNumber='Серийный номер'}) @('UUID','IdentifyingNumber') }
-        try { Row 'Безопасность' 'Secure Boot' (Confirm-SecureBootUEFI -ErrorAction Stop) } catch { Row 'Безопасность' 'Secure Boot' 'Недоступно или система работает в Legacy BIOS' }
+        try { Row 'Безопасность' 'Безопасная загрузка (Secure Boot)' (Confirm-SecureBootUEFI -ErrorAction Stop) } catch { Row 'Безопасность' 'Безопасная загрузка (Secure Boot)' 'Недоступно: возможно, используется старый режим BIOS' }
         foreach ($c in (Query 'Win32_Tpm' 'root/cimv2/Security/MicrosoftTpm')) { Row 'TPM' 'Версия спецификации' $c.SpecVersion; Row 'TPM' 'Активирован' $c.IsActivated_InitialValue; Row 'TPM' 'Включён' $c.IsEnabled_InitialValue }
     }
     'gpu' {
@@ -74,24 +75,24 @@ try { switch ($Category) {
                 $driver = (Get-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Enum\$($c.PNPDeviceID)" -Name Driver -ErrorAction Stop).Driver
                 $vram = (Get-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Control\Class\$driver" -Name 'HardwareInformation.qwMemorySize' -ErrorAction Stop).'HardwareInformation.qwMemorySize'
             } catch {}
-            Row $d 'Выделенная видеопамять (драйвер)' $(if ($vram -gt 0) { FormatBytes $vram } else { 'Драйвер не предоставил достоверное 64-битное значение' })
+            Row $d 'Выделенная видеопамять (драйвер)' $(if ($vram -gt 0) { FormatBytes $vram } else { 'Драйвер не сообщил достоверный объём памяти' })
         }
-        $warnings.Add('Объём не берётся из 32-битного AdapterRAM: он может быть неверным на видеокартах с 4 ГиБ и более. Частоты и температуры зависят от доступных датчиков.')
+        $warnings.Add('Объём видеопамяти показывается только при наличии достоверных данных от драйвера. Частоты и температуры доступны не на всех видеокартах.')
     }
     'disks' {
         foreach ($c in (Query 'Win32_DiskDrive')) {
             $d = "Диск $($c.Index) · $($c.Model)"
             Row $d 'Объём' (FormatBytes $c.Size)
-            Props $d $c ([ordered]@{InterfaceType='Интерфейс WMI';MediaType='Носитель WMI';FirmwareRevision='Прошивка';SerialNumber='Серийный номер';Partitions='Разделов';BytesPerSector='Байт на сектор';Status='Состояние WMI'}) @('SerialNumber')
+            Props $d $c ([ordered]@{InterfaceType='Подключение по данным Windows';MediaType='Тип по данным Windows';FirmwareRevision='Прошивка';SerialNumber='Серийный номер';Partitions='Разделов';BytesPerSector='Байт на сектор';Status='Состояние по данным Windows'}) @('SerialNumber')
         }
         foreach ($c in (Query 'MSFT_PhysicalDisk' 'root/Microsoft/Windows/Storage')) {
-            $d = "Storage · $($c.FriendlyName)"
+            $d = "Накопитель · $($c.FriendlyName)"
             Row $d 'Тип носителя' (FormatEnum @{0='Не указан';3='HDD';4='SSD';5='SCM'} $c.MediaType)
             Row $d 'Шина' (FormatEnum @{0='Неизвестна';1='SCSI';3='ATA';7='USB';8='RAID';11='SATA';14='Виртуальный';15='Файловый виртуальный';16='Storage Spaces';17='NVMe';18='SCM';19='UFS'} $c.BusType)
             Row $d 'Оценка состояния Windows' (FormatEnum @{0='Исправен';1='Предупреждение';2='Неисправен';5='Неизвестно'} $c.HealthStatus)
         }
         foreach ($c in (Query 'Win32_LogicalDisk' 'root/cimv2' 'DriveType=3')) {
-            $d = "Том $($c.DeviceID)"; Row $d 'Метка тома' $c.VolumeName $true
+            $d = "Диск $($c.DeviceID)"; Row $d 'Название диска' $c.VolumeName $true
             Row $d 'Файловая система' $c.FileSystem; Row $d 'Размер' (FormatBytes $c.Size); Row $d 'Свободно' (FormatBytes $c.FreeSpace)
         }
         $warnings.Add('Оценка состояния Windows не заменяет полный разбор SMART и не гарантирует отсутствие ошибок диска.')
@@ -138,7 +139,7 @@ try { switch ($Category) {
         $boot = @(Query 'Win32_OperatingSystem') | Select-Object -First 1
         if ($boot.LastBootUpTime) { Row 'Windows' 'Время работы' (([datetime]::Now - $boot.LastBootUpTime).ToString('d\.hh\:mm\:ss')) }
         foreach ($c in (Query 'Win32_QuickFixEngineering')) { Row $c.HotFixID $c.Description (FormatDate $c.InstalledOn) }
-        $warnings.Add('Список KB содержит обновления, доступные через Windows QFE, и может быть неполным.')
+        $warnings.Add('Показаны обновления, о которых сообщила Windows. Список может не включать все установленные обновления.')
     }
     'software' {
         $seen = @{}
@@ -151,15 +152,15 @@ try { switch ($Category) {
         $warnings.Add('Показаны программы из списков удаления Windows для компьютера и текущего пользователя. Portable и некоторые Microsoft Store приложения здесь отсутствуют.')
     }
     'processes' {
-        foreach ($c in (Query 'Win32_Process')) { $d = "$($c.Name) · PID $($c.ProcessId)"; Row $d 'Рабочий набор RAM (снимок)' (FormatBytes $c.WorkingSetSize); Row $d 'Потоков' $c.ThreadCount; Row $d 'Дескрипторов' $c.HandleCount; Row $d 'Путь' $c.ExecutablePath $true }
-        $warnings.Add('Снимок на момент сбора; процессы могут уже завершиться. Командные строки не собираются.')
+        foreach ($c in (Query 'Win32_Process')) { $d = "$($c.Name) · PID $($c.ProcessId)"; Row $d 'Использование памяти на момент проверки' (FormatBytes $c.WorkingSetSize); Row $d 'Потоков' $c.ThreadCount; Row $d 'Дескрипторов' $c.HandleCount; Row $d 'Путь' $c.ExecutablePath $true }
+        $warnings.Add('Список показывает состояние на момент обновления. Некоторые процессы уже могли завершиться. Команды их запуска не собираются.')
     }
     'services' {
         foreach ($c in (Query 'Win32_Service')) { $d = "$($c.DisplayName) · $($c.Name)"; Row $d 'Состояние / запуск' "$($c.State) / $($c.StartMode)"; Row $d 'PID' $c.ProcessId }
     }
     'startup' {
         foreach ($c in (Query 'Win32_StartupCommand')) { Row $c.Name 'Расположение' $c.Location; Row $c.Name 'Команда' $c.Command $true }
-        $warnings.Add('Снимок Win32_StartupCommand. Задачи планировщика и все механизмы автозапуска в этот список не входят.')
+        $warnings.Add('Это часть списка автозагрузки Windows. Задачи планировщика и некоторые другие способы запуска здесь не показаны.')
     }
     'sensors' {
         $labels = @{Voltage='Напряжение, В';Current='Ток, А';Power='Мощность, Вт';Clock='Частота, МГц';Temperature='Температура, °C';Load='Загрузка, %';Frequency='Частота, Гц';Fan='Вентилятор, об/мин';Flow='Поток, л/ч';Control='Управление, %';Level='Уровень, %'}
@@ -178,7 +179,7 @@ try { switch ($Category) {
             Row $c.Name 'Состояние питания' (FormatEnum @{1='Разряд';2='Сеть / нет разряда';3='Полностью заряжена';4='Низкий заряд';5='Критический заряд';6='Заряжается';7='Заряжается, высокий уровень';8='Заряжается, низкий уровень';9='Заряжается, критический уровень';10='Не определено';11='Частично заряжена'} $c.BatteryStatus)
             if ($c.EstimatedRunTime -gt 0 -and $c.EstimatedRunTime -lt 71582788) { Row $c.Name 'Оценка остатка, мин' $c.EstimatedRunTime }
         }
-        $warnings.Add('Датчики читаются из уже работающего LibreHardwareMonitor / OpenHardwareMonitor с включённым WMI. x2zapret не устанавливает драйвер датчиков. ACPI-зона не является температурой процессора. Отсутствующие показания не подменяются.')
+        $warnings.Add('Этот раздел дополняет встроенные датчики сведениями Windows и уже запущенных LibreHardwareMonitor / OpenHardwareMonitor. Температура зоны ACPI относится к области устройства и не обязательно является температурой процессора.')
     }
     default { throw 'Unknown PC information category' }
 }
