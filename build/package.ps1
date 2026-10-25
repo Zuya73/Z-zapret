@@ -28,6 +28,8 @@ foreach ($package in @('microsoft.netcore.app.runtime.win-x64', 'microsoft.windo
         }
     }
 }
+python "$root/tools/package_hardware_licenses.py" $publish
+if ($LASTEXITCODE -ne 0) { throw 'Hardware dependency licences could not be packaged.' }
 $hashes = [ordered]@{}
 Get-ChildItem "$root/vendor/zapret/bin" -File | Sort-Object Name | ForEach-Object {
     $hashes[$_.Name] = (Get-FileHash $_.FullName -Algorithm SHA256).Hash

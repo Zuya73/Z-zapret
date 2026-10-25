@@ -109,6 +109,22 @@ jobs:
           if (-not $process.WaitForExit(480000)) { $process.Kill(); throw 'PC information checks timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'PC information checks failed.' }
           Get-Content artifacts/pc-information-check.json
+      - name: Verify native hardware worker lifecycle without installing a driver
+        shell: pwsh
+        run: |
+          $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', '--hardware-check', 'artifacts/hardware-check.json') -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Hardware checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw 'Hardware checks failed.' }
+          Get-Content artifacts/hardware-check.json
+      - name: Verify the pinned official driver signature without installing it
+        shell: pwsh
+        run: |
+          $info = Get-Content src/Zapret.Desktop/Assets/Hardware/components.json -Raw | ConvertFrom-Json
+          $file = Join-Path $env:RUNNER_TEMP 'x2zapret-PawnIO-signature-check.exe'
+          Invoke-WebRequest $info.driverUrl -OutFile $file
+          if ((Get-Item $file).Length -ne $info.driverSize -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $info.driverSha256) { throw 'Invalid official PawnIO asset.' }
+          if ((Get-AuthenticodeSignature $file).Status -ne 'Valid') { throw 'Invalid PawnIO Authenticode signature.' }
+          Remove-Item $file
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -125,6 +141,15 @@ jobs:
           $process = Start-Process "$directory/x2zapret.exe" -ArgumentList $argument -WorkingDirectory $env:RUNNER_TEMP -PassThru
           if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Root EXE startup timed out.' }
           if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) { throw "Root EXE failed: $($process.ExitCode)" }
+      - name: Verify built-in monitoring in the self-contained root EXE
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'x2zapret root executable test'
+          $receipt = Join-Path $PWD 'artifacts/root-hardware-check.json'
+          $process = Start-Process "$directory/x2zapret.exe" -ArgumentList ('--hardware-check "' + $receipt + '"') -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Root EXE hardware checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path "$env:RUNNER_TEMP/smoke-error.txt") { Get-Content "$env:RUNNER_TEMP/smoke-error.txt" }; throw 'Root EXE hardware checks failed.' }
+          Get-Content $receipt
       - uses: actions/upload-artifact@v4
         with:
           name: x2zapret-root-executable
@@ -241,6 +266,8 @@ jobs:
             artifacts/motion-check.json
             artifacts/tools-check.json
             artifacts/pc-information-check.json
+            artifacts/hardware-check.json
+            artifacts/root-hardware-check.json
           if-no-files-found: error
           retention-days: 30
 

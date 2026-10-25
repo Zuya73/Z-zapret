@@ -16,13 +16,14 @@ public sealed record PcCategory(string Id, string Title)
         new("network", "Сеть"), new("devices", "Устройства и драйверы"),
         new("windows", "Windows"), new("software", "Установленные программы"),
         new("processes", "Процессы"), new("services", "Службы"),
-        new("startup", "Автозагрузка"), new("sensors", "Датчики и питание")
+        new("startup", "Автозагрузка"), new("sensors", "Живые датчики и питание"),
+        new("smart", "SMART / NVMe"), new("spd", "Память · SPD и тайминги")
     });
     public static PcCategory Find(string id) => All.FirstOrDefault(c => c.Id == id)
         ?? throw new ArgumentException("Неизвестный раздел информации о ПК.", nameof(id));
 }
 
-public sealed record PcRow(string Device, string Property, string Value, bool Sensitive = false);
+public sealed record PcRow(string Device, string Property, string Value, bool Sensitive = false, string Minimum = "", string Maximum = "");
 public sealed record PcSection(string Id, string Title, DateTimeOffset CapturedAt, IReadOnlyList<PcRow> Rows, IReadOnlyList<string> Warnings);
 
 public static class PcInformation
@@ -50,7 +51,9 @@ public static class PcInformation
     public static IReadOnlyList<PcRow> Visible(PcSection section, string query, bool includePrivate)
     {
         query = query.Trim();
-        return section.Rows.Select(r => r.Sensitive && !includePrivate ? r with { Value = Hidden } : r)
+        var safeRows = section.Rows.Select(r => r with { Device = Clean(r.Device), Property = Clean(r.Property), Value = Clean(r.Value),
+            Minimum = string.IsNullOrEmpty(r.Minimum) ? "" : Clean(r.Minimum), Maximum = string.IsNullOrEmpty(r.Maximum) ? "" : Clean(r.Maximum) });
+        return safeRows.Select(r => r.Sensitive && !includePrivate ? r with { Value = Hidden, Minimum = r.Minimum.Length > 0 ? Hidden : "", Maximum = r.Maximum.Length > 0 ? Hidden : "" } : r)
             .Where(r => query.Length == 0 || r.Device.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 r.Property.Contains(query, StringComparison.OrdinalIgnoreCase) || r.Value.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
     }
@@ -64,7 +67,7 @@ public static class PcInformation
         foreach (var section in items)
         {
             text.AppendLine().AppendLine("[" + section.Title + "] " + section.CapturedAt.ToLocalTime().ToString("HH:mm:ss"));
-            foreach (var row in Visible(section, "", includePrivate)) text.AppendLine($"{row.Device} | {row.Property}: {row.Value}");
+            foreach (var row in Visible(section, "", includePrivate)) text.AppendLine($"{row.Device} | {row.Property}: {row.Value}" + (row.Minimum.Length > 0 ? $" | мин: {row.Minimum}; макс: {row.Maximum}" : ""));
             foreach (var warning in section.Warnings) text.AppendLine("Примечание: " + Clean(warning));
         }
         return text.ToString();

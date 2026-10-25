@@ -13,7 +13,7 @@ internal static class PcInformationChecks
         window.SelectPage("Tools"); window.ShowPcTool(); await Task.Delay(450);
         await window.LoadPcSectionAsync(true);
         Require(window.PcInfoPanel.IsVisible && window.ShutdownToolPanel.Visibility == Visibility.Collapsed, "PC information is reachable inside X2 Tools");
-        Require(window.PcCategoryPicker.Items.Count == 16 && window.PcRowsGrid.Items.Count == 6, "All hardware and software categories are available");
+        Require(window.PcCategoryPicker.Items.Count == PcCategory.All.Count && window.PcRowsGrid.Items.Count == 6, "All hardware and software categories are available");
         Require(!window.PcRowsGrid.Items.Cast<PcRow>().Any(r => r.Value.Contains("PRIVATE-TEST")), "Private values start hidden in the grid and clipboard source");
         window.PcSearchBox.Text = "PRIVATE-TEST";
         Require(window.PcRowsGrid.Items.Count == 0, "Search does not leak hidden values");
@@ -34,6 +34,20 @@ internal static class PcInformationChecks
         window.PcCategoryPicker.SelectedItem = PcCategory.Find("sensors");
         await WaitFor(() => !window.PcCancelButton.IsEnabled);
         Require(window.PcRowsGrid.Items.Count == 0 && window.PcWarningText.Text.Contains("недоступны"), "Missing sensor providers show an explanation without invented readings");
+        var sensorRows = new PcRow[]
+        {
+            new("CPU", "Package", "54 °C", false, "41 °C", "63 °C"),
+            new("GPU", "Core", "47 °C", false, "38 °C", "52 °C"),
+            new("Плата", "CPU Fan", "840 об/мин", false, "720 об/мин", "1100 об/мин")
+        };
+        window.PcRowsGrid.ItemsSource = sensorRows;
+        window.PcDriverButton.Visibility = Visibility.Visible; window.PcDriverButton.IsEnabled = false;
+        window.PcStatusText.Text = "Пример интерфейса · демонстрационные показания";
+        window.UpdateLayout();
+        Require(window.PcMinimumColumn.Visibility == Visibility.Visible && window.PcMaximumColumn.Visibility == Visibility.Visible &&
+            window.PcMinimumColumn.GetCellContent(sensorRows[0]) is System.Windows.Controls.TextBlock { Text: "41 °C" }, "Sensor minimum and maximum bind to the visible WPF columns");
+        InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "hardware-preview.png"));
+        window.PcDriverButton.Visibility = Visibility.Collapsed;
         window.PcCategoryPicker.SelectedItem = PcCategory.Find("summary");
         await WaitFor(() => !window.PcCancelButton.IsEnabled);
         window.PcStatusText.Text = "Пример интерфейса · демонстрационные характеристики";
@@ -44,7 +58,7 @@ internal static class PcInformationChecks
         var monitor = new PcLiveMonitor(); var first = monitor.Read(); await Task.Delay(150); var second = monitor.Read();
         Require(first.CpuPercent == null && second.CpuPercent is >= 0 and <= 100 && second.TotalMemory > 0 && second.MemoryPercent is >= 0 and <= 100,
             "Native live CPU and memory counters return valid values");
-        var native = new WindowsPcInformation();
+        using var native = new HardwarePcInformation();
         var counts = new List<object>();
         foreach (var category in PcCategory.All)
         {

@@ -4,6 +4,7 @@ using Zapret.Core;
 int passed = 0;
 var failures = new List<string>();
 PcInformationTests.Run(Check);
+HardwareTelemetryTests.Run(Check);
 var strategiesPath = Path.Combine(args.FirstOrDefault() ?? ".", "resources", "catalogs", "strategies.json");
 var catalog = StrategyCatalog.Load(strategiesPath);
 var required = new[] { new ProbeTarget("discord", "Discord", "Discord", "https://discord.com", true), new ProbeTarget("youtube", "YouTube", "YouTube", "https://youtube.com", true) };
