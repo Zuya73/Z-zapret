@@ -449,8 +449,11 @@ Check("Engine updates preserve active fakes and roll back replacements on a lock
     var hashes = Directory.GetFiles(source).ToDictionary(x => Path.GetFileName(x)!, EngineFiles.Hash);
     if (OperatingSystem.IsWindows())
     {
+        bool rejected = false;
         using (var locked = new FileStream(Path.Combine(data, "b.bin"), FileMode.Open, FileAccess.Read, FileShare.Read))
-            Throws<IOException>(() => EngineFiles.Synchronize(source, data, hashes));
+            try { EngineFiles.Synchronize(source, data, hashes); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { rejected = true; }
+        Assert(rejected);
         Equal("old-a.bin", File.ReadAllText(Path.Combine(data, "a.bin")));
         Equal(0, Directory.GetDirectories(data, ".update-*").Length);
     }
