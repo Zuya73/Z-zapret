@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Windows.Controls;
 using Zapret.Core;
 
 namespace Zapret.Desktop.Runtime;
@@ -56,13 +57,19 @@ internal static class ExtendedToolsChecks
             await File.WriteAllBytesAsync(Path.Combine(root, "sub", "test.bin"), new byte[500]);
             window.SpacePathBox.Text = root;
             await window.RunSpaceAsync();
+            await Task.Delay(100); window.UpdateLayout();
             Require(window.SpaceFolderGrid.Items.Count == 1 && window.SpaceFilesGrid.Items.Count == 1 && window.SpaceStartButton.IsEnabled && !window.SpaceCancelButton.IsEnabled,
                 "Space analysis runs asynchronously and releases operation controls");
+            Require(window.SpaceFolderGrid.Columns[0].GetCellContent(window.SpaceFolderGrid.Items[0]) is TextBlock { Text: var folderPath } && folderPath == Path.Combine(root, "sub") &&
+                window.SpaceFilesGrid.Columns[0].GetCellContent(window.SpaceFilesGrid.Items[0]) is TextBlock { Text: var filePath } && filePath == Path.Combine(root, "sub", "test.bin"),
+                "Folder and file paths bind to visible WPF cells after analysis");
             Require(File.Exists(Path.Combine(root, "sub", "test.bin")), "Space analysis leaves existing files untouched");
             window.RenderSpaceReport(new(@"C:\", 750_000_000_000, 153_270, 4, false,
                 [new(@"C:\Games", 420_000_000_000, true), new(@"C:\Users", 180_000_000_000, true), new(@"C:\Windows", 95_000_000_000, true), new(@"C:\Program Files", 55_000_000_000, true)],
                 [new(@"C:\Games\Example\data.pak", 25_000_000_000, false)]));
             window.SpaceStatusText.Text = "Пример интерфейса · демонстрационные показатели";
+            window.SpacePathBox.Text = @"C:\";
+            await Task.Delay(100); window.UpdateLayout();
             InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "space-analyzer-preview.png"));
         }
         finally { Directory.Delete(root, true); }
