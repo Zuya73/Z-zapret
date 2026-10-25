@@ -6,7 +6,7 @@ internal static class PcInformationTests
     {
         check("PC categories reject command injection and unknown sections", () =>
         {
-            Assert(PcCategory.All.Count == 16 && PcCategory.All.Select(x => x.Id).Distinct().Count() == 16);
+            Assert(PcCategory.All.Count == 18 && PcCategory.All.Select(x => x.Id).Distinct().Count() == 18);
             try { PcCategory.Find("summary'; shutdown /s"); throw new Exception("Accepted unknown category"); }
             catch (ArgumentException) { }
         });
@@ -28,7 +28,7 @@ internal static class PcInformationTests
         {
             var section = Example();
             string safe = PcInformation.Report([section], false), full = PcInformation.Report([section], true);
-            Assert(!safe.Contains("SECRET-123") && safe.Contains("Ryzen") && safe.Contains("1/16"));
+            Assert(!safe.Contains("SECRET-123") && safe.Contains("Ryzen") && safe.Contains("1/" + PcCategory.All.Count));
             Assert(full.Contains("SECRET-123"));
             Assert(section.Rows[1].Value == "SECRET-123");
         });

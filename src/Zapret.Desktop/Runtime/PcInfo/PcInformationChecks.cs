@@ -13,7 +13,7 @@ internal static class PcInformationChecks
         window.SelectPage("Tools"); window.ShowPcTool(); await Task.Delay(450);
         await window.LoadPcSectionAsync(true);
         Require(window.PcInfoPanel.IsVisible && window.ShutdownToolPanel.Visibility == Visibility.Collapsed, "PC information is reachable inside X2 Tools");
-        Require(window.PcCategoryPicker.Items.Count == 16 && window.PcRowsGrid.Items.Count == 6, "All hardware and software categories are available");
+        Require(window.PcCategoryPicker.Items.Count == PcCategory.All.Count && window.PcRowsGrid.Items.Count == 6, "All hardware and software categories are available");
         Require(!window.PcRowsGrid.Items.Cast<PcRow>().Any(r => r.Value.Contains("PRIVATE-TEST")), "Private values start hidden in the grid and clipboard source");
         window.PcSearchBox.Text = "PRIVATE-TEST";
         Require(window.PcRowsGrid.Items.Count == 0, "Search does not leak hidden values");
@@ -44,7 +44,7 @@ internal static class PcInformationChecks
         var monitor = new PcLiveMonitor(); var first = monitor.Read(); await Task.Delay(150); var second = monitor.Read();
         Require(first.CpuPercent == null && second.CpuPercent is >= 0 and <= 100 && second.TotalMemory > 0 && second.MemoryPercent is >= 0 and <= 100,
             "Native live CPU and memory counters return valid values");
-        var native = new WindowsPcInformation();
+        using var native = new HardwarePcInformation();
         var counts = new List<object>();
         foreach (var category in PcCategory.All)
         {

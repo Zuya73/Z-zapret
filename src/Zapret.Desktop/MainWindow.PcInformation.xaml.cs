@@ -12,6 +12,8 @@ public partial class MainWindow
 {
     private PcInformationSession? pcSession;
     private PcSection? pcSection;
+    private HardwarePcInformation? hardwareSource;
+    private CancellationTokenSource hardwareVisibility = new();
     private CancellationTokenSource? pcCancellation;
     private int pcRequest;
     private bool pcInitialized, pcExporting, pcSampling;
@@ -20,7 +22,8 @@ public partial class MainWindow
 
     private void InitializePcInformation(IPcInformationSource? source)
     {
-        pcSession = new(source ?? new WindowsPcInformation());
+        hardwareSource = source == null ? new HardwarePcInformation() : null;
+        pcSession = new(source ?? hardwareSource!);
         PcCategoryPicker.ItemsSource = PcCategory.All;
         PcCategoryPicker.SelectedIndex = 0;
         pcInitialized = true;
@@ -28,13 +31,17 @@ public partial class MainWindow
         {
             if (PcInfoPanel.IsVisible)
             {
-                if (!preview) { pcClock.Start(); await SamplePcAsync(); }
-                if (!preview && pcSection == null) await LoadPcSectionAsync(false);
+                if (!preview)
+                {
+                    if (hardwareVisibility.IsCancellationRequested) { hardwareVisibility.Dispose(); hardwareVisibility = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token); }
+                    pcClock.Start(); await SamplePcAsync();
+                    if (pcSection == null || PcCategoryPicker.SelectedItem is PcCategory c && HardwarePcInformation.IsHardware(c.Id)) await LoadPcSectionAsync(true);
+                }
             }
-            else { pcClock.Stop(); pcCancellation?.Cancel(); }
+            else { pcClock.Stop(); pcCancellation?.Cancel(); hardwareVisibility.Cancel(); hardwareSource?.Stop(); }
         };
         pcClock.Tick += async (_, _) => await SamplePcAsync();
-        Closed += (_, _) => { pcClock.Stop(); pcCancellation?.Cancel(); };
+        Closed += (_, _) => { pcClock.Stop(); pcCancellation?.Cancel(); hardwareVisibility.Cancel(); hardwareSource?.Dispose(); hardwareVisibility.Dispose(); };
     }
 
     internal void ShowShutdownTool()
@@ -63,6 +70,9 @@ public partial class MainWindow
     internal async Task LoadPcSectionAsync(bool refresh)
     {
         if (pcSession == null || pcExporting || PcCategoryPicker.SelectedItem is not PcCategory category) return;
+        PcMinimumColumn.Visibility = PcMaximumColumn.Visibility = category.Id == "sensors" ? Visibility.Visible : Visibility.Collapsed;
+        PcHardwareBar.Visibility = hardwareSource != null && HardwarePcInformation.IsHardware(category.Id) ? Visibility.Visible : Visibility.Collapsed;
+        UpdatePawnState();
         pcCancellation?.Cancel();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         pcCancellation = cancellation;
@@ -136,9 +146,50 @@ public partial class MainWindow
             PcMemoryDetail.Text = $"{sample.UsedMemory / 1073741824d:0.#} / {sample.TotalMemory / 1073741824d:0.#} ГиБ";
             PcCpuBar.Value = sample.CpuPercent ?? 0; PcMemoryBar.Value = sample.MemoryPercent;
             PcNetworkText.Text = $"↓ {sample.ReceiveBytesPerSecond / 1048576:0.00}   ↑ {sample.SendBytesPerSecond / 1048576:0.00}";
+            if (!pcExporting && !PcCancelButton.IsEnabled && hardwareSource?.Client.Running == true &&
+                PcCategoryPicker.SelectedItem is PcCategory category && HardwarePcInformation.IsHardware(category.Id))
+            {
+                int request = pcRequest;
+                var section = await hardwareSource.ReadAsync(category.Id, hardwareVisibility.Token);
+                if (request == pcRequest && PcInfoPanel.IsVisible && !pcExporting)
+                { pcSection = section; ApplyPcFilter(); UpdatePawnState(); }
+            }
         }
+        catch (OperationCanceledException) { }
         catch (Exception error) when (error is InvalidOperationException or System.Net.NetworkInformation.NetworkInformationException)
         { PcCpuText.Text = PcMemoryText.Text = "—"; PcNetworkText.Text = "Недоступно"; }
         finally { pcSampling = false; }
     }
+    private void UpdatePawnState()
+    {
+        if (hardwareSource == null) return;
+        var driver = PawnDriver.State();
+        PcDriverStatus.Text = driver.Ready ? "Встроенные датчики · PawnIO " + driver.Version : "PawnIO: " + driver.Version + ". GPU, диски и батарея доступны без него.";
+        PcDriverButton.IsEnabled = !driver.Ready && !pcExporting;
+    }
+    private async void InstallPawn_Click(object sender, RoutedEventArgs e)
+    {
+        if (hardwareSource == null || pcExporting) return;
+        pcCancellation?.Cancel(); ++pcRequest; hardwareSource.Stop();
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        pcCancellation = cancellation; pcExporting = true;
+        PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = PcPrivateCheck.IsEnabled = PcDriverButton.IsEnabled = false;
+        PcCancelButton.IsEnabled = true; PcStatusText.Text = "Загрузка и проверка официального PawnIO 2.2.0…";
+        bool installed = false;
+        try
+        {
+            bool reboot = await PawnDriver.InstallAsync(cancellation.Token); installed = true;
+            PcStatusText.Text = reboot ? "Драйвер установлен. Windows запросила перезагрузку." : "Драйвер установлен. Обновляю показания…";
+        }
+        catch (OperationCanceledException) { PcStatusText.Text = "Загрузка драйвера отменена."; }
+        catch (Exception error) { PcStatusText.Text = "Не удалось установить PawnIO: " + error.Message; }
+        finally
+        {
+            pcCancellation = null; pcExporting = false; PcCancelButton.IsEnabled = false;
+            PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = PcPrivateCheck.IsEnabled = true;
+            UpdatePawnState();
+        }
+        if (installed && PcInfoPanel.IsVisible) await LoadPcSectionAsync(true);
+    }
+
 }

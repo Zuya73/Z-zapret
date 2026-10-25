@@ -38,3 +38,18 @@ MIT and third-party notices supplied in the licenses directory.
 Desktop source is available in the repository at the URL below.
 Project repository:
 https://github.com/Zuya73/x2zapret
+
+
+Hardware monitoring (x2zapret 0.2.7):
+LibreHardwareMonitorLib 0.9.6, unmodified, MPL-2.0.
+Source: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/tree/3d331e3370efb858411f19511373eff65a218701
+Includes signed PawnIO modules, LGPL-2.1; source: https://github.com/namazso/PawnIO.Modules
+MPL/LGPL texts and upstream notices are in vendor/hardware/licenses (source repository),
+embedded in the root EXE, and copied to licenses/hardware (installed/portable package).
+Resolved transitive package versions, licence expressions and source URLs are in
+licenses/hardware/resolved-packages.json, with licence files copied from NuGet packages.
+DiskInfoToolkit and RAMSPDToolkit-NDD source links are included in that metadata.
+The public project can be rebuilt with modified/replacement libraries; none are modified here.
+PawnIO Setup 2.2.0 is downloaded only on explicit use of the driver button, directly
+from the official publisher. It is not bundled with x2zapret. Driver source/licence:
+https://github.com/namazso/PawnIO (GPL-2.0-or-later with the publisher's IOCTL exception).

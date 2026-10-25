@@ -9,6 +9,18 @@ public partial class App : Application
     private Mutex? singleInstance;
     protected override async void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Contains("--hardware-worker-test"))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            await Task.Delay(Timeout.Infinite); return;
+        }
+        if (e.Args.Contains("--hardware-worker"))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            try { await Task.Run(HardwareWorker.Run); Shutdown(0); }
+            catch (Exception) { Shutdown(1); }
+            return;
+        }
         base.OnStartup(e);
         if (e.Args.Contains("--uninstall-service") || e.Args.Contains("--stop-service-for-update") || e.Args.Contains("--refresh-startup"))
         {
@@ -52,7 +64,8 @@ public partial class App : Application
         bool motionCheck = e.Args.Contains("--motion-check");
         bool toolsCheck = e.Args.Contains("--tools-check");
         bool pcCheck = e.Args.Contains("--pc-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck;
+        bool hardwareCheck = e.Args.Contains("--hardware-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck || hardwareCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -105,6 +118,11 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (hardwareCheck)
+            {
+                try { await HardwareChecks.RunAsync(e.Args.SkipWhile(x => x != "--hardware-check").Skip(1).First()); }
+                catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); return; }
+            }
             if (pcCheck)
             {
                 try { await PcInformationChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--pc-check").Skip(1).First()); }
