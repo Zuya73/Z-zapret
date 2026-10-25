@@ -131,12 +131,12 @@
           </StackPanel>
           <StackPanel x:Name="ToolsPanel" Visibility="Collapsed">
             <WrapPanel Margin="0,0,0,16">
-              <Button FontSize="12" Padding="12,8" x:Name="PcToolButton" Content="Информация о ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,8" />
-              <Button FontSize="12" Padding="12,8" x:Name="TimerToolButton" Content="Таймер выключения" Click="SelectTimerTool_Click" Margin="0,0,10,8" />
-              <Button FontSize="12" Padding="12,8" x:Name="DiskToolButton" Content="Скорость дисков" Click="SelectDiskTool_Click" Margin="0,0,10,8" />
-              <Button FontSize="12" Padding="12,8" x:Name="SensorToolButton" Content="Графики датчиков" Tag="Sensors" Click="SelectExtendedTool_Click" Margin="0,0,10,8" />
-              <Button FontSize="12" Padding="12,8" x:Name="NetworkToolButton" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" Margin="0,0,10,8" />
-              <Button FontSize="12" Padding="12,8" x:Name="SpaceToolButton" Content="Занятое место" Tag="Space" Click="SelectExtendedTool_Click" Margin="0,0,0,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="PcToolButton" Content="О ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,8" / ToolTip="Информация о ПК" AutomationProperties.Name="Информация о ПК">
+              <Button FontSize="12" Padding="12,8" x:Name="TimerToolButton" Content="Таймер" Click="SelectTimerTool_Click" Margin="0,0,10,8" / ToolTip="Таймер выключения" AutomationProperties.Name="Таймер выключения">
+              <Button FontSize="12" Padding="12,8" x:Name="DiskToolButton" Content="Тест диска" Click="SelectDiskTool_Click" Margin="0,0,10,8" / ToolTip="Скорость дисков" AutomationProperties.Name="Скорость дисков">
+              <Button FontSize="12" Padding="12,8" x:Name="SensorToolButton" Content="Датчики" Tag="Sensors" Click="SelectExtendedTool_Click" Margin="0,0,10,8" / ToolTip="Графики датчиков" AutomationProperties.Name="Графики датчиков">
+              <Button FontSize="12" Padding="12,8" x:Name="NetworkToolButton" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" Margin="0,0,10,8" / ToolTip="Качество соединения и скорость интернета" AutomationProperties.Name="Качество соединения и скорость интернета">
+              <Button FontSize="12" Padding="12,8" x:Name="SpaceToolButton" Content="Место" Tag="Space" Click="SelectExtendedTool_Click" Margin="0,0,0,8" / ToolTip="Анализ занятого места" AutomationProperties.Name="Анализ занятого места">
             </WrapPanel>
             <StackPanel x:Name="PcInfoPanel">
               <StackPanel.Resources><Style x:Key="PcMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
