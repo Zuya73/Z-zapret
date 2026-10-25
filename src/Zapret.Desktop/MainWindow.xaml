@@ -131,12 +131,12 @@
           </StackPanel>
           <StackPanel x:Name="ToolsPanel" Visibility="Collapsed">
             <WrapPanel Margin="0,0,0,16">
-              <Button x:Name="PcToolButton" Content="Информация о ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,8" />
-              <Button x:Name="TimerToolButton" Content="Таймер выключения" Click="SelectTimerTool_Click" Margin="0,0,10,8" />
-              <Button x:Name="DiskToolButton" Content="Скорость дисков" Click="SelectDiskTool_Click" Margin="0,0,10,8" />
-              <Button x:Name="SensorToolButton" Content="Графики датчиков" Tag="Sensors" Click="SelectExtendedTool_Click" Margin="0,0,10,8" />
-              <Button x:Name="NetworkToolButton" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" Margin="0,0,10,8" />
-              <Button x:Name="SpaceToolButton" Content="Занятое место" Tag="Space" Click="SelectExtendedTool_Click" Margin="0,0,0,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="PcToolButton" Content="Информация о ПК" Style="{StaticResource Primary}" Click="SelectPcTool_Click" Margin="0,0,10,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="TimerToolButton" Content="Таймер выключения" Click="SelectTimerTool_Click" Margin="0,0,10,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="DiskToolButton" Content="Скорость дисков" Click="SelectDiskTool_Click" Margin="0,0,10,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="SensorToolButton" Content="Графики датчиков" Tag="Sensors" Click="SelectExtendedTool_Click" Margin="0,0,10,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="NetworkToolButton" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" Margin="0,0,10,8" />
+              <Button FontSize="12" Padding="12,8" x:Name="SpaceToolButton" Content="Занятое место" Tag="Space" Click="SelectExtendedTool_Click" Margin="0,0,0,8" />
             </WrapPanel>
             <StackPanel x:Name="PcInfoPanel">
               <StackPanel.Resources><Style x:Key="PcMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
@@ -246,19 +246,19 @@
               </StackPanel></Border>
               <Border Style="{StaticResource Card}" Padding="18"><StackPanel><TextBlock Text="100 крупнейших файлов" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" /><DataGrid x:Name="SpaceFilesGrid" SelectionChanged="SpaceSelection_Changed" Height="240" FontSize="11"><DataGrid.Columns><DataGridTextColumn Header="Файл" Binding="{Binding Path}" Width="*" /><DataGridTextColumn Header="Размер" Binding="{Binding Size}" Width="110" /></DataGrid.Columns></DataGrid><Button Content="Показать файл в проводнике" Click="OpenSpace_Click" HorizontalAlignment="Left" Margin="0,12,0,0" /><TextBlock Text="Считается логический размер доступных файлов. Ссылки, точки подключения и недоступные папки пропускаются; жёсткие ссылки могут учитываться повторно. Результат отличается от занятого места на томе. Лимит - 10 минут или 2 млн записей; при отмене остаётся частичный результат. Файлы не изменяются." Style="{StaticResource Muted}" FontSize="11" Margin="0,12,0,0" /></StackPanel></Border>
             </StackPanel>
-            <StackPanel x:Name="ShutdownToolPanel" Visibility="Collapsed">
-            <Border Style="{StaticResource Card}" Padding="28">
+            <StackPanel x:Name="ShutdownToolPanel" Visibility="Collapsed"><StackPanel.Resources><Style x:Key="TimerMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="18" /></Style></StackPanel.Resources>
+            <Border Style="{StaticResource Card}" Padding="18">
               <StackPanel>
-                <TextBlock Text="02 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,14" />
+                <TextBlock Text="02 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" />
                 <TextBlock Text="Выключение по таймеру" Style="{StaticResource Heading}" />
-                <TextBlock Text="Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret." Style="{StaticResource Muted}" Margin="0,0,0,22" />
+                <TextBlock Text="Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret." Style="{StaticResource TimerMuted}" Margin="0,0,0,12" />
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                   <StackPanel>
                     <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="24" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
-                      <StackPanel><TextBlock Text="Часы" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownHoursBox" Text="1" MaxLength="3" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Часы до выключения компьютера" /></StackPanel>
-                      <StackPanel Grid.Column="2"><TextBlock Text="Минуты" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownMinutesBox" Text="0" MaxLength="2" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Минуты до выключения компьютера" /></StackPanel>
+                      <StackPanel><TextBlock Text="Часы" Style="{StaticResource TimerMuted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownHoursBox" Text="1" MaxLength="3" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Часы до выключения компьютера" /></StackPanel>
+                      <StackPanel Grid.Column="2"><TextBlock Text="Минуты" Style="{StaticResource TimerMuted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownMinutesBox" Text="0" MaxLength="2" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Минуты до выключения компьютера" /></StackPanel>
                     </Grid>
-                    <WrapPanel Margin="0,16,0,0">
+                    <WrapPanel Margin="0,10,0,0">
                       <Button Content="15 мин" Tag="15" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
                       <Button Content="30 мин" Tag="30" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
                       <Button Content="1 час" Tag="60" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
@@ -268,11 +268,11 @@
                   <Border Grid.Column="2" Background="#0A0A0A" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="18">
                     <StackPanel><TextBlock Text="ОСТАЛОСЬ" FontSize="10" Foreground="{DynamicResource MutedBrush}" />
                       <Viewbox Height="58" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Stretch" Margin="0,8,0,4"><TextBlock x:Name="ShutdownCountdown" Text="— : — : —" FontSize="40" FontFamily="Consolas" /></Viewbox>
-                      <TextBlock x:Name="ShutdownStatus" Text="Таймер не запущен" Style="{StaticResource Muted}" FontSize="12" />
+                      <TextBlock x:Name="ShutdownStatus" Text="Таймер не запущен" Style="{StaticResource TimerMuted}" FontSize="12" />
                     </StackPanel>
                   </Border>
                 </Grid>
-                <WrapPanel Margin="0,22,0,0">
+                <WrapPanel Margin="0,12,0,0">
                   <Button x:Name="StartShutdownTimerButton" Content="Запустить таймер" Style="{StaticResource Primary}" Click="StartShutdownTimer_Click" Margin="0,0,12,10" />
                   <Button x:Name="CancelShutdownTimerButton" Content="Отменить таймер" IsEnabled="False" Click="CancelShutdownTimer_Click" Margin="0,0,0,10" />
                 </WrapPanel>
@@ -281,7 +281,7 @@
             </Border>
             <Border Style="{StaticResource Card}"><StackPanel>
               <TextBlock Text="Как работает таймер" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10" />
-              <TextBlock Text="• От 1 минуты до 7 дней. Отменить можно до начала выключения.&#x0a;• Windows не будет принудительно закрывать программы. Несохранённые документы могут задержать выключение.&#x0a;• Компьютер должен быть включён, пользователь - оставаться в системе. Таймер не будит ПК и не срабатывает позже пропущенного времени после сна или перезагрузки." Style="{StaticResource Muted}" FontSize="12" />
+              <TextBlock Text="• От 1 минуты до 7 дней. Отменить можно до начала выключения.&#x0a;• Windows не будет принудительно закрывать программы. Несохранённые документы могут задержать выключение.&#x0a;• Компьютер должен быть включён, пользователь - оставаться в системе. Таймер не будит ПК и не срабатывает позже пропущенного времени после сна или перезагрузки." Style="{StaticResource TimerMuted}" FontSize="12" />
             </StackPanel></Border>
             </StackPanel>
           </StackPanel>

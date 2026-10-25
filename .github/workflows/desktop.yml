@@ -307,6 +307,8 @@ jobs:
             artifacts/disk-check.json
             artifacts/disk-native-check.json
             artifacts/root-disk-check.json
+            artifacts/extended-tools-check.json
+            artifacts/root-extended-tools-check.json
           if-no-files-found: error
           retention-days: 30
 
