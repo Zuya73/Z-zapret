@@ -32,7 +32,7 @@ public static class UpdateManifest
     public static AppUpdate? Parse(string json, Version current)
     {
         using var document = JsonDocument.Parse(json);
-        if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("Неподдерживаемый ответ GitHub.");
+        if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("Не удалось прочитать сведения об обновлениях с GitHub. Повторите проверку позже.");
         var candidates = new List<(Version Version, string Tag, JsonElement Release)>();
         foreach (var release in document.RootElement.EnumerateArray())
         {
@@ -50,11 +50,11 @@ public static class UpdateManifest
             if (asset.GetProperty("name").GetString() != filename) continue;
             if (!Uri.TryCreate(asset.GetProperty("browser_download_url").GetString(), UriKind.Absolute, out var uri) ||
                 !TrustedDownload(uri) || Uri.UnescapeDataString(uri.Segments[^1]) != filename)
-                throw new InvalidDataException("Адрес обновления не принадлежит репозиторию x2zapret.");
+                throw new InvalidDataException("Обновление ведёт на посторонний адрес. Скачивание остановлено; используйте страницу загрузки x2zapret.");
             long size = asset.GetProperty("size").GetInt64();
             string digest = asset.TryGetProperty("digest", out var value) ? value.GetString() ?? "" : "";
             if (size is < 4096 or > MaximumInstallerSize || !Regex.IsMatch(digest, @"^sha256:[0-9a-fA-F]{64}$"))
-                throw new InvalidDataException("В релизе нет корректной контрольной суммы или размера установщика.");
+                throw new InvalidDataException("Не хватает данных для проверки установщика. Обновление пока недоступно; повторите проверку позже.");
             return new(latest.Version, latest.Tag, uri, size, digest[7..].ToLowerInvariant());
         }
         throw new InvalidDataException($"В релизе {latest.Tag} отсутствует установщик {filename}.");
@@ -67,7 +67,7 @@ public static class UpdateDownloader
         IProgress<DownloadProgress> progress, CancellationToken cancellationToken)
     {
         if (!UpdateManifest.TrustedDownload(update.DownloadUrl) || update.Size is < 4096 or > UpdateManifest.MaximumInstallerSize ||
-            !Regex.IsMatch(update.Sha256, @"^[0-9a-fA-F]{64}$")) throw new InvalidDataException("Недопустимые данные обновления.");
+            !Regex.IsMatch(update.Sha256, @"^[0-9a-fA-F]{64}$")) throw new InvalidDataException("Не удалось проверить сведения об обновлении. Повторите поиск новой версии.");
         string folder = Path.Combine(cacheDirectory, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         string partial = Path.Combine(folder, "installer.download");
@@ -89,7 +89,7 @@ public static class UpdateDownloader
                     int count = await input.ReadAsync(buffer, cancellationToken);
                     if (count == 0) break;
                     received += count;
-                    if (received > update.Size) throw new InvalidDataException("Установщик превышает заявленный размер.");
+                    if (received > update.Size) throw new InvalidDataException("Размер скачанного файла отличается от ожидаемого. Установка отменена; повторите загрузку.");
                     hash.AppendData(buffer, 0, count);
                     await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
                     progress.Report(new(received, update.Size));
@@ -98,9 +98,9 @@ public static class UpdateDownloader
                 output.Flush(flushToDisk: true);
             }
             if (received != update.Size || !CryptographicOperations.FixedTimeEquals(hash.GetHashAndReset(), Convert.FromHexString(update.Sha256)))
-                throw new InvalidDataException("Контрольная сумма обновления не совпала. Установка отменена.");
+                throw new InvalidDataException("Скачанный установщик повреждён или отличается от опубликованного. Установка отменена; скачайте обновление ещё раз.");
             using (var header = File.OpenRead(partial))
-                if (header.ReadByte() != 'M' || header.ReadByte() != 'Z') throw new InvalidDataException("Полученный файл не является установщиком Windows.");
+                if (header.ReadByte() != 'M' || header.ReadByte() != 'Z') throw new InvalidDataException("Вместо установщика получен другой файл. Установка отменена; попробуйте загрузить обновление позже.");
             File.Move(partial, destination);
             complete = true;
             return destination;

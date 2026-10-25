@@ -40,7 +40,7 @@ VIAddVersionKey "LegalCopyright" "2026 Zuya73. Third-party copyrights retained."
   System::Call 'kernel32::OpenMutexW(i 0x100000, i 0, w "Global\Z-zapret.Desktop") p.r0'
   ${If} $0 != 0
     System::Call 'kernel32::CloseHandle(p r0)'
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Закройте x2zapret через команду «Выход» в меню трея и повторите установку или удаление." /SD IDOK
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Нажмите правой кнопкой на значок x2zapret рядом с часами, выберите «Выход» и повторите установку или удаление." /SD IDOK
     SetErrorLevel 2
     Abort
   ${EndIf}
@@ -89,7 +89,7 @@ Function .onInit
   ClearErrors
   ExecWait '"$2" --stop-service-for-update' $1
   ${If} ${Errors}
-    MessageBox MB_OK|MB_ICONSTOP "Не удалось запустить обслуживание x2zapret. Обновление остановлено." /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "Не удалось подготовить x2zapret к обновлению. Полностью закройте программу через значок рядом с часами и повторите установку." /SD IDOK
     SetErrorLevel 3
     Abort
   ${EndIf}

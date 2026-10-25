@@ -83,17 +83,17 @@ public partial class MainWindow
         try
         {
             var live = await Task.Run(graphLive.Read, cancellation.Token);
-            var readings = new List<HardwareReading> { new("x2.cpu.load", "Компьютер", "Загрузка CPU", "Load", live.CpuPercent),
+            var readings = new List<HardwareReading> { new("x2.cpu.load", "Компьютер", "Загрузка процессора", "Load", live.CpuPercent),
                 new("x2.memory.load", "Компьютер", "Загрузка памяти", "Load", live.MemoryPercent) };
             sensorHistory.Add(DateTimeOffset.UtcNow, readings); RenderSensorHistory();
             try
             {
                 var frame = await graphHardware.SampleAsync(cancellation.Token); readings.AddRange(frame.Readings);
                 sensorHistory.Add(frame.CapturedAt, frame.Readings);
-                graphDriverNote = frame.DriverReady ? "" : " · для CPU / платы может потребоваться PawnIO в разделе «Информация о ПК»";
+                graphDriverNote = frame.DriverReady ? "" : " · для датчиков процессора и платы может потребоваться драйвер: раздел «О ПК»";
             }
             catch (Exception error) when (error is IOException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
-            { graphDriverNote = " · аппаратные датчики недоступны: " + error.Message; }
+            { graphDriverNote = " · часть датчиков недоступна: " + error.Message; }
             cancellation.Token.ThrowIfCancellationRequested();
             var alerts = settings.SensorAlerts ?? [];
             foreach (var alert in alerts.Take(50))
@@ -123,7 +123,7 @@ public partial class MainWindow
         changingSensor = false;
         if ((SensorPicker.SelectedItem as SensorSeries)?.Id != id) Sensor_Changed(this, new SelectionChangedEventArgs(Selector.SelectionChangedEvent, Array.Empty<object>(), Array.Empty<object>()));
         RenderSensorChart();
-        SensorStatusText.Text = $"Датчиков: {series.Count} · шаг 2 с · хранится последний час" + (graphRecording ? " · запись продолжается в трее" : " · сбор при открытом инструменте") + graphDriverNote;
+        SensorStatusText.Text = $"Датчиков: {series.Count} · обновление раз в 2 с · история за час" + (graphRecording ? " · сбор продолжается при сворачивании" : " · сбор только в этом разделе") + graphDriverNote;
     }
     private void RenderSensorChart()
     {
@@ -156,19 +156,19 @@ public partial class MainWindow
             if (SensorAlertCheck.IsChecked == true)
             {
                 if (!double.TryParse(SensorThresholdBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value) || !double.IsFinite(value) || Math.Abs(value) > 1_000_000_000)
-                    throw new ArgumentException("Укажите числовой порог в единицах выбранного датчика.");
+                    throw new ArgumentException("Введите число в единицах выбранного датчика, например 80 для температуры 80 °C.");
                 alerts.Add(new(sensor.Id, value));
             }
             var updated = settings with { SensorAlerts = alerts.ToArray() }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated;
-            RenderSensorChart(); SensorStatusText.Text = "Порог сохранён. Уведомления работают во время сбора показаний.";
+            RenderSensorChart(); SensorStatusText.Text = "Предупреждение сохранено. Оно работает, пока собираются показания датчиков.";
         }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     private void ExportSensors_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "CSV (*.csv)|*.csv", FileName = "x2zapret-sensors-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".csv" };
         if (dialog.ShowDialog(this) == true)
-            try { AtomicFile.Write(dialog.FileName, sensorHistory.Csv()); } catch (Exception error) { ShowError(error.Message); }
+            try { AtomicFile.Write(dialog.FileName, sensorHistory.Csv()); } catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     private void ClearSensors_Click(object sender, RoutedEventArgs e) { sensorHistory.Clear(); SensorPlot.Points = []; SensorPlot.InvalidateVisual(); RenderSensorHistory(); }
 
@@ -186,9 +186,9 @@ public partial class MainWindow
                 qualityReport = null; QualityRowsGrid.ItemsSource = null; QualityRouteText.Text = "";
                 qualityReport = await NetworkTools.QualityAsync(target, gateway, route, new Progress<string>(s => NetworkStageText.Text = s), timeout.Token);
                 RenderQualityReport(qualityReport);
-                NetworkStageText.Text = "Проверка завершена. Потери относятся к ответам ICMP, а не ко всему трафику.";
+                NetworkStageText.Text = "Проверка завершена. Отсутствие ответа на тестовый запрос само по себе не доказывает обрыв интернета.";
             }
-            catch (OperationCanceledException) { NetworkStageText.Text = token.IsCancellationRequested ? "Проверка отменена." : "Проверка остановлена по лимиту времени."; throw; }
+            catch (OperationCanceledException) { NetworkStageText.Text = token.IsCancellationRequested ? "Проверка отменена." : "Проверка заняла слишком много времени и остановлена. Попробуйте ещё раз."; throw; }
             finally { extendedRunning = false; }
         }, "Проверка качества интернета…");
     }
@@ -196,7 +196,7 @@ public partial class MainWindow
     {
         string Metric(double? value) => value?.ToString("0.0") ?? "—";
         var rows = new List<object>();
-        foreach (var item in new[] { ("Внешний узел · " + report.Target, report.Internet), ("Выбранный шлюз", report.Gateway) })
+        foreach (var item in new[] { ("Сервер · " + report.Target, report.Internet), ("Роутер / выбранный шлюз", report.Gateway) })
         {
             if (item.Item2.Count == 0) continue;
             var stats = NetworkMeasurements.Summarize(item.Item2);
@@ -226,8 +226,8 @@ public partial class MainWindow
     {
         SpeedDownText.Text = report.DownloadMbps > 0 ? report.DownloadMbps.ToString("0.0") : "—";
         SpeedUpText.Text = report.UploadMbps > 0 ? report.UploadMbps.ToString("0.0") : "—";
-        SpeedLatencyText.Text = $"HTTP-задержка: {report.IdleMs?.ToString("0.0") ?? "—"} мс · под нагрузкой: {report.LoadedMs?.ToString("0.0") ?? "—"} мс";
-        NetworkStageText.Text = (report.Outcome == "Completed" ? "Замер завершён." : report.Note) + $" Получено {report.DownloadBytes / 1_000_000d:0.#} МБ · отправлено полных блоков {report.UploadBytes / 1_000_000d:0.#} МБ.";
+        SpeedLatencyText.Text = $"Время ответа: {report.IdleMs?.ToString("0.0") ?? "—"} мс · под нагрузкой: {report.LoadedMs?.ToString("0.0") ?? "—"} мс";
+        NetworkStageText.Text = (report.Outcome == "Completed" ? "Замер завершён." : report.Note) + $" Получено {report.DownloadBytes / 1_000_000d:0.#} МБ · отправлено {report.UploadBytes / 1_000_000d:0.#} МБ.";
     }
     private async void StartQuality_Click(object sender, RoutedEventArgs e) => await RunQualityAsync();
     private async void StartSpeed_Click(object sender, RoutedEventArgs e) => await RunSpeedAsync();
@@ -237,18 +237,38 @@ public partial class MainWindow
         var text = new StringBuilder("x2zapret · сетевые измерения\n");
         if (qualityReport != null)
         {
-            text.AppendLine("Цель: " + qualityReport.Target);
-            foreach (var item in new[] { ("Внешний узел", qualityReport.Internet), ("Шлюз", qualityReport.Gateway) })
-                text.AppendLine(item.Item1 + ": " + System.Text.Json.JsonSerializer.Serialize(NetworkMeasurements.Summarize(item.Item2)));
-            text.AppendLine(string.Join("\n", qualityReport.Route));
+            text.AppendLine("Проверяемый сервер: " + qualityReport.Target);
+            foreach (var item in new[] { ("Сервер в интернете", qualityReport.Internet), ("Роутер / выбранный шлюз", qualityReport.Gateway) })
+            {
+                var summary = NetworkMeasurements.Summarize(item.Item2);
+                text.AppendLine().AppendLine(item.Item1);
+                text.AppendLine($"Отправлено запросов: {summary.Sent}. Получено ответов: {summary.Received}.");
+                text.AppendLine($"Без ответа: {summary.LossPercent:0.0}%. Среднее время ответа: {ReportNumber(summary.AverageMs)} мс.");
+                text.AppendLine($"Минимум: {ReportNumber(summary.MinimumMs)} мс. Максимум: {ReportNumber(summary.MaximumMs)} мс.");
+                text.AppendLine($"Изменение задержки между ответами (джиттер): {ReportNumber(summary.JitterMs)} мс.");
+            }
+            text.AppendLine("Пинг и джиттер: меньше — лучше. Отсутствие тестового ответа не всегда означает сбой интернета.");
+            if (qualityReport.Route.Count > 0) text.AppendLine("Путь до сервера:").AppendLine(string.Join("\n", qualityReport.Route));
         }
-        if (speedReport != null) text.AppendLine(System.Text.Json.JsonSerializer.Serialize(speedReport, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        if (speedReport != null)
+        {
+            string result = speedReport.Outcome switch { "Completed" => "Замер завершён", "Cancelled" => "Замер отменён", _ => "Ошибка измерения" };
+            text.AppendLine().AppendLine("Скорость до сервера Cloudflare");
+            text.AppendLine($"Время: {speedReport.At.ToLocalTime():dd.MM.yyyy HH:mm:ss}. {result}.");
+            text.AppendLine($"Скачивание: {(speedReport.DownloadMbps > 0 ? speedReport.DownloadMbps.ToString("0.0") : "—")} Мбит/с.");
+            text.AppendLine($"Отправка: {(speedReport.UploadMbps > 0 ? speedReport.UploadMbps.ToString("0.0") : "—")} Мбит/с.");
+            text.AppendLine($"Время ответа без нагрузки: {ReportNumber(speedReport.IdleMs)} мс; во время передачи: {ReportNumber(speedReport.LoadedMs)} мс.");
+            text.AppendLine($"Получено: {speedReport.DownloadBytes / 1_000_000d:0.##} МБ. Отправлено полных блоков: {speedReport.UploadBytes / 1_000_000d:0.##} МБ.");
+            text.AppendLine("Частично отправленный блок может не попасть в счётчик. Скорость зависит от сервера, маршрута и других загрузок.");
+            if (speedReport.Note.Length > 0) text.AppendLine("Примечание: " + speedReport.Note);
+        }
         SaveText("x2zapret-network.txt", text.ToString());
     }
+    private static string ReportNumber(double? value) => value?.ToString("0.0") ?? "—";
     private void SaveText(string name, string text)
     {
         var dialog = new SaveFileDialog { Filter = "Текстовый отчёт (*.txt)|*.txt", FileName = name };
-        if (dialog.ShowDialog(this) == true) try { AtomicFile.Write(dialog.FileName, text); } catch (Exception error) { ShowError(error.Message); }
+        if (dialog.ShowDialog(this) == true) try { AtomicFile.Write(dialog.FileName, text); } catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     private void BrowseSpace_Click(object sender, RoutedEventArgs e)
     {
@@ -258,7 +278,7 @@ public partial class MainWindow
     private void ParentSpace_Click(object sender, RoutedEventArgs e)
     {
         try { SpacePathBox.Text = Directory.GetParent(Path.GetFullPath(SpacePathBox.Text))?.FullName ?? SpacePathBox.Text; }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     internal async Task RunSpaceAsync()
     {
@@ -312,7 +332,7 @@ public partial class MainWindow
             var start = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
             start.ArgumentList.Add("/select,"); start.ArgumentList.Add(view.Path); Process.Start(start);
         }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     internal void PopulateExtendedPreview()
     {

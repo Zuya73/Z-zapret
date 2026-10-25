@@ -17,7 +17,7 @@ internal sealed class ServiceHealthProbe(HttpMessageHandler? handler = null) : I
     {
         var checks = new[] {
             ("Discord", "Discord", "https://discord.com/"),
-            ("Discord CDN", "Discord", "https://cdn.discordapp.com/"),
+            ("Файлы Discord", "Discord", "https://cdn.discordapp.com/"),
             ("YouTube", "YouTube", "https://www.youtube.com/"),
             ("YouTube изображения", "YouTube", "https://i.ytimg.com/"),
             ("Google", "Internet", "https://www.google.com/"),
@@ -33,13 +33,22 @@ internal sealed class ServiceHealthProbe(HttpMessageHandler? handler = null) : I
                 int code = (int)response.StatusCode;
                 // CDN root endpoints intentionally return 403/404; a main site must return success.
                 bool ok = response.RequestMessage?.RequestUri?.Scheme == "https" &&
-                    (code is >= 200 and < 400 || target.Item1 is "Discord CDN" or "YouTube изображения" && code is 403 or 404);
-                return new ServiceCheck(target.Item1, target.Item2, ok, clock.Elapsed.TotalMilliseconds, "HTTP " + code);
+                    (code is >= 200 and < 400 || target.Item1 is "Файлы Discord" or "YouTube изображения" && code is 403 or 404);
+                return new ServiceCheck(target.Item1, target.Item2, ok, clock.Elapsed.TotalMilliseconds, "Ответ сервера: HTTP " + code);
             }
             catch (OperationCanceledException) when (!token.IsCancellationRequested)
-            { return new ServiceCheck(target.Item1, target.Item2, false, clock.Elapsed.TotalMilliseconds, "Нет ответа за 7 с"); }
+            { return new ServiceCheck(target.Item1, target.Item2, false, clock.Elapsed.TotalMilliseconds, "Сервер не ответил за 7 секунд"); }
             catch (HttpRequestException error)
-            { return new ServiceCheck(target.Item1, target.Item2, false, clock.Elapsed.TotalMilliseconds, error.HttpRequestError.ToString()); }
+            {
+                string reason = error.HttpRequestError switch
+                {
+                    HttpRequestError.NameResolutionError => "Не удалось найти адрес сервера",
+                    HttpRequestError.ConnectionError => "Не удалось подключиться к серверу",
+                    HttpRequestError.SecureConnectionError => "Не удалось установить защищённое соединение",
+                    _ => "Не удалось получить ответ сервера"
+                };
+                return new ServiceCheck(target.Item1, target.Item2, false, clock.Elapsed.TotalMilliseconds, reason + " (" + error.HttpRequestError + ")");
+            }
         })));
     }
     public void Dispose() => client.Dispose();
@@ -66,7 +75,7 @@ internal static class NetworkTools
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token); timeout.CancelAfter(TimeSpan.FromSeconds(5));
         var addresses = await Dns.GetHostAddressesAsync(host, timeout.Token);
         return addresses.FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork) ?? addresses.FirstOrDefault()
-            ?? throw new IOException("DNS не вернул адрес.");
+            ?? throw new IOException("Не удалось найти адрес сервера. Проверьте название и подключение к интернету.");
     }
     private static async Task<double?> PingAsync(IPAddress address, int ttl, CancellationToken token)
     {
@@ -89,7 +98,7 @@ internal static class NetworkTools
             token.ThrowIfCancellationRequested();
             var result = await Task.WhenAll(PingAsync(address, 128, token), gateway == null ? Task.FromResult<double?>(null) : PingAsync(gateway, 128, token));
             internet.Add(new(i, result[0])); if (gateway != null) local.Add(new(i, result[1]));
-            progress.Report($"Пакет {i}/{packetCount} · {address}: {(result[0].HasValue ? result[0] + " мс" : "нет ICMP-ответа")}");
+            progress.Report($"Пакет {i}/{packetCount} · {address}: {(result[0].HasValue ? result[0] + " мс" : "нет ответа на тестовый запрос")}");
             if (i < packetCount) await Task.Delay(500, token);
         }
         if (route)
@@ -100,7 +109,8 @@ internal static class NetworkTools
                 try
                 {
                     var reply = await ping.SendPingAsync(address, TimeSpan.FromMilliseconds(800), new byte[32], new PingOptions(ttl, false), token);
-                    hops.Add($"{ttl,2}  {(reply.Status is IPStatus.Success or IPStatus.TtlExpired ? reply.Address.ToString() : "*")}  {reply.Status}");
+                    string replyText = reply.Status == IPStatus.Success ? "Сервер ответил" : reply.Status == IPStatus.TtlExpired ? "Промежуточное устройство" : "Нет ответа";
+                    hops.Add($"{ttl,2}  {(reply.Status is IPStatus.Success or IPStatus.TtlExpired ? reply.Address.ToString() : "*")}  {replyText}");
                     if (reply.Status == IPStatus.Success) break;
                 }
                 catch (Exception e) when (e is PingException or SocketException) { hops.Add(ttl + "  *"); }
@@ -164,9 +174,9 @@ internal static class NetworkTools
                             while ((count = await body.ReadAsync(buffer, ct)) > 0)
                             {
                                 received += count; downloaded += count;
-                                if (received > size) throw new InvalidDataException("Сервис вернул больше данных, чем запрошено.");
+                                if (received > size) throw new InvalidDataException("Сервер прислал неожиданный объём данных. Проверка остановлена; попробуйте ещё раз.");
                             }
-                            if (received != size) throw new InvalidDataException("Сервис вернул неполный тестовый блок.");
+                            if (received != size) throw new InvalidDataException("Сервер прислал не все тестовые данные. Результат этого замера не учитывается; попробуйте ещё раз.");
                             bytes += received;
                         }
                     }

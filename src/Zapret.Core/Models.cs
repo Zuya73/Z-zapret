@@ -98,7 +98,7 @@ public static class Validation
     {
         var lines = text.Replace("\r", "").Split('\n');
         foreach (string line in lines.Select(x => x.Trim()).Where(x => x.Length > 0 && !x.StartsWith('#')))
-            if (!(addresses ? IpOrSubnet(line) : Domain(line))) throw new FormatException($"Некорректная строка: {line}");
+            if (!(addresses ? IpOrSubnet(line) : Domain(line))) throw new FormatException($"Не удалось распознать адрес в строке: {line}");
         return text.Trim() + Environment.NewLine;
     }
 }

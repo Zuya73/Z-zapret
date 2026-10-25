@@ -39,13 +39,13 @@ public static class ShutdownTimerPolicy
     }
     public static string TaskName(string sid)
     {
-        if (!System.Text.RegularExpressions.Regex.IsMatch(sid, @"^S-1-\d+(-\d+)+$")) throw new ArgumentException("Некорректный пользователь Windows.");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(sid, @"^S-1-\d+(-\d+)+$")) throw new ArgumentException("Не удалось определить учётную запись Windows для таймера. Перезапустите программу.");
         return "x2zapret Shutdown " + sid;
     }
     public static string TaskXml(ShutdownPlan plan, string executable, string sid)
     {
         TaskName(sid);
-        if (string.IsNullOrWhiteSpace(executable)) throw new ArgumentException("Не задан shutdown.exe.");
+        if (string.IsNullOrWhiteSpace(executable)) throw new ArgumentException("Не найден системный инструмент выключения shutdown.exe. Проверьте файлы Windows.");
         XElement E(string name, object value) => new(N + name, value);
         string Boundary(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
         return new XDocument(new XElement(N + "Task", new XAttribute("version", "1.2"),
@@ -63,7 +63,7 @@ public static class ShutdownTimerPolicy
     }
     public static ShutdownPlan ReadOwned(string xml, string executable, string sid)
     {
-        if (xml.Length > 128_000) throw new InvalidDataException("Неожиданная задача планировщика.");
+        if (xml.Length > 128_000) throw new InvalidDataException("Не удалось прочитать сохранённый таймер Windows. Проверьте его в планировщике заданий, прежде чем создавать новый.");
         var root = XDocument.Parse(xml).Root;
         var actions = root?.Element(N + "Actions")?.Elements().ToArray();
         var triggers = root?.Element(N + "Triggers")?.Elements().ToArray();
@@ -75,7 +75,7 @@ public static class ShutdownTimerPolicy
             triggers is not { Length: 1 } || triggers[0].Name != N + "TimeTrigger" ||
             !DateTimeOffset.TryParse(triggers[0].Element(N + "StartBoundary")?.Value, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal, out var deadline))
-            throw new InvalidOperationException("Задача таймера принадлежит другой программе или была изменена. Она не изменялась.");
+            throw new InvalidOperationException("Этот таймер создан другой программой или изменён вручную. x2zapret оставил его без изменений.");
         return new(deadline);
     }
 }

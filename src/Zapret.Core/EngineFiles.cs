@@ -13,7 +13,7 @@ public static class EngineFiles
         foreach (var (name, expected) in hashes)
         {
             if (Path.GetFileName(name) != name || name.Contains('\\') || name.Contains('/') || name is "." or "..")
-                throw new InvalidDataException("Некорректный манифест движка.");
+                throw new InvalidDataException("Не удалось прочитать список файлов обхода. Скачайте и распакуйте полный архив x2zapret.");
             string incoming = Path.Combine(source, name), current = Path.Combine(destination, name);
             if (!File.Exists(incoming) || !string.Equals(Hash(incoming), expected, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException($"Не пройдена проверка целостности: {name}. Загрузите полный архив приложения.");
@@ -61,7 +61,7 @@ public static class EngineFiles
                     else File.Delete(current);
                 }
                 catch (Exception rollbackError) { failures.Add(rollbackError); retainBackup = true; }
-            if (failures.Count > 1) throw new AggregateException("Не удалось полностью откатить движок. Резервные файлы: " + stage, failures);
+            if (failures.Count > 1) throw new AggregateException("Не удалось вернуть все прежние файлы обхода. Резервная копия находится здесь: " + stage, failures);
             throw;
         }
         finally

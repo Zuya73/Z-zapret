@@ -28,19 +28,19 @@ internal sealed class NativeHardwareClient(string workerArgument = "--hardware-w
                 if (process == null || process.HasExited)
                 {
                     StopLocked();
-                    string executable = Environment.ProcessPath ?? throw new InvalidOperationException("Не найден исполняемый файл приложения.");
+                    string executable = Environment.ProcessPath ?? throw new InvalidOperationException("Не найден файл x2zapret.exe. Запустите программу из полностью распакованной папки.");
                     var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true,
                         RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
                         StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8 };
                     if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
                         start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, (Assembly.GetEntryAssembly()?.GetName().Name ?? "x2zapret") + ".dll"));
                     start.ArgumentList.Add(workerArgument);
-                    process = Process.Start(start) ?? throw new InvalidOperationException("Не удалось запустить сборщик датчиков.");
+                    process = Process.Start(start) ?? throw new InvalidOperationException("Не удалось включить чтение датчиков. Нажмите «Обновить» или перезапустите программу.");
                     try { job = new(process); }
                     catch { StopLocked(); throw; }
                     process.ErrorDataReceived += (_, _) => { }; process.BeginErrorReadLine();
                 }
-                current = process ?? throw new InvalidOperationException("Сборщик не запущен.");
+                current = process ?? throw new InvalidOperationException("Чтение датчиков не запущено. Нажмите «Обновить».");
             }
             using var registration = deadline.Token.Register(() => StopIfCurrent(current));
             await current.StandardInput.WriteLineAsync("sample".AsMemory(), deadline.Token);
@@ -48,15 +48,15 @@ internal sealed class NativeHardwareClient(string workerArgument = "--hardware-w
             for (int lines = 0; lines < 30; lines++)
             {
                 string? line = await current.StandardOutput.ReadLineAsync(deadline.Token);
-                if (line == null) throw new IOException("Сборщик датчиков завершился. Нажмите «Обновить», чтобы запустить его заново.");
-                if (line.Length > 4 * 1024 * 1024) throw new InvalidDataException("Ответ сборщика слишком большой.");
+                if (line == null) throw new IOException("Чтение датчиков остановилось. Нажмите «Обновить», чтобы попробовать снова.");
+                if (line.Length > 4 * 1024 * 1024) throw new InvalidDataException("Получено слишком много данных от датчиков. Сбор остановлен; попробуйте обновить показания.");
                 if (!line.StartsWith(HardwareWorker.Prefix, StringComparison.Ordinal)) continue;
-                return JsonSerializer.Deserialize<HardwareFrame>(line[HardwareWorker.Prefix.Length..]) ?? throw new InvalidDataException("Пустой ответ сборщика.");
+                return JsonSerializer.Deserialize<HardwareFrame>(line[HardwareWorker.Prefix.Length..]) ?? throw new InvalidDataException("Сборщик не вернул показания. Нажмите «Обновить».");
             }
-            throw new InvalidDataException("Не удалось прочитать ответ сборщика.");
+            throw new InvalidDataException("Не удалось прочитать показания датчиков. Нажмите «Обновить».");
         }
-        catch (OperationCanceledException) { if (current != null) StopIfCurrent(current); token.ThrowIfCancellationRequested(); throw new TimeoutException("Сборщик датчиков не ответил вовремя."); }
-        catch { if (current != null) StopIfCurrent(current); token.ThrowIfCancellationRequested(); if (deadline.IsCancellationRequested) throw new TimeoutException("Сборщик датчиков не ответил вовремя."); throw; }
+        catch (OperationCanceledException) { if (current != null) StopIfCurrent(current); token.ThrowIfCancellationRequested(); throw new TimeoutException("Датчики не ответили за отведённое время. Нажмите «Обновить»; если ошибка повторяется, перезапустите программу."); }
+        catch { if (current != null) StopIfCurrent(current); token.ThrowIfCancellationRequested(); if (deadline.IsCancellationRequested) throw new TimeoutException("Датчики не ответили за отведённое время. Нажмите «Обновить»; если ошибка повторяется, перезапустите программу."); throw; }
         finally { gate.Release(); }
     }
     private void StopIfCurrent(Process candidate) { lock (sync) if (ReferenceEquals(process, candidate)) StopLocked(); }
@@ -95,11 +95,11 @@ internal sealed class HardwarePcInformation : IPcInformationSource, IDisposable
                     legacy = await windows.ReadAsync("sensors", token);
                 rows = rows.Concat(legacy.Rows.Select(r => r with { Device = "WMI · " + r.Device })).ToArray();
                 if (rows.Count == 0) warnings.AddRange(legacy.Warnings);
-                warnings.Add("Встроенный LibreHardwareMonitor 0.9.6. Минимум/максимум - с начала сеанса. SMART опрашивается не чаще раза в 30 секунд.");
+                warnings.Add("Минимум и максимум считаются с открытия раздела. Сведения о состоянии дисков обновляются не чаще раза в 30 секунд. Используется встроенный LibreHardwareMonitor 0.9.6.");
             }
-            if (category == "smart") warnings.Add("RAW и нормализованные значения имеют разный смысл. Нулевой RAW не является общей оценкой здоровья. Интерпретация зависит от модели диска.");
-            if (category == "spd") warnings.Add("Показаны доступные SPD-тайминги DDR4/DDR5. Это паспортные данные, а не измерение текущих таймингов контроллера; XMP/EXPO и запись SPD не выполняются.");
-            if (rows.Count == 0) warnings.Add("Данные недоступны на этом оборудовании или контроллере. Проверьте состояние PawnIO для CPU, платы и SPD.");
+            if (category == "smart") warnings.Add("Это показатели самодиагностики диска. RAW — исходное значение счётчика; его смысл зависит от модели. Ноль в одном поле не означает, что весь диск исправен.");
+            if (category == "spd") warnings.Add("SPD — сведения, записанные производителем в модуль памяти. Здесь показаны доступные характеристики DDR4/DDR5, а не текущие настройки разгона. Программа не меняет память и профили XMP/EXPO.");
+            if (rows.Count == 0) warnings.Add("Оборудование не передало эти данные. Для процессора, платы и памяти может потребоваться драйвер PawnIO — кнопка «Включить датчики процессора и памяти».");
             return new(category, entry.Title, frame.CapturedAt, rows, warnings.Distinct().ToArray());
         }
         catch (OperationCanceledException) { throw; }

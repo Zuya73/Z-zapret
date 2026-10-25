@@ -76,6 +76,26 @@ internal static class ExtendedToolsChecks
         window.ShowDiskTool(); Require(window.DiskToolPanel.IsVisible && !window.SpaceToolPanel.IsVisible, "Disk benchmark remains reachable");
         window.ShowPcTool(); Require(window.PcInfoPanel.IsVisible && !window.NetworkToolPanel.IsVisible, "PC information remains reachable");
         window.ShowShutdownTool(); Require(window.ShutdownToolPanel.IsVisible, "Shutdown timer remains reachable");
+        window.SelectPage("Strategies"); await Task.Delay(450); window.UpdateLayout();
+        var profileItem = window.StrategiesGrid.Items[0];
+        var profileText = window.StrategiesGrid.Columns[2].GetCellContent(profileItem) as TextBlock;
+        var profileRow = window.StrategiesGrid.ItemContainerGenerator.ContainerFromItem(profileItem) as DataGridRow;
+        Require(profileText != null && profileRow != null && profileText.ActualHeight > profileText.FontSize && profileRow.ActualHeight >= profileText.ActualHeight,
+            "Full profile descriptions wrap inside their visible rows on a small window");
+        InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "profiles-preview.png"));
+        window.DiagnosticsGrid.ItemsSource = new Diagnostic[]
+        {
+            new("Модуль обхода", "ПРИМЕР", "Работа модуля обхода не гарантирует доступ к сайтам. Их ответы проверяются отдельно."),
+            new("Драйвер WinDivert", "ПРИМЕР", "Проверяем файл сетевого драйвера, через который работает обход. Если его нет, распакуйте полный архив программы."),
+            new("DNS", "ПРИМЕР", "DNS помогает находить адреса сайтов. Если сайты не открываются, проверьте настройки DNS в браузере и Windows. x2zapret не меняет их автоматически.")
+        };
+        window.SelectPage("Diagnostics"); await Task.Delay(450); window.UpdateLayout();
+        var diagnosticItem = window.DiagnosticsGrid.Items[0];
+        var diagnosticText = window.DiagnosticsGrid.Columns[2].GetCellContent(diagnosticItem) as TextBlock;
+        var diagnosticRow = window.DiagnosticsGrid.ItemContainerGenerator.ContainerFromItem(diagnosticItem) as DataGridRow;
+        Require(diagnosticText != null && diagnosticRow != null && diagnosticText.ActualHeight > diagnosticText.FontSize && diagnosticRow.ActualHeight >= diagnosticText.ActualHeight,
+            "Diagnostic explanations fit their row height instead of being clipped");
+        InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "diagnostics-preview.png"));
         AtomicFile.WriteJson(destination, new { passed = checks.Count, checks });
     }
     private sealed class HealthHandler(bool failMain) : HttpMessageHandler

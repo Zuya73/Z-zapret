@@ -20,15 +20,15 @@ internal sealed class DiskBenchmarkRunner : IDiskBenchmarkRunner
             options.Validate(); root = DiskBenchmarkPolicy.Root(root);
             var drive = new DriveInfo(root);
             if (!drive.IsReady || drive.DriveType is not DriveType.Fixed and not DriveType.Removable)
-                throw new IOException("Нужен доступный локальный или съёмный накопитель.");
+                throw new IOException("Выберите доступный диск компьютера или съёмный накопитель. Проверьте, что он подключён.");
             if (drive.AvailableFreeSpace < options.FileBytes + DiskBenchmarkPolicy.ReserveBytes)
                 throw new IOException("Недостаточно места: нужен тестовый файл и ещё 1 ГиБ свободного резерва.");
             if (drive.DriveFormat == "FAT32" && options.FileBytes >= 4L * 1024 * 1024 * 1024)
                 throw new IOException("FAT32 не поддерживает файл 4 ГиБ. Выберите меньший размер.");
             if (!GetDiskFreeSpace(root, out _, out uint sector, out _, out _) || sector == 0 || 4096 % sector != 0)
-                throw new IOException("Размер сектора этого тома не поддерживает выбранные проверки 4 КиБ.");
+                throw new IOException("Этот накопитель не поддерживает выбранный размер операций. Проверка мелких блоков 4 КиБ недоступна.");
             deadline.Token.ThrowIfCancellationRequested();
-            progress.Report(new("Подготовка движка DiskSpd 2.3…", 0, total, 0));
+            progress.Report(new("Подготовка проверки диска…", 0, total, 0));
             using var binary = DiskSpdBinary.OpenVerified();
             workspace = new(root); LastWorkspace = workspace.DirectoryPath;
             await workspace.PrepareAsync(options.FileBytes, progress, total, deadline.Token);
@@ -37,7 +37,7 @@ internal sealed class DiskBenchmarkRunner : IDiskBenchmarkRunner
                     foreach (bool write in new[] { false, true })
                     {
                         deadline.Token.ThrowIfCancellationRequested();
-                        if (drive.AvailableFreeSpace < 128L * 1024 * 1024) throw new IOException("На томе осталось слишком мало свободного места.");
+                        if (drive.AvailableFreeSpace < 128L * 1024 * 1024) throw new IOException("На диске заканчивается место. Проверка остановлена; освободите место и попробуйте снова.");
                         string stage = $"{results.Count + 1}/{total} · {profile.Label} · {(write ? "Запись" : "Чтение")} · проход {pass}/{options.Repeats}";
                         progress.Report(new(stage, results.Count, total, 15 + 85 * results.Count / total));
                         string xml = await RunCaseAsync(binary.Name, DiskBenchmarkPolicy.Arguments(workspace.FilePath, profile, write, options.Seconds), options.Seconds, deadline.Token);

@@ -100,14 +100,14 @@ public partial class MainWindow : Window
         {
             strategies = StrategyCatalog.Load(Path.Combine(paths.Catalogs, "strategies.json"));
             targets = AtomicFile.ReadJson<ProbeTarget[]>(Path.Combine(paths.Catalogs, "targets.json"))
-                ?? throw new InvalidDataException("Не найден список проверок.");
+                ?? throw new InvalidDataException("Не найден список серверов для проверки. Загрузите и распакуйте полный архив программы.");
             HomeStrategyPicker.ItemsSource = strategies;
             FullTestModeItem.Content = $"Полный · профилей: {strategies.Count}";
             StrategiesGrid.ItemsSource = strategies;
             if (preview)
             {
                 HomeStrategyPicker.SelectedIndex = 0;
-                ConnectionTitle.Text = "Готов к подключению";
+                ConnectionTitle.Text = "Готов к работе";
                 StatusText.Text = $"Профилей: {strategies.Count} · встроенное автотестирование · Windows x64";
                 StrategyDescription.Text = "Подберите профиль для своей сети и включайте обход одной кнопкой.";
                 return;
@@ -122,7 +122,7 @@ public partial class MainWindow : Window
                     File.Copy(paths.Settings, paths.Settings + ".before-components-update");
                 settings = migrated;
                 AtomicFile.WriteJson(paths.Settings, settings);
-                Log("Некоторые профили или фейки больше не входят в комплект Flowseal. Выбраны доступные замены; прежние настройки сохранены в резервной копии.");
+                Log("После обновления часть прежних профилей или служебных пакетов недоступна. Выбраны доступные замены. Старые настройки сохранены в резервной копии.");
             }
             engine = new(paths, strategies, Log);
             EngineSnapshot? componentSnapshot = null;
@@ -147,13 +147,13 @@ public partial class MainWindow : Window
             connectionWanted = engine.IsRunning;
             if (connectionWanted) activeStrategy = (await engine.CaptureAsync(lifetime.Token)).StrategyId;
             LoadUserList();
-            Log("x2zapret " + UpdateManifest.CurrentVersion.ToString(3) + ". Подготовлено стратегий: " + strategies.Count);
+            Log("x2zapret " + UpdateManifest.CurrentVersion.ToString(3) + ". Подготовлено профилей: " + strategies.Count);
             if (File.Exists(paths.Recovery))
             {
                 await Execute(async token =>
                 {
                     var record = AtomicFile.ReadJson<RecoveryRecord>(paths.Recovery)
-                        ?? throw new InvalidDataException("Повреждён журнал восстановления.");
+                        ?? throw new InvalidDataException("Не удалось прочитать сведения о прерванной проверке. Сохраните журнал программы, чтобы разобраться в ошибке.");
                     await engine.StopAsync(token);
                     var snapshot = startupLaunch && settings.Startup == StartupMode.Tray
                         ? record.Snapshot with { WasRunning = false } : record.Snapshot;
@@ -179,8 +179,8 @@ public partial class MainWindow : Window
         }
         catch (Exception error)
         {
-            ShowError(error.Message);
-            StatusText.Text = "Не удалось подготовить приложение. Проверьте комплект файлов.";
+            ShowError(UserMessages.Error(error));
+            StatusText.Text = "Не удалось запустить программу. Если используете архив, распакуйте его целиком и сохраните папки рядом с EXE.";
             SetBusy(true);
             CancelTestsButton.IsEnabled = false;
         }
@@ -200,11 +200,11 @@ public partial class MainWindow : Window
     internal void NotifyStartupFailure()
     {
         if (tray == null) CreateTray();
-        tray!.ShowBalloonTip(7000, "x2zapret", "Не удалось завершить запуск. Откройте программу из трея, чтобы посмотреть причину.", Forms.ToolTipIcon.Warning);
+        tray!.ShowBalloonTip(7000, "x2zapret", "Программа не смогла запуститься полностью. Откройте её через значок рядом с часами, чтобы посмотреть причину.", Forms.ToolTipIcon.Warning);
     }
 
     private Strategy Selected => HomeStrategyPicker.SelectedItem as Strategy
-        ?? throw new InvalidOperationException("Выберите стратегию.");
+        ?? throw new InvalidOperationException("Выберите профиль.");
 
     private void CreateTray()
     {
@@ -215,7 +215,7 @@ public partial class MainWindow : Window
         };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Открыть x2zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
-        menu.Items.Add("Включить / выключить", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
+        menu.Items.Add("Включить / отключить обход", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
         menu.Items.Add("X2 Tools", null, (_, _) => Dispatcher.Invoke(() => { SelectPage("Tools"); ShowFromTray(); }));
         menu.Items.Add("Проверить обновления", null, (_, _) => Dispatcher.Invoke(() => CheckUpdates_Click(this, new RoutedEventArgs())));
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -255,13 +255,13 @@ public partial class MainWindow : Window
         {
             (PageTitle.Text, PageSubtitle.Text) = page switch
             {
-                "Tests" => ("Автоподбор", "Рабочая стратегия начинается с проверки."),
-                "Strategies" => ("Стратегии", "Все исходные профили в одном месте."),
-                "Diagnostics" => ("Диагностика", "Найдём причину проблем с подключением."),
-                "Settings" => ("Настройки", "Точная настройка без командной строки."),
+                "Tests" => ("Автоподбор", "Подберём настройки для вашего интернета."),
+                "Strategies" => ("Профили", "Выберите готовые настройки подключения."),
+                "Diagnostics" => ("Диагностика", "Проверим, что мешает подключению."),
+                "Settings" => ("Настройки", "Запуск, подключение и обновления программы."),
                 "Tools" => ("X2 Tools", "Полезные инструменты для вашего компьютера."),
-                "Logs" => ("Журнал", "История работы и подробности ошибок."),
-                _ => ("Обзор", "Ваше подключение. Ваши правила.")
+                "Logs" => ("Журнал", "Здесь видно, что делала программа и где возникла ошибка."),
+                _ => ("Обзор", "Включите обход и проверьте доступ к сайтам.")
             };
         });
     }
@@ -276,7 +276,7 @@ public partial class MainWindow : Window
         operationCancellation = new CancellationTokenSource();
         try { await action(operationCancellation.Token); StatusText.Text = "Готово."; }
         catch (OperationCanceledException) { StatusText.Text = "Операция отменена."; Log("Операция отменена."); }
-        catch (Exception error) { ShowError(error.Message); Log("ОШИБКА: " + error.Message); StatusText.Text = "Операция завершилась с ошибкой."; }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); Log("ОШИБКА: " + error.Message); StatusText.Text = "Не удалось завершить действие. Причина указана выше."; }
         finally
         {
             operationCancellation.Dispose(); operationCancellation = null;
@@ -313,15 +313,15 @@ public partial class MainWindow : Window
     {
         if (engine == null) return;
         bool running = engine.IsRunning;
-        ConnectionTitle.Text = running ? "Движок работает" : "Готов к запуску";
+        ConnectionTitle.Text = running ? "Обход включён" : "Обход отключён";
         StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(119, 119, 119));
-        ConnectionDetail.Text = running ? "Для проверки сервисов запустите сетевые тесты." : "Выберите стратегию или запустите автоподбор.";
-        ConnectButton.Content = running ? "Выключить" : "Включить";
-        ServiceButton.Content = engine.OwnsService ? "Выключить автозапуск" : "Включить автозапуск";
-        ServiceText.Text = engine.OwnsService ? "Служба Windows установлена. Движок может работать при закрытом приложении." :
-            engine.ServiceInstalled ? "Обнаружена служба zapret из другой сборки. Подробности в диагностике." : "Движок запускается вручную. Можно включить службу Windows.";
-        ActiveStrategyText.Text = "Активная стратегия: " + (running ? strategies.FirstOrDefault(x => x.Id == activeStrategy)?.Name ?? "служба Windows" : "—");
-        if (tray != null) tray.Text = running ? "x2zapret · движок работает" : "x2zapret · остановлен";
+        ConnectionDetail.Text = running ? "Доступ к сайтам проверяется отдельно. Результаты есть в «Диагностике»." : "Выберите профиль или запустите автоподбор.";
+        ConnectButton.Content = running ? "Отключить обход" : "Включить обход";
+        ServiceButton.Content = engine.OwnsService ? "Отключить фоновое подключение" : "Включить фоновое подключение";
+        ServiceText.Text = engine.OwnsService ? "Обход работает как служба Windows и может оставаться включённым после полного выхода из программы." :
+            engine.ServiceInstalled ? "Найдена другая установленная версия zapret. Откройте «Диагностику», чтобы проверить конфликт." : "Сейчас обход работает только вместе с программой. Включите фоновое подключение, чтобы он работал и после выхода.";
+        ActiveStrategyText.Text = "Текущий профиль: " + (running ? strategies.FirstOrDefault(x => x.Id == activeStrategy)?.Name ?? "служба Windows" : "—");
+        if (tray != null) tray.Text = running ? "x2zapret · обход включён" : "x2zapret · остановлен";
         RenderConnectionHealth(running);
     }
 
@@ -330,7 +330,7 @@ public partial class MainWindow : Window
         if (!ready || engine == null || busy) return;
         await Execute(async token =>
         {
-            if (engine.IsRunning) { connectionWanted = false; await engine.StopAsync(token); Log("Движок остановлен."); }
+            if (engine.IsRunning) { connectionWanted = false; await engine.StopAsync(token); Log("Обход отключён."); }
             else { await engine.StartAsync(Selected, settings, token); activeStrategy = Selected.Id; connectionWanted = true; }
         }, "Переключение подключения");
     }
@@ -376,7 +376,7 @@ public partial class MainWindow : Window
             probeRows.Clear(); lastSession = null; ExportTestsButton.IsEnabled = false;
             RecommendationTitle.Text = "Идёт проверка соединения";
             ConnectionTitle.Text = "Идёт автоподбор";
-            ConnectionDetail.Text = "Подключение временно переключается между стратегиями.";
+            ConnectionDetail.Text = "Подключение временно переключается между профилями.";
             RecommendationDetail.Text = "По завершении прежнее подключение будет восстановлено.";
             OperationProgress.IsIndeterminate = false;
             var progress = new Progress<TestProgress>(p =>
@@ -401,10 +401,10 @@ public partial class MainWindow : Window
                 AtomicFile.WriteJson(saved, lastSession);
                 ExportTestsButton.IsEnabled = true;
                 string? recommended = strategies.FirstOrDefault(x => x.Id == lastSession.RecommendedStrategyId)?.Name;
-                RecommendationTitle.Text = lastSession.Cancelled ? "Проверка отменена" : recommended != null ? "Рекомендуем: " + recommended : "Рабочая стратегия не подтверждена";
-                RecommendationDetail.Text = lastSession.Cancelled ? "Предыдущее подключение восстановлено. Частичные результаты сохранены." :
-                    recommended != null ? "Профиль прошёл первичную и повторную проверки. Примените его для подключения." :
-                    "Ни один профиль не выполнил условия проверки. Посмотрите ошибки и запустите диагностику.";
+                RecommendationTitle.Text = lastSession.Cancelled ? "Проверка отменена" : recommended != null ? "Рекомендуем: " + recommended : "Подходящий профиль не найден";
+                RecommendationDetail.Text = lastSession.Cancelled ? "Прежнее подключение восстановлено. Результаты завершённых проверок сохранены." :
+                    recommended != null ? "Этот профиль прошёл две проверки. Нажмите «Включить рекомендованный профиль», чтобы использовать его." :
+                    "Ни один профиль не прошёл проверку. Откройте «Диагностику» и проверьте подключение к интернету.";
                 Log("Отчёт сохранён: " + saved);
             }
             finally
@@ -416,7 +416,7 @@ public partial class MainWindow : Window
     }
 
     private static string StatusLabel(ProbeStatus status) => status switch
-    { ProbeStatus.Passed => "OK", ProbeStatus.Failed => "Ошибка", ProbeStatus.Unsupported => "Не поддерж.", _ => "Не подтверждён" };
+    { ProbeStatus.Passed => "Успешно", ProbeStatus.Failed => "Ошибка", ProbeStatus.Unsupported => "Недоступно", _ => "Не подтверждён" };
 
     private void CancelTests_Click(object sender, RoutedEventArgs e)
     { operationCancellation?.Cancel(); CancelTestsButton.IsEnabled = false; StatusText.Text = "Остановка и восстановление…"; }
@@ -442,13 +442,13 @@ public partial class MainWindow : Window
                 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
                 await engine.StopAsync(timeout.Token); await engine.RestoreAsync(previous, old, timeout.Token); throw;
             }
-        }, "Применение стратегии");
+        }, "Применение профиля");
     }
 
     private void ExportTests_Click(object sender, RoutedEventArgs e)
     {
         if (lastSession == null) return;
-        var dialog = new SaveFileDialog { Filter = "JSON-отчёт|*.json|Текстовый отчёт|*.txt", FileName = "x2zapret-tests-" + DateTime.Now.ToString("yyyyMMdd-HHmm") };
+        var dialog = new SaveFileDialog { Filter = "Файл для технического разбора (JSON)|*.json|Текстовый отчёт (*.txt)|*.txt", FilterIndex = 2, FileName = "x2zapret-tests-" + DateTime.Now.ToString("yyyyMMdd-HHmm") };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
@@ -465,7 +465,7 @@ public partial class MainWindow : Window
             }
             StatusText.Text = "Отчёт сохранён.";
         }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
 
     private void LoadSettings()
@@ -531,8 +531,8 @@ public partial class MainWindow : Window
             {
                 IpSet = (IpSetMode)IpSetPicker.SelectedIndex, GameFilter = (GameFilterMode)GameFilterPicker.SelectedIndex,
                 TcpPorts = Validation.Ports(TcpPortsBox.Text), UdpPorts = Validation.Ports(UdpPortsBox.Text),
-                DiscordFake = DiscordFakePicker.SelectedItem as string ?? throw new InvalidOperationException("Выберите фейк Discord."),
-                GameFake = GameFakePicker.SelectedItem as string ?? throw new InvalidOperationException("Выберите игровой фейк."),
+                DiscordFake = DiscordFakePicker.SelectedItem as string ?? throw new InvalidOperationException("Выберите служебный пакет для Discord в дополнительных настройках."),
+                GameFake = GameFakePicker.SelectedItem as string ?? throw new InvalidOperationException("Выберите служебный пакет для игр в дополнительных настройках."),
                 MinimizeToTray = TrayCheck.IsChecked == true
             };
             var snapshot = await engine.CaptureAsync(token);
@@ -563,25 +563,25 @@ public partial class MainWindow : Window
         try
         {
             AtomicFile.Write(Path.Combine(paths.Lists, UserFiles[UserListPicker.SelectedIndex]), Validation.UserList(UserListBox.Text, UserListPicker.SelectedIndex >= 2));
-            StatusText.Text = "Список сохранён. Применится после перезапуска движка.";
+            StatusText.Text = "Список сохранён. Отключите и снова включите обход, чтобы применить изменения.";
         }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
 
     private async void Diagnose_Click(object sender, RoutedEventArgs e)
     {
         if (maintenance == null || engine == null) return;
-        await Execute(async token => { DiagnosticsGrid.ItemsSource = await Task.Run(() => maintenance.Diagnose(engine), token); Log("Проверка окружения завершена."); }, "Проверка окружения");
+        await Execute(async token => { DiagnosticsGrid.ItemsSource = await Task.Run(() => maintenance.Diagnose(engine), token); Log("Проверка программы и Windows завершена."); }, "Проверка программы и Windows");
     }
     private async void ClearCache_Click(object sender, RoutedEventArgs e)
     {
         if (maintenance == null) return;
-        if (MessageBox.Show(this, "Будут удалены Cache, Code Cache и GPUCache Discord. Сначала закройте Discord. Продолжить?", "Кэш Discord", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "Будут удалены временные файлы Discord. Это может помочь при проблемах с загрузкой приложения. Сначала полностью закройте Discord, включая значок рядом с часами. Очистить кэш?", "Кэш Discord", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
         await Execute(_ => { maintenance.ClearDiscordCache(); Log("Кэш Discord очищен."); return Task.CompletedTask; }, "Очистка кэша");
     }
     private async void Timestamps_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, "Для профилей с параметром ts могут требоваться TCP timestamps. Включить этот параметр Windows?", "TCP timestamps", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "Некоторым профилям нужна настройка TCP timestamps — временные метки в сетевых пакетах Windows. Меняйте её, только если это требуется выбранному профилю. Включить?", "TCP timestamps", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
         await Execute(async token =>
         {
             var result = await ProcessRunner.RunAsync(ProcessRunner.SystemTool("netsh.exe"), ["interface", "tcp", "set", "global", "timestamps=enabled"], TimeSpan.FromSeconds(15), token);
@@ -596,7 +596,7 @@ public partial class MainWindow : Window
     private async void UpdateHosts_Click(object sender, RoutedEventArgs e)
     {
         if (maintenance == null) return;
-        if (MessageBox.Show(this, "В hosts будет добавлен отдельный блок адресов Flowseal. Ваши строки сохранятся; будет создана резервная копия. Продолжить?", "Обновление hosts", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "В файл Windows hosts будут добавлены адреса от Flowseal. Этот файл задаёт адреса сайтов вручную. Ваши записи сохранятся, а перед изменением будет создана резервная копия. Продолжить?", "Обновление hosts", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
         await Execute(async token => { await maintenance.UpdateHostsAsync(token); Log("Блок x2zapret в hosts обновлён."); }, "Обновление hosts");
     }
     private async void RemoveHosts_Click(object sender, RoutedEventArgs e)
@@ -624,7 +624,7 @@ public partial class MainWindow : Window
             var update = await updates.CheckAsync(token);
             if (lifetime.IsCancellationRequested || automatic && !settings.AutoUpdate) return;
             availableUpdate = update;
-            UpdateStatusText.Text = update == null ? "Новых стабильных версий нет. Установлена версия " + UpdateManifest.CurrentVersion.ToString(3) + "." :
+            UpdateStatusText.Text = update == null ? "У вас последняя доступная версия: " + UpdateManifest.CurrentVersion.ToString(3) + "." :
                 $"Доступна версия {update.Version.ToString(3)} · {update.Size / 1048576.0:F1} МБ. Установка начнётся после вашего подтверждения.";
             InstallUpdateButton.IsEnabled = !busy && update != null;
             Log(UpdateStatusText.Text);
@@ -645,7 +645,7 @@ public partial class MainWindow : Window
             else updateTimer.Stop();
             StatusText.Text = settings.AutoUpdate ? "Автоматическая проверка обновлений включена." : "Автоматическая проверка обновлений отключена.";
         }
-        catch (Exception error) { ShowError(error.Message); }
+        catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
 
     private void CancelUpdate_Click(object sender, RoutedEventArgs e) => operationCancellation?.Cancel();
@@ -716,7 +716,7 @@ public partial class MainWindow : Window
     {
         var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "x2zapret-log.txt" };
         if (dialog.ShowDialog(this) == true)
-            try { AtomicFile.Write(dialog.FileName, LogBox.Text); } catch (Exception error) { ShowError(error.Message); }
+            try { AtomicFile.Write(dialog.FileName, LogBox.Text); } catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     private void OpenServices_Click(object sender, RoutedEventArgs e) => Open("services.msc");
     private void GitHub_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret");

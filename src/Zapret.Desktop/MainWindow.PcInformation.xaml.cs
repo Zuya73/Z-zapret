@@ -86,7 +86,7 @@ public partial class MainWindow
         pcCancellation = cancellation;
         int request = ++pcRequest;
         pcSection = null; PcRowsGrid.ItemsSource = null; PcWarningText.Text = "";
-        PcStatusText.Text = "Сбор: " + category.Title + "…";
+        PcStatusText.Text = "Загружаем раздел: " + category.Title + "…";
         PcCancelButton.IsEnabled = true;
         try
         {
@@ -95,7 +95,7 @@ public partial class MainWindow
             pcSection = section; ApplyPcFilter();
         }
         catch (OperationCanceledException) { if (request == pcRequest) PcStatusText.Text = "Сбор отменён. Нажмите «Обновить», чтобы повторить."; }
-        catch (Exception error) { if (request == pcRequest) PcStatusText.Text = "Не удалось собрать раздел: " + error.Message; }
+        catch (Exception error) { if (request == pcRequest) PcStatusText.Text = "Не удалось получить данные раздела: " + error.Message; }
         finally
         {
             if (request == pcRequest) { PcCancelButton.IsEnabled = false; pcCancellation = null; }
@@ -106,7 +106,7 @@ public partial class MainWindow
         if (pcSection == null) return;
         var rows = PcInformation.Visible(pcSection, PcSearchBox.Text, PcPrivateCheck.IsChecked == true);
         PcRowsGrid.ItemsSource = rows;
-        PcStatusText.Text = $"Показано: {rows.Count}/{pcSection.Rows.Count} · Снимок {pcSection.CapturedAt.ToLocalTime():HH:mm:ss}";
+        PcStatusText.Text = $"Показано: {rows.Count}/{pcSection.Rows.Count} · Обновлено в {pcSection.CapturedAt.ToLocalTime():HH:mm:ss}";
         PcWarningText.Text = string.Join("\n", pcSection.Warnings);
     }
     private async void ExportPc_Click(object sender, RoutedEventArgs e)
@@ -172,7 +172,7 @@ public partial class MainWindow
     {
         if (hardwareSource == null) return;
         var driver = PawnDriver.State();
-        PcDriverStatus.Text = driver.Ready ? "Встроенные датчики · PawnIO " + driver.Version : "PawnIO: " + driver.Version + ". GPU, диски и батарея доступны без него.";
+        PcDriverStatus.Text = driver.Ready ? "Драйвер датчиков PawnIO " + driver.Version : "Драйвер датчиков PawnIO: " + driver.Version + ". Часть показаний видеокарты, дисков и батареи может работать без него.";
         if (pawnRebootRequired || !driver.Ready && Version.TryParse(driver.Version, out _)) PcDriverStatus.Text += " Если показания недоступны, перезагрузите Windows.";
         PcDriverButton.Visibility = PcHardwareBar.Visibility == Visibility.Visible && !driver.Ready ? Visibility.Visible : Visibility.Collapsed;
         PcDriverButton.IsEnabled = !driver.Ready && !pcExporting && PawnDriver.CanInstallOver(driver.Version);
@@ -184,14 +184,14 @@ public partial class MainWindow
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         pcCancellation = cancellation; pcExporting = true;
         PcExportButton.IsEnabled = PcRefreshButton.IsEnabled = PcCategoryPicker.IsEnabled = PcPrivateCheck.IsEnabled = PcDriverButton.IsEnabled = false;
-        PcCancelButton.IsEnabled = true; PcStatusText.Text = "Загрузка и проверка официального PawnIO 2.2.0…";
+        PcCancelButton.IsEnabled = true; PcStatusText.Text = "Скачиваем и проверяем драйвер датчиков PawnIO 2.2.0…";
         bool installed = false;
         try
         {
             bool reboot = await PawnDriver.InstallAsync(cancellation.Token); installed = true; pawnRebootRequired = reboot;
             PcStatusText.Text = reboot ? "Драйвер установлен. Windows запросила перезагрузку." : "Драйвер установлен. Обновляю показания…";
         }
-        catch (OperationCanceledException) { PcStatusText.Text = "Загрузка драйвера отменена."; }
+        catch (OperationCanceledException) { PcStatusText.Text = "Скачивание драйвера отменено."; }
         catch (Exception error) { PcStatusText.Text = "Не удалось установить PawnIO: " + error.Message; }
         finally
         {

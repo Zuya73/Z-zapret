@@ -1,17 +1,12 @@
-# Сторонние компоненты zapret
+# Файлы zapret и Flowseal
 
-`bin/` содержит неизменённые файлы движка, WinDivert, Cygwin и фейковые пакеты,
-импортированные из исходной сборки Flowseal 1.10.4.
-`licenses/` содержит сопутствующие лицензии.
+В `bin/` находятся готовые файлы модуля обхода zapret, сетевого драйвера WinDivert, среды Cygwin и служебных пакетов. Они перенесены из комплекта Flowseal 1.10.4 без изменения содержимого. В `licenses/` сохранены их лицензии.
 
-- Исходный проект: https://github.com/Flowseal/zapret-discord-youtube
-- Движок: https://github.com/bol-van/zapret
-- Windows-комплект: https://github.com/bol-van/zapret-win-bundle
-- Сведения о лицензиях и источниках: [THIRD-PARTY-NOTICES](../../docs/THIRD-PARTY-NOTICES.txt).
+- [Исходный комплект Flowseal](https://github.com/Flowseal/zapret-discord-youtube)
+- [Исходники zapret](https://github.com/bol-van/zapret)
+- [Комплект zapret для Windows](https://github.com/bol-van/zapret-win-bundle)
+- [Источники и лицензии в проекте](../../docs/THIRD-PARTY-NOTICES.txt)
 
-Код приложения находится в `src`, начальные списки - в `resources/lists`.
-При сборке файлы копируются в `bin` пакета и включаются в манифест SHA256.
-Перенос каталогов в репозитории не изменяет бинарные файлы.
+Наш код находится в `src`, стандартные списки — в `resources/lists`. При сборке готовые файлы копируются в `bin` рабочего пакета. Их контрольные суммы записываются в отдельный список и проверяются перед использованием.
 
-Точная версия и исходный commit записаны в upstream.lock.json.
-Обновление выполняется tools/sync_flowseal.py; порядок описан в docs/UPSTREAM.md.
+Точная версия, исходный коммит и сведения о файлах находятся в `upstream.lock.json`. Перенос новой версии выполняет `tools/sync_flowseal.py`. Порядок описан в [инструкции по обновлению Flowseal](../../docs/UPSTREAM.md).

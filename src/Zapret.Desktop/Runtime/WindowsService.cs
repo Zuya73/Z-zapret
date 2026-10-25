@@ -32,7 +32,7 @@ internal static class WindowsService
             if (State(name) == expected) return;
             await Task.Delay(200, cancellationToken);
         }
-        throw new TimeoutException($"Служба {name} не перешла в ожидаемое состояние. Проверьте журнал и конфликты драйвера.");
+        throw new TimeoutException($"Windows не смогла запустить или остановить службу {name} за отведённое время. Проверьте «Диагностику» и попробуйте ещё раз.");
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct ServiceStatus

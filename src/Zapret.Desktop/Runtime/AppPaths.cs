@@ -55,7 +55,7 @@ public sealed class AppPaths
         foreach (var (sourceName, target) in new[] { (settings.DiscordFake, "ACTIVE_DISCORD_UDP.bin"), (settings.GameFake, "ACTIVE_GAME_UDP.bin") })
         {
             if (Path.GetFileName(sourceName) != sourceName || !sourceName.EndsWith(".bin", StringComparison.OrdinalIgnoreCase) || sourceName.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Недопустимый файл фейка.");
+                throw new InvalidDataException("Не удалось найти выбранный служебный пакет. Выберите доступный файл в дополнительных настройках.");
             File.Copy(Path.Combine(BinarySource, sourceName), Path.Combine(Bin, target), true);
         }
     }

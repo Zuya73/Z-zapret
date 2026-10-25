@@ -48,10 +48,10 @@ public sealed class CurlProbe(string workingDirectory) : IConnectivityProbe
             using var ping = new Ping();
             var reply = await ping.SendPingAsync(target.Url, TimeSpan.FromSeconds(1), cancellationToken: cancellationToken);
             return new(target.Id, target.Name, target.Group, "PING", reply.Status == IPStatus.Success ? ProbeStatus.Passed : ProbeStatus.Inconclusive,
-                reply.RoundtripTime, null, 0, "ICMP не используется при выборе стратегии.");
+                reply.RoundtripTime, null, 0, "Обычный пинг не определяет, подходит ли профиль, и не влияет на рекомендацию.");
         }
         catch (Exception ex) when (ex is PingException or System.Net.Sockets.SocketException)
-        { return new(target.Id, target.Name, target.Group, "PING", ProbeStatus.Inconclusive, 0, null, 0, "ICMP недоступен."); }
+        { return new(target.Id, target.Name, target.Group, "PING", ProbeStatus.Inconclusive, 0, null, 0, "Не получен ответ на тестовый запрос пинга. Узел может не поддерживать такие ответы."); }
     }
 
     private static async Task<ProbeResult> CheckAsync(ProbeTarget target, string protocol, TestMode mode,
@@ -85,6 +85,6 @@ public sealed class CurlProbe(string workingDirectory) : IConnectivityProbe
             return Make(evaluation.Status, evaluation.Detail, code, downloaded);
         }
         catch (TimeoutException) { return Make(ProbeStatus.Failed, "Превышено время ожидания ответа."); }
-        catch (System.ComponentModel.Win32Exception) { return Make(ProbeStatus.Failed, "Системный curl.exe отсутствует или недоступен."); }
+        catch (System.ComponentModel.Win32Exception) { return Make(ProbeStatus.Failed, "Не найден инструмент сетевых проверок curl.exe. Проверьте установку Windows и повторите запуск."); }
     }
 }

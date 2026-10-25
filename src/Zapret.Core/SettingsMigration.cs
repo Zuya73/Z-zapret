@@ -4,7 +4,7 @@ public static class SettingsMigration
 {
     public static AppSettings ForBundle(AppSettings saved, IReadOnlyList<Strategy> strategies, IReadOnlyList<string> fakes)
     {
-        if (strategies.Count == 0 || fakes.Count == 0) throw new InvalidDataException("Комплект профилей или фейков пуст.");
+        if (strategies.Count == 0 || fakes.Count == 0) throw new InvalidDataException("Не хватает профилей или служебных пакетов. Загрузите и распакуйте полный архив программы.");
         string fallback = fakes.FirstOrDefault(x => x.StartsWith("quic_", StringComparison.OrdinalIgnoreCase)) ?? fakes[0];
         return saved with
         {

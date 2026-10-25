@@ -42,7 +42,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         try
         {
             CheckForeign();
-            if (IsRunning) throw new InvalidOperationException("Сначала остановите текущее подключение.");
+            if (IsRunning) throw new InvalidOperationException("Сначала отключите обход, затем включите выбранный профиль.");
             paths.ApplyFakes(settings);
             string lists = paths.PrepareLists(settings);
             if (OwnsService)
@@ -53,7 +53,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
             }
             else await StartProcess(strategy, lists, settings, cancellationToken);
             currentStrategy = strategy.Id;
-            log($"Движок запущен: {strategy.Name}.");
+            log($"Обход включён с профилем: {strategy.Name}.");
         }
         finally { operations.Release(); }
     }
@@ -73,7 +73,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
 
     private async Task StartProcess(Strategy strategy, string lists, AppSettings settings, CancellationToken cancellationToken)
     {
-        if (process is { HasExited: false }) throw new InvalidOperationException("Движок уже запущен.");
+        if (process is { HasExited: false }) throw new InvalidOperationException("Обход уже включён. Чтобы сменить профиль, сначала отключите его.");
         var info = new ProcessStartInfo(Path.Combine(paths.Bin, "winws.exe"))
         {
             WorkingDirectory = paths.Bin, UseShellExecute = false, CreateNoWindow = true,
@@ -91,7 +91,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
             job = new ChildProcessJob(process);
             process.BeginOutputReadLine(); process.BeginErrorReadLine();
             await Task.Delay(1200, cancellationToken);
-            if (process.HasExited) throw new InvalidOperationException($"Движок завершился с кодом {process.ExitCode}. Подробности в журнале.");
+            if (process.HasExited) throw new InvalidOperationException($"Модуль обхода неожиданно завершился. Код ошибки: {process.ExitCode}. Подробности в журнале.");
         }
         catch
         {
@@ -128,11 +128,11 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
     {
         if (!snapshot.WasRunning) return;
         var strategy = strategies.SingleOrDefault(x => x.Id == snapshot.StrategyId)
-            ?? throw new InvalidOperationException("Не найдена стратегия для восстановления. Журнал восстановления сохранён.");
+            ?? throw new InvalidOperationException("Не найден прежний профиль подключения. Сведения для восстановления сохранены; перезапустите программу и откройте «Диагностику».");
         // The service configuration is never changed during a test. Restore the same launch mode.
         if (snapshot.ServiceMode)
         {
-            if (!OwnsService) throw new InvalidOperationException("Служба изменилась во время теста; автоматическое восстановление остановлено.");
+            if (!OwnsService) throw new InvalidOperationException("Настройки фонового подключения изменились во время проверки. Автоматическое восстановление остановлено; проверьте «Диагностику».");
             paths.ApplyFakes(settings);
             await ConfigureService(strategy, paths.PrepareLists(settings), settings, cancellationToken);
             await ScAsync(["start", ServiceName], cancellationToken);
@@ -166,16 +166,16 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         await ScAsync(["start", ServiceName], cancellationToken);
         await WindowsService.WaitAsync(ServiceName, 4, cancellationToken);
         currentStrategy = strategy.Id;
-        log("Автозапуск включён: движок работает как служба Windows.");
+        log("Фоновое подключение включено. Обход работает как служба Windows и может работать без открытого окна.");
     }
 
     public async Task RemoveServiceAsync(CancellationToken cancellationToken)
     {
-        if (!OwnsService) throw new InvalidOperationException("Приложение управляет только собственной службой.");
+        if (!OwnsService) throw new InvalidOperationException("Эта служба не принадлежит x2zapret, поэтому программа не может её отключить. Используйте программу, которая её установила.");
         await StopAsync(cancellationToken);
         await ScAsync(["delete", ServiceName], cancellationToken);
         await WindowsService.WaitAsync(ServiceName, 0, cancellationToken);
-        log("Автозапуск отключён. Общий драйвер WinDivert не удалялся.");
+        log("Фоновое подключение отключено. Общий сетевой драйвер WinDivert оставлен: его могут использовать другие программы.");
     }
 
     private async Task ConfigureService(Strategy strategy, string lists, AppSettings settings, CancellationToken cancellationToken)
@@ -193,14 +193,14 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
     private void CheckForeign()
     {
         if (ServiceInstalled && !OwnsService)
-            throw new InvalidOperationException("Найдена служба zapret из другой сборки. Откройте её service.bat и удалите старую службу, затем повторите запуск. Приложение не удаляет чужие службы.");
+            throw new InvalidOperationException("На компьютере уже установлена служба другой версии zapret. Откройте прежнюю программу и отключите в ней фоновое подключение. Если использовали BAT-файлы, воспользуйтесь её меню service.bat. Затем повторите запуск x2zapret.");
         foreach (var other in Process.GetProcessesByName("winws"))
         {
             using (other)
                 if (process == null || other.Id != process.Id)
                 {
                     if (OwnsService && other.Id == WindowsService.ProcessId(ServiceName)) continue;
-                    throw new InvalidOperationException("Уже запущен другой winws.exe. Закройте его перед подключением.");
+                    throw new InvalidOperationException("Другая программа уже запустила модуль обхода winws.exe. Закройте её или отключите в ней обход, затем повторите запуск.");
                 }
         }
     }

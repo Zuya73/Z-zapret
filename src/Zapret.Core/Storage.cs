@@ -42,17 +42,17 @@ public static class HostsBlock
         {
             if (line.Trim() == Begin)
             {
-                if (inside) throw new InvalidDataException("Повреждён блок Z-zapret в hosts.");
+                if (inside) throw new InvalidDataException("Записи x2zapret в файле hosts повреждены. Изменение остановлено, чтобы сохранить остальные записи.");
                 inside = true; continue;
             }
             if (line.Trim() == End)
             {
-                if (!inside) throw new InvalidDataException("Повреждён блок Z-zapret в hosts.");
+                if (!inside) throw new InvalidDataException("Записи x2zapret в файле hosts повреждены. Изменение остановлено, чтобы сохранить остальные записи.");
                 inside = false; continue;
             }
             if (!inside) output.Add(line);
         }
-        if (inside) throw new InvalidDataException("Блок Z-zapret в hosts не закрыт.");
+        if (inside) throw new InvalidDataException("Не найдена граница записей x2zapret в файле hosts. Изменение остановлено, чтобы сохранить остальные записи.");
         while (output.Count > 0 && string.IsNullOrWhiteSpace(output[^1])) output.RemoveAt(output.Count - 1);
         if (!string.IsNullOrWhiteSpace(replacement))
         {
@@ -61,7 +61,7 @@ public static class HostsBlock
                 var pieces = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
                 if (pieces.Length < 2 || !System.Net.IPAddress.TryParse(pieces[0], out _) ||
                     pieces.Skip(1).Any(x => !Validation.Domain(x)))
-                    throw new InvalidDataException("Получен некорректный файл hosts.");
+                    throw new InvalidDataException("Список адресов для hosts не прошёл проверку. Прежние записи сохранены.");
             }
             output.Add(Begin); output.Add(replacement.Trim()); output.Add(End);
         }

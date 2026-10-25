@@ -25,7 +25,7 @@ public sealed class Maintenance(AppPaths paths)
     public async Task UpdateHostsAsync(CancellationToken cancellationToken)
     {
         string text = await Http.GetStringAsync(Upstream + ".service/hosts", cancellationToken);
-        if (text.Length is < 10 or > 256_000) throw new InvalidDataException("Недопустимый размер hosts.");
+        if (text.Length is < 10 or > 256_000) throw new InvalidDataException("Получен неожиданный файл адресов hosts. Изменения не применены; повторите загрузку позже.");
         ModifyHosts(text);
     }
 
@@ -62,11 +62,11 @@ public sealed class Maintenance(AppPaths paths)
             string? id = entry.GetProperty("id").GetString();
             string? provider = entry.GetProperty("provider").GetString();
             if (host == null || id == null || !Validation.Domain(host) || result.Count >= 72)
-                throw new InvalidDataException("Неподдерживаемый формат набора DPI-проверок.");
+                throw new InvalidDataException("Не удалось прочитать список серверов для проверки передачи данных (DPI). Попробуйте позже или выберите быстрый режим.");
             result.Add(new(id, provider + " / " + id, "DPI", "https://" + host, true));
         }
         if (result.Count == 0 || result.Select(x => x.Id).Distinct().Count() != result.Count)
-            throw new InvalidDataException("Нет подходящих целей DPI-проверки.");
+            throw new InvalidDataException("Не найдены серверы для проверки передачи данных (DPI). Попробуйте позже или выберите быстрый режим.");
         AtomicFile.Write(cache, json);
         return result;
     }
@@ -76,10 +76,10 @@ public sealed class Maintenance(AppPaths paths)
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Zuya73/x2zapret/releases/latest");
         request.Headers.UserAgent.ParseAdd("Z-zapret/0.1.0");
         using var response = await Http.SendAsync(request, cancellationToken);
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return "Опубликованных релизов приложения пока нет.";
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return "Версии для скачивания пока не опубликованы.";
         response.EnsureSuccessStatusCode();
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
-        return "Последний опубликованный релиз: " + doc.RootElement.GetProperty("tag_name").GetString() + ". Установлено: 0.1.0.";
+        return "Последняя доступная версия: " + doc.RootElement.GetProperty("tag_name").GetString() + ". Установлено: 0.1.0.";
     }
 
     public IReadOnlyList<Diagnostic> Diagnose(EngineController engine)
@@ -87,31 +87,31 @@ public sealed class Maintenance(AppPaths paths)
         var output = new List<Diagnostic>
         {
             new("Windows", "ИНФО", $"{Environment.OSVersion.VersionString}; процесс {(Environment.Is64BitProcess ? "x64" : "x86")}"),
-            new("Движок", engine.IsRunning ? "РАБОТАЕТ" : "ОСТАНОВЛЕН", "Наличие процесса не подтверждает доступность сервисов."),
-            new("BFE", WindowsService.State("BFE") == 4 ? "OK" : "ОШИБКА", "Базовая служба фильтрации необходима драйверу."),
-            new("WinDivert", File.Exists(Path.Combine(paths.Bin, "WinDivert64.sys")) ? "OK" : "ОШИБКА", "Проверка наличия файла драйвера."),
-            new("curl", File.Exists(ProcessRunner.SystemTool("curl.exe")) ? "OK" : "ОШИБКА", "Системный curl используется для сетевых проверок."),
-            new("Автозапуск", engine.OwnsService ? "ВКЛЮЧЁН" : engine.ServiceInstalled ? "КОНФЛИКТ" : "ВЫКЛЮЧЕН", engine.ServiceInstalled && !engine.OwnsService ? "Найдена служба другой сборки zapret." : "Управление собственной службой Windows."),
-            new("DNS", "ПРОВЕРЬТЕ", "Проверьте безопасный DNS в браузере или Windows. Приложение не меняет DNS автоматически.")
+            new("Движок", engine.IsRunning ? "РАБОТАЕТ" : "ОСТАНОВЛЕН", "Работа модуля обхода не гарантирует доступ к сайтам. Их ответы проверяются отдельно."),
+            new("BFE", WindowsService.State("BFE") == 4 ? "OK" : "ОШИБКА", "служба Windows BFE нужна для работы сетевого драйвера. Если она остановлена, обход может не запуститься."),
+            new("WinDivert", File.Exists(Path.Combine(paths.Bin, "WinDivert64.sys")) ? "OK" : "ОШИБКА", "Проверяем файл WinDivert — драйвера, через который работает обход. Если его нет, распакуйте полный архив программы."),
+            new("curl", File.Exists(ProcessRunner.SystemTool("curl.exe")) ? "OK" : "ОШИБКА", "curl — встроенный инструмент Windows, который нужен для автоподбора профиля."),
+            new("Автозапуск", engine.OwnsService ? "ВКЛЮЧЁН" : engine.ServiceInstalled ? "КОНФЛИКТ" : "ВЫКЛЮЧЕН", engine.ServiceInstalled && !engine.OwnsService ? "Установлено фоновое подключение другой версии zapret. Отключите его в прежней программе." : "Эта настройка запускает обход как службу Windows, без открытого окна x2zapret."),
+            new("DNS", "ПРОВЕРЬТЕ", "DNS помогает находить адреса сайтов. Если сайты не открываются, проверьте настройки DNS в браузере и Windows. x2zapret не меняет их автоматически.")
         };
         using var internet = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings");
         bool proxy = internet?.GetValue("ProxyEnable") is int enabled && enabled == 1;
-        output.Add(new("Системный прокси", proxy ? "ВНИМАНИЕ" : "OK", proxy ? "Включён системный прокси. Автотесты выполняют прямое подключение." : "Явный системный прокси выключен."));
+        output.Add(new("Системный прокси", proxy ? "ВНИМАНИЕ" : "OK", proxy ? "В Windows включён прокси — промежуточный сервер для соединений. Сетевые проверки x2zapret выполняются напрямую, поэтому результаты в браузере могут отличаться." : "Прокси в этих настройках Windows выключен."));
         foreach (string name in new[] { "AdguardSvc", "GoodbyeDPI", "discordfix_zapret", "winws1", "winws2", "TracSrvWrapper", "EPWD", "Killer Network Service", "SmartByte Network Service" })
         {
             bool found;
             try { found = WindowsService.State(name) != 0; } catch (System.ComponentModel.Win32Exception) { found = false; }
-            if (found) output.Add(new(name, "ВНИМАНИЕ", "Возможен конфликт сетевых фильтров. Служба не изменялась."));
+            if (found) output.Add(new(name, "ВНИМАНИЕ", "Эта служба тоже может обрабатывать сетевые соединения и мешать обходу. x2zapret не менял её настройки."));
         }
         foreach (var process in Process.GetProcessesByName("AdguardSvc"))
-        { process.Dispose(); output.Add(new("AdGuard", "ВНИМАНИЕ", "Обнаружен процесс фильтрации трафика.")); }
+        { process.Dispose(); output.Add(new("AdGuard", "ВНИМАНИЕ", "AdGuard тоже обрабатывает сетевые соединения. При проблемах проверьте, не мешают ли программы друг другу.")); }
         using var services = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services");
         foreach (string serviceName in services?.GetSubKeyNames() ?? [])
         {
             using var service = services!.OpenSubKey(serviceName);
             string description = $"{serviceName} {service?.GetValue("DisplayName")}";
             if (new[] { "Killer", "SmartByte", "Intel Connectivity", "VPN", "HappService" }.Any(x => description.Contains(x, StringComparison.OrdinalIgnoreCase)))
-                output.Add(new(serviceName, "ВНИМАНИЕ", "Возможный сетевой фильтр или VPN: " + service?.GetValue("DisplayName")));
+                output.Add(new(serviceName, "ВНИМАНИЕ", "Найдена программа, которая может изменять сетевые соединения: " + service?.GetValue("DisplayName")));
         }
         return output;
     }
@@ -120,7 +120,7 @@ public sealed class Maintenance(AppPaths paths)
     {
         foreach (string name in new[] { "Discord", "DiscordPTB", "DiscordCanary", "DiscordDevelopment" })
             foreach (var process in Process.GetProcessesByName(name))
-            { process.Dispose(); throw new InvalidOperationException("Сначала закройте Discord, включая значок в трее."); }
+            { process.Dispose(); throw new InvalidOperationException("Полностью закройте Discord, включая значок рядом с часами, и повторите очистку."); }
         foreach (string edition in new[] { "discord", "discordptb", "discordcanary", "discorddevelopment" })
             foreach (string folder in new[] { "Cache", "Code Cache", "GPUCache" })
             {
