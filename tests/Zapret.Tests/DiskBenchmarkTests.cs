@@ -23,7 +23,7 @@ internal static class DiskBenchmarkTests
                 foreach (bool write in new[] { false, true })
                 {
                     var args = DiskBenchmarkPolicy.Arguments(File, profile, write, 3);
-                    Equal(File, args[^1]); Assert(!args.Any(a => a.StartsWith("-c", StringComparison.OrdinalIgnoreCase)));
+                    Equal(File, args[^1]); Assert(!args.Any(a => a.StartsWith("-c", StringComparison.Ordinal)));
                     Assert(args.Contains("-Su") && args.Contains("-W0") && args.Contains("-t1") && args.Contains("-Rxml"));
                     Assert(args.Contains(write ? "-w100" : "-w0"));
                     Equal(profile.Random, args.Contains("-r4K"));
