@@ -13,6 +13,7 @@ public partial class MainWindow
     private PcInformationSession? pcSession;
     private PcSection? pcSection;
     private HardwarePcInformation? hardwareSource;
+    private bool pawnRebootRequired;
     private CancellationTokenSource hardwareVisibility = new();
     private CancellationTokenSource? pcCancellation;
     private int pcRequest;
@@ -165,7 +166,8 @@ public partial class MainWindow
         if (hardwareSource == null) return;
         var driver = PawnDriver.State();
         PcDriverStatus.Text = driver.Ready ? "Встроенные датчики · PawnIO " + driver.Version : "PawnIO: " + driver.Version + ". GPU, диски и батарея доступны без него.";
-        PcDriverButton.IsEnabled = !driver.Ready && !pcExporting;
+        if (pawnRebootRequired || !driver.Ready && Version.TryParse(driver.Version, out _)) PcDriverStatus.Text += " Если показания недоступны, перезагрузите Windows.";
+        PcDriverButton.IsEnabled = !driver.Ready && !pcExporting && PawnDriver.CanInstallOver(driver.Version);
     }
     private async void InstallPawn_Click(object sender, RoutedEventArgs e)
     {
@@ -178,7 +180,7 @@ public partial class MainWindow
         bool installed = false;
         try
         {
-            bool reboot = await PawnDriver.InstallAsync(cancellation.Token); installed = true;
+            bool reboot = await PawnDriver.InstallAsync(cancellation.Token); installed = true; pawnRebootRequired = reboot;
             PcStatusText.Text = reboot ? "Драйвер установлен. Windows запросила перезагрузку." : "Драйвер установлен. Обновляю показания…";
         }
         catch (OperationCanceledException) { PcStatusText.Text = "Загрузка драйвера отменена."; }

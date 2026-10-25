@@ -33,7 +33,7 @@ internal sealed class NativeHardwareClient(string workerArgument = "--hardware-w
                         RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
                         StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8 };
                     if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
-                        start.ArgumentList.Add(Assembly.GetEntryAssembly()!.Location);
+                        start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, (Assembly.GetEntryAssembly()?.GetName().Name ?? "x2zapret") + ".dll"));
                     start.ArgumentList.Add(workerArgument);
                     process = Process.Start(start) ?? throw new InvalidOperationException("Не удалось запустить сборщик датчиков.");
                     try { job = new(process); }

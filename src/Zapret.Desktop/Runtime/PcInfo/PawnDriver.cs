@@ -45,9 +45,15 @@ internal static class PawnDriver
             !Convert.ToHexString(SHA256.HashData(bytes)).Equals(info.DriverSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Установщик PawnIO не прошёл проверку размера или SHA256.");
     }
+    internal static bool CanInstallOver(string existing)
+    {
+        static Version Normal(Version value) => new(value.Major, value.Minor, Math.Max(0, value.Build), Math.Max(0, value.Revision));
+        return !Version.TryParse(existing, out var version) || Normal(version) <= Normal(Version.Parse(Components.DriverVersion));
+    }
     internal static async Task<bool> InstallAsync(CancellationToken token)
     {
         var info = Components;
+        if (!CanInstallOver(State().Version)) throw new InvalidOperationException("Установлена более новая версия PawnIO. Понижение версии не выполняется; перезагрузите Windows и проверьте доступ к драйверу.");
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(90) };
         using var response = await http.GetAsync(info.DriverUrl, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();

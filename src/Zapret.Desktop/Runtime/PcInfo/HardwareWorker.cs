@@ -48,13 +48,8 @@ internal static class HardwareWorker
                             bool dimm = hardware.GetType().Name == "DimmMemory";
                             foreach (var sensor in hardware.Sensors)
                             {
-                                if (sensor.Value is not { } value || !float.IsFinite(value)) continue;
-                                if (hardware is StorageDevice disk && sensor.SensorType == SensorType.Temperature)
-                                {
-                                    if ((sensor.Name is "Temperature" or "Composite Temperature") && !disk.Storage.Smart.Temperature.HasValue) continue;
-                                    if (sensor.Name == "Warning Temperature" && !disk.Storage.Smart.TemperatureWarning.HasValue) continue;
-                                    if (sensor.Name == "Critical Temperature" && !disk.Storage.Smart.TemperatureCritical.HasValue) continue;
-                                }
+                                if (!Available(hardware, sensor)) continue;
+                                float value = sensor.Value!.Value;
                                 if (dimm && sensor.Name == "Capacity") continue; // Capacity is already read from SMBIOS, with explicit bytes.
                                 readings.Add(new(sensor.Identifier.ToString(), hardware.Name, sensor.Name, sensor.SensorType.ToString(), value));
                                 if (dimm && sensor.SensorType is SensorType.Timing or SensorType.Temperature)
@@ -76,7 +71,7 @@ internal static class HardwareWorker
                                     string worst = ReadProperty(data, "Worst") ?? "—";
                                     smart.Add(new(device, $"{attribute.Id:X2} · {attribute.Name}", $"RAW: {raw}; текущее: {normalized}; худшее: {worst}; порог: {attribute.Threshold}"));
                                 }
-                                foreach (var sensor in storage.Sensors.Where(s => s.Value.HasValue && s.SensorType is not SensorType.Throughput and not SensorType.Load))
+                                foreach (var sensor in storage.Sensors.Where(s => Available(storage, s) && s.SensorType is not SensorType.Throughput and not SensorType.Load))
                                     smart.Add(new(device, sensor.Name, SensorStatistics.Format(sensor.Value!.Value, sensor.SensorType.ToString())));
                                 if (storage.Attributes.Count == 0) warnings.Add("Не все устройства предоставляют таблицу SMART через текущий контроллер. Для NVMe могут быть доступны только отдельные показатели здоровья.");
                             }
@@ -86,10 +81,21 @@ internal static class HardwareWorker
                     }
                 }
                 catch (Exception error)
-                { Write(new(DateTimeOffset.UtcNow, driver.Version, driver.Ready, [], [], [], ["Не удалось открыть мониторинг: " + error.GetType().Name])); }
+                { Write(new(DateTimeOffset.UtcNow, driver.Version, driver.Ready, [], [], [], ["Не удалось открыть мониторинг: " + error.GetType().Name])); return; }
             }
         }
         finally { try { computer?.Close(); } catch (Exception) { } }
+    }
+    private static bool Available(IHardware hardware, ISensor sensor)
+    {
+        if (sensor.Value is not { } value || !float.IsFinite(value)) return false;
+        if (hardware is StorageDevice disk && sensor.SensorType == SensorType.Temperature)
+        {
+            if ((sensor.Name is "Temperature" or "Composite Temperature") && !disk.Storage.Smart.Temperature.HasValue) return false;
+            if (sensor.Name == "Warning Temperature" && !disk.Storage.Smart.TemperatureWarning.HasValue) return false;
+            if (sensor.Name == "Critical Temperature" && !disk.Storage.Smart.TemperatureCritical.HasValue) return false;
+        }
+        return true;
     }
     private static string? ReadProperty(object instance, string name)
     {

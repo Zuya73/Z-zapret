@@ -35,6 +35,7 @@ internal static class HardwareChecks
         try { PawnDriver.Verify(new byte[] { 77, 90, 0 }); throw new InvalidOperationException("Accepted invalid installer"); }
         catch (InvalidDataException) { }
         Require(true, "Driver installation rejects wrong bytes before execution");
+        Require(!PawnDriver.CanInstallOver("2.3.0") && PawnDriver.CanInstallOver("2.2.0.0"), "Installing the pinned driver cannot downgrade a newer version");
         AtomicFile.WriteJson(destination, new { passed = checks.Count, checks, readings = frame.Readings.Count,
             smartRows = frame.Smart.Count, spdRows = frame.Spd.Count, driverReady = frame.DriverReady });
         void Require(bool ok, string name) { if (!ok) throw new InvalidOperationException(name); checks.Add(name); }

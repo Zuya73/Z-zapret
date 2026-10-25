@@ -141,6 +141,15 @@ jobs:
           $process = Start-Process "$directory/x2zapret.exe" -ArgumentList $argument -WorkingDirectory $env:RUNNER_TEMP -PassThru
           if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Root EXE startup timed out.' }
           if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) { throw "Root EXE failed: $($process.ExitCode)" }
+      - name: Verify built-in monitoring in the self-contained root EXE
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'x2zapret root executable test'
+          $receipt = Join-Path $PWD 'artifacts/root-hardware-check.json'
+          $process = Start-Process "$directory/x2zapret.exe" -ArgumentList ('--hardware-check "' + $receipt + '"') -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Root EXE hardware checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path "$env:RUNNER_TEMP/smoke-error.txt") { Get-Content "$env:RUNNER_TEMP/smoke-error.txt" }; throw 'Root EXE hardware checks failed.' }
+          Get-Content $receipt
       - uses: actions/upload-artifact@v4
         with:
           name: x2zapret-root-executable
@@ -258,6 +267,7 @@ jobs:
             artifacts/tools-check.json
             artifacts/pc-information-check.json
             artifacts/hardware-check.json
+            artifacts/root-hardware-check.json
           if-no-files-found: error
           retention-days: 30
 
