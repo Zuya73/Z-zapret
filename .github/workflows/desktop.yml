@@ -38,6 +38,8 @@ jobs:
         run: python tools/verify_release_version.py
       - name: Verify vendored engine manifest
         run: python tools/generate_engine_manifest.py --check
+      - name: Verify embedded Microsoft DiskSpd engine
+        run: python tools/verify_diskspd.py
       - name: Verify pinned Flowseal snapshot
         run: python tools/verify_upstream.py
       - name: Verify upstream import round trip
@@ -125,6 +127,15 @@ jobs:
           if ((Get-Item $file).Length -ne $info.driverSize -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -ne $info.driverSha256) { throw 'Invalid official PawnIO asset.' }
           if ((Get-AuthenticodeSignature $file).Status -ne 'Valid') { throw 'Invalid PawnIO Authenticode signature.' }
           Remove-Item $file
+      - name: Verify disk benchmark UI and owned-file native I/O
+        shell: pwsh
+        run: |
+          foreach ($mode in @('disk-check', 'disk-native-check')) {
+            $process = Start-Process dotnet -ArgumentList @('artifacts/x2zapret/x2zapret.dll', "--$mode", "artifacts/$mode.json") -PassThru
+            if (-not $process.WaitForExit(180000)) { $process.Kill(); throw "$mode timed out." }
+            if ($process.ExitCode -ne 0) { if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }; throw "$mode failed." }
+            Get-Content "artifacts/$mode.json"
+          }
       - name: Build self-contained root executable
         shell: pwsh
         run: ./build/build-root.ps1
@@ -149,6 +160,15 @@ jobs:
           $process = Start-Process "$directory/x2zapret.exe" -ArgumentList ('--hardware-check "' + $receipt + '"') -WorkingDirectory $env:RUNNER_TEMP -PassThru
           if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Root EXE hardware checks timed out.' }
           if ($process.ExitCode -ne 0) { if (Test-Path "$env:RUNNER_TEMP/smoke-error.txt") { Get-Content "$env:RUNNER_TEMP/smoke-error.txt" }; throw 'Root EXE hardware checks failed.' }
+          Get-Content $receipt
+      - name: Verify disk benchmark from the self-contained root executable
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'x2zapret root executable test'
+          $receipt = Join-Path $PWD 'artifacts/root-disk-check.json'
+          $process = Start-Process "$directory/x2zapret.exe" -ArgumentList ('--disk-native-check "' + $receipt + '"') -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Root EXE disk checks timed out.' }
+          if ($process.ExitCode -ne 0) { if (Test-Path "$env:RUNNER_TEMP/smoke-error.txt") { Get-Content "$env:RUNNER_TEMP/smoke-error.txt" }; throw 'Root EXE disk checks failed.' }
           Get-Content $receipt
       - uses: actions/upload-artifact@v4
         with:
@@ -268,6 +288,9 @@ jobs:
             artifacts/pc-information-check.json
             artifacts/hardware-check.json
             artifacts/root-hardware-check.json
+            artifacts/disk-check.json
+            artifacts/disk-native-check.json
+            artifacts/root-disk-check.json
           if-no-files-found: error
           retention-days: 30
 

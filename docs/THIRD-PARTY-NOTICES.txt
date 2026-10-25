@@ -53,3 +53,11 @@ The public project can be rebuilt with modified/replacement libraries; none are 
 PawnIO Setup 2.2.0 is downloaded only on explicit use of the driver button, directly
 from the official publisher. It is not bundled with x2zapret. Driver source/licence:
 https://github.com/namazso/PawnIO (GPL-2.0-or-later with the publisher's IOCTL exception).
+
+
+Microsoft DiskSpd 2.3, unmodified x64 executable, MIT.
+Copyright (c) 2014 Microsoft. Source: https://github.com/microsoft/diskspd/tree/5e7025bfc9d1364f185d4c30963d7ac79195435e
+Pinned upstream executable, archive provenance and full MIT licence are in vendor/diskspd.
+The executable and licence are embedded in x2zapret; installed/portable packages also
+include licenses/DiskSpd-MIT.txt. The application exposes only owned temporary regular
+file targets; DiskSpd is never given a physical device, partition or existing user file.

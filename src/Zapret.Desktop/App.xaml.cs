@@ -21,6 +21,13 @@ public partial class App : Application
             catch (Exception) { Shutdown(1); }
             return;
         }
+        if (e.Args.Contains("--disk-native-check"))
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            try { await DiskBenchmarkChecks.RunNativeAsync(e.Args.SkipWhile(x => x != "--disk-native-check").Skip(1).First()); Shutdown(0); }
+            catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); }
+            return;
+        }
         base.OnStartup(e);
         if (e.Args.Contains("--uninstall-service") || e.Args.Contains("--stop-service-for-update") || e.Args.Contains("--refresh-startup"))
         {
@@ -65,7 +72,8 @@ public partial class App : Application
         bool toolsCheck = e.Args.Contains("--tools-check");
         bool pcCheck = e.Args.Contains("--pc-check");
         bool hardwareCheck = e.Args.Contains("--hardware-check");
-        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck || hardwareCheck;
+        bool diskCheck = e.Args.Contains("--disk-check");
+        bool smoke = e.Args.Contains("--smoke-test") || startupCheck || boundsCheck || motionCheck || toolsCheck || pcCheck || hardwareCheck || diskCheck;
         bool startupInvocation = e.Args.Contains(StartupPolicy.Arguments);
         if (startupInvocation)
         {
@@ -100,7 +108,7 @@ public partial class App : Application
             MessageBox.Show(error.Exception.Message, "Ошибка x2zapret", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
-        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null, pcInformation: pcCheck ? PcInformationChecks.CreateSource() : null);
+        var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null, pcInformation: pcCheck ? PcInformationChecks.CreateSource() : null, diskBenchmark: diskCheck ? DiskBenchmarkChecks.CreateRunner() : null);
         MainWindow = window;
         if (startupInvocation)
         {
@@ -118,6 +126,11 @@ public partial class App : Application
         window.Show();
         if (smoke)
         {
+            if (diskCheck)
+            {
+                try { await DiskBenchmarkChecks.RunAsync(window, e.Args.SkipWhile(x => x != "--disk-check").Skip(1).First()); }
+                catch (Exception error) { File.WriteAllText("smoke-error.txt", error.ToString()); Shutdown(1); return; }
+            }
             if (hardwareCheck)
             {
                 try { await HardwareChecks.RunAsync(e.Args.SkipWhile(x => x != "--hardware-check").Skip(1).First()); }

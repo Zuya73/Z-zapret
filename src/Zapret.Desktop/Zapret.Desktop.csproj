@@ -16,6 +16,9 @@
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <ProjectReference Include="..\Zapret.Core\Zapret.Core.csproj" />
     <EmbeddedResource Include="..\..\vendor\hardware\licenses\*.txt"><LogicalName>Zapret.Desktop.Hardware.Licenses.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="..\..\vendor\diskspd\bin\diskspd.exe" LogicalName="Zapret.Desktop.DiskBench.diskspd.exe" />
+    <EmbeddedResource Include="..\..\vendor\diskspd\manifest.json" LogicalName="Zapret.Desktop.DiskBench.manifest.json" />
+    <EmbeddedResource Include="..\..\vendor\diskspd\LICENSE.txt" LogicalName="Zapret.Desktop.DiskBench.LICENSE.txt" />
     <Resource Include="Assets\app.ico" />
     <EmbeddedResource Include="Runtime\PcInfo\Collect.ps1" />
     <EmbeddedResource Include="Assets\Hardware\components.json" LogicalName="Zapret.Desktop.Hardware.components.json" />

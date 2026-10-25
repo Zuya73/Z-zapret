@@ -47,6 +47,8 @@ public partial class MainWindow
 
     internal void ShowShutdownTool()
     {
+        if (diskBenchmarkRunning) return;
+        DiskToolPanel.Visibility = Visibility.Collapsed; DiskToolButton.Style = (Style)FindResource(typeof(Button));
         PcInfoPanel.Visibility = Visibility.Collapsed; ShutdownToolPanel.Visibility = Visibility.Visible;
         PcToolButton.Style = (Style)FindResource(typeof(Button));
         TimerToolButton.Style = (Style)FindResource("Primary");
@@ -54,6 +56,8 @@ public partial class MainWindow
     }
     internal void ShowPcTool()
     {
+        if (diskBenchmarkRunning) return;
+        DiskToolPanel.Visibility = Visibility.Collapsed; DiskToolButton.Style = (Style)FindResource(typeof(Button));
         ShutdownToolPanel.Visibility = Visibility.Collapsed; PcInfoPanel.Visibility = Visibility.Visible;
         PcToolButton.Style = (Style)FindResource("Primary");
         TimerToolButton.Style = (Style)FindResource(typeof(Button));

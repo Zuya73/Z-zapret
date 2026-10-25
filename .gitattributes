@@ -8,3 +8,5 @@ legacy/flowseal/** -text
 resources/lists/** -text
 vendor/zapret/bin/** -text
 vendor/zapret/licenses/Flowseal-LICENSE.txt -text
+
+vendor/diskspd/bin/** -text

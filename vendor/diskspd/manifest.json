@@ -1,0 +1,8 @@
+{
+  "version": "2.3",
+  "source": "https://github.com/microsoft/diskspd/tree/5e7025bfc9d1364f185d4c30963d7ac79195435e",
+  "archiveUrl": "https://github.com/microsoft/diskspd/releases/download/v2.3/DiskSpd.ZIP",
+  "archiveSha256": "18609981e8b04b4f645f1fd182ad0541615fe71722de36a9a933c54f747218a3",
+  "size": 525704,
+  "sha256": "dd4e57e1e8ccaf5d6437938f8aab7f17e9a1e6d8fba8a093006b7cadf16faea2"
+}
