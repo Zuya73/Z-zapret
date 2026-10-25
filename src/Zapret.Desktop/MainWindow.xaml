@@ -118,22 +118,26 @@
                 <TextBlock Text="01 / SHUTDOWN TIMER" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,14" />
                 <TextBlock Text="Выключение по таймеру" Style="{StaticResource Heading}" />
                 <TextBlock Text="Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret." Style="{StaticResource Muted}" Margin="0,0,0,22" />
-                <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="24" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
-                  <StackPanel><TextBlock Text="Часы" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownHoursBox" Text="1" MaxLength="3" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Часы до выключения компьютера" /></StackPanel>
-                  <StackPanel Grid.Column="2"><TextBlock Text="Минуты" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownMinutesBox" Text="0" MaxLength="2" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Минуты до выключения компьютера" /></StackPanel>
-                </Grid>
-                <WrapPanel Margin="0,16,0,24">
-                  <Button Content="15 мин" Tag="15" Click="ShutdownPreset_Click" Padding="14,8" Margin="0,0,10,8" />
-                  <Button Content="30 мин" Tag="30" Click="ShutdownPreset_Click" Padding="14,8" Margin="0,0,10,8" />
-                  <Button Content="1 час" Tag="60" Click="ShutdownPreset_Click" Padding="14,8" Margin="0,0,10,8" />
-                  <Button Content="2 часа" Tag="120" Click="ShutdownPreset_Click" Padding="14,8" Margin="0,0,0,8" />
-                </WrapPanel>
-                <Border Background="#0A0A0A" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="22">
-                  <StackPanel><TextBlock Text="ОСТАЛОСЬ ДО ВЫКЛЮЧЕНИЯ" FontSize="10" Foreground="{DynamicResource MutedBrush}" />
-                    <TextBlock x:Name="ShutdownCountdown" Text="— : — : —" FontSize="42" FontFamily="Consolas" Margin="0,12,0,8" AutomationProperties.LiveSetting="Polite" />
-                    <TextBlock x:Name="ShutdownStatus" Text="Таймер не запущен" Style="{StaticResource Muted}" FontSize="12" />
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <Grid HorizontalAlignment="Left"><Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="24" /><ColumnDefinition Width="140" /></Grid.ColumnDefinitions>
+                      <StackPanel><TextBlock Text="Часы" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownHoursBox" Text="1" MaxLength="3" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Часы до выключения компьютера" /></StackPanel>
+                      <StackPanel Grid.Column="2"><TextBlock Text="Минуты" Style="{StaticResource Muted}" Margin="0,0,0,7" /><TextBox x:Name="ShutdownMinutesBox" Text="0" MaxLength="2" FontSize="24" FontFamily="Consolas" AutomationProperties.Name="Минуты до выключения компьютера" /></StackPanel>
+                    </Grid>
+                    <WrapPanel Margin="0,16,0,0">
+                      <Button Content="15 мин" Tag="15" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
+                      <Button Content="30 мин" Tag="30" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
+                      <Button Content="1 час" Tag="60" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,8,8" />
+                      <Button Content="2 часа" Tag="120" FontSize="12" Click="ShutdownPreset_Click" Padding="10,7" Margin="0,0,0,8" />
+                    </WrapPanel>
                   </StackPanel>
-                </Border>
+                  <Border Grid.Column="2" Background="#0A0A0A" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" Padding="18">
+                    <StackPanel><TextBlock Text="ОСТАЛОСЬ" FontSize="10" Foreground="{DynamicResource MutedBrush}" />
+                      <Viewbox Height="58" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Stretch" Margin="0,8,0,4"><TextBlock x:Name="ShutdownCountdown" Text="— : — : —" FontSize="40" FontFamily="Consolas" /></Viewbox>
+                      <TextBlock x:Name="ShutdownStatus" Text="Таймер не запущен" Style="{StaticResource Muted}" FontSize="12" />
+                    </StackPanel>
+                  </Border>
+                </Grid>
                 <WrapPanel Margin="0,22,0,0">
                   <Button x:Name="StartShutdownTimerButton" Content="Запустить таймер" Style="{StaticResource Primary}" Click="StartShutdownTimer_Click" Margin="0,0,12,10" />
                   <Button x:Name="CancelShutdownTimerButton" Content="Отменить таймер" IsEnabled="False" Click="CancelShutdownTimer_Click" Margin="0,0,0,10" />
