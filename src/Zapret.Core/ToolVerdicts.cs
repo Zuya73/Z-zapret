@@ -55,6 +55,15 @@ public static class ToolVerdicts
         return new("Интернет в порядке", "Ответы приходят быстро и стабильно" + (home ? ", домашняя сеть работает нормально." : "."), 0);
     }
 
+    public static Verdict Services(ConnectionHealth health)
+    {
+        string Group(string name) => name + ": " + (health.GroupAvailable(name) ? "отвечает" : "не отвечает");
+        string detail = Group("Discord") + " · " + Group("YouTube") + ".";
+        if (health.ServicesAvailable) return new("Discord и YouTube отвечают", detail + " Голосовой чат и видео проверяйте в самих приложениях.", 0);
+        if (!health.InternetAvailable) return new("Интернет не подтверждён", "Не ответили даже контрольные сайты. Проверьте подключение к интернету.", 2);
+        return new("Есть проблемы с доступом", detail + " Включите обход или подберите другой профиль в «Автоподборе».", 2);
+    }
+
     public static Verdict? Speed(double downloadMbps, double uploadMbps)
     {
         if (downloadMbps <= 0) return null;

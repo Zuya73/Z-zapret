@@ -76,6 +76,10 @@ internal static class ExtendedToolsChecks
         window.ShowDiskTool(); Require(window.DiskToolPanel.IsVisible && !window.SpaceToolPanel.IsVisible, "Disk benchmark remains reachable");
         window.ShowPcTool(); Require(window.PcInfoPanel.IsVisible && !window.NetworkToolPanel.IsVisible, "PC information remains reachable");
         window.ShowShutdownTool(); Require(window.ShutdownToolPanel.IsVisible, "Shutdown timer remains reachable");
+        window.ShowStartupTool(); await Task.Delay(300); window.UpdateLayout();
+        Require(window.StartupToolPanel.IsVisible && !window.PcInfoPanel.IsVisible && !window.ShutdownToolPanel.IsVisible && window.StartupStatusText.Text.Length > 0,
+            "Autostart programs are listed read-only in their own tool");
+        InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "startup-programs-preview.png"));
         window.SelectPage("Strategies"); await Task.Delay(450); window.UpdateLayout();
         var profileItem = window.StrategiesGrid.Items[0];
         var profileText = window.StrategiesGrid.Columns[2].GetCellContent(profileItem) as TextBlock;

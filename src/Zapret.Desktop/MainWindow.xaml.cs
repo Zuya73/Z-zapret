@@ -318,7 +318,7 @@ public partial class MainWindow : Window
         foreach (Control control in new Control[] { ConnectButton, ServiceButton, HomeStrategyPicker, StartTestsButton, TestModePicker,
             OnlySelectedCheck, ChooseStrategyButton, StrategiesGrid, DiagnoseButton, ClearCacheButton, SaveSettingsButton,
             SaveListButton, UserListPicker, UpdateIpSetButton, UpdateHostsButton, RemoveHostsButton, CheckUpdatesButton,
-            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton, HomeCheckButton })
+            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton, HomeCheckButton, NetServicesButton })
             control.IsEnabled = !value;
         StartupConnectSwitch.IsEnabled = !value && StartupSwitch.IsChecked == true;
         CancelTestsButton.IsEnabled = value && TestsPanel.Visibility == Visibility.Visible;
@@ -833,6 +833,13 @@ public partial class MainWindow : Window
         HomeCheckButton.IsEnabled = false; HomeCheckText.Text = "Проверяем…";
         try { await CheckConnectionAsync(manual: true); }
         finally { HomeCheckButton.IsEnabled = !busy; HomeCheckText.Text = "Проверить Discord и YouTube"; }
+    }
+    private async void CheckServices_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy || preview) return;
+        NetServicesButton.IsEnabled = false; NetServicesButton.Content = "Проверяем…";
+        try { await CheckConnectionAsync(manual: true); }
+        finally { NetServicesButton.IsEnabled = !busy; NetServicesButton.Content = "Проверить сейчас"; }
     }
     private void OpenNetworkTools_Click(object sender, RoutedEventArgs e) { SelectPage("Tools"); ShowExtendedTool("Network"); }
     private void DismissError_Click(object sender, RoutedEventArgs e) => ErrorBanner.Visibility = Visibility.Collapsed;

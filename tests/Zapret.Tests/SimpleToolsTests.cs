@@ -63,6 +63,23 @@ internal static class SimpleToolsTests
                 if (Directory.Exists(outside)) Directory.Delete(outside, true);
             }
         });
+        check("Startup approval values match Task Manager and keep the program's command intact", () =>
+        {
+            Assert(StartupApproval.Enabled(null) && StartupApproval.Enabled([2, 0, 0, 0]) && StartupApproval.Enabled([6]) && !StartupApproval.Enabled([3]) && !StartupApproval.Enabled([7]));
+            var off = StartupApproval.Value(false, DateTimeOffset.Parse("2026-10-26T00:00:00Z"));
+            Assert(off.Length == 12 && off[0] == 3 && BitConverter.ToInt64(off, 4) == DateTimeOffset.Parse("2026-10-26T00:00:00Z").ToFileTime());
+            Assert(StartupApproval.Value(true, DateTimeOffset.UtcNow).SequenceEqual(new byte[] { 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));
+            Assert(StartupApproval.Executable("\"C:\\Program Files\\App\\app.exe\" --tray") == "C:\\Program Files\\App\\app.exe");
+            Assert(StartupApproval.Executable("C:\\Tools\\run.exe -silent") == "C:\\Tools\\run.exe");
+        });
+        check("Service verdicts name each service and separate a missing connection", () =>
+        {
+            var now = DateTimeOffset.UtcNow;
+            Assert(ToolVerdicts.Services(new(now, [new("d", "Discord", true, 1, ""), new("y", "YouTube", true, 1, ""), new("c", "Internet", true, 1, "")])).Level == 0);
+            var blocked = ToolVerdicts.Services(new(now, [new("d", "Discord", false, 1, ""), new("y", "YouTube", true, 1, ""), new("c", "Internet", true, 1, "")]));
+            Assert(blocked.Level == 2 && blocked.Detail.Contains("Discord: не отвечает") && blocked.Detail.Contains("YouTube: отвечает"));
+            Assert(ToolVerdicts.Services(new(now, [new("c", "Internet", false, 1, "")])).Title == "Интернет не подтверждён");
+        });
         check("Autoselect advice distinguishes a missing connection from blocking", () =>
         {
             ProbeResult R(ProbeStatus status) => new("g", "g", "g", "HTTP/1.1", status, 10, null, 0, "");

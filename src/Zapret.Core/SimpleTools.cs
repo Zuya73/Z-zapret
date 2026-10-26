@@ -139,3 +139,27 @@ public static class AutoselectAdvice
         return advice;
     }
 }
+
+// Windows keeps the on/off state of autostart entries apart from the entries themselves (the same place Task Manager uses),
+// so disabling never deletes a program's own Run value or shortcut and can always be undone.
+public static class StartupApproval
+{
+    public static bool Enabled(byte[]? data) => data is not { Length: > 0 } || (data[0] & 1) == 0;
+
+    public static byte[] Value(bool enabled, DateTimeOffset now)
+    {
+        var data = new byte[12];
+        data[0] = enabled ? (byte)2 : (byte)3;
+        if (!enabled) BitConverter.GetBytes(now.ToFileTime()).CopyTo(data, 4);
+        return data;
+    }
+
+    // The program a command starts: the quoted path, or everything up to the first ".exe".
+    public static string Executable(string command)
+    {
+        string text = Environment.ExpandEnvironmentVariables(command.Trim());
+        if (text.StartsWith('"')) { int end = text.IndexOf('"', 1); return end > 0 ? text[1..end] : text.Trim('"'); }
+        int exe = text.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        return exe > 0 ? text[..(exe + 4)] : text.Split(' ', 2)[0];
+    }
+}

@@ -37,25 +37,29 @@ public partial class MainWindow
     }
     private void HideExtendedTools()
     {
-        SensorToolPanel.Visibility = NetworkToolPanel.Visibility = SpaceToolPanel.Visibility = Visibility.Collapsed;
+        SensorToolPanel.Visibility = NetworkToolPanel.Visibility = SpaceToolPanel.Visibility = StartupToolPanel.Visibility = Visibility.Collapsed;
     }
     private Button? lastComputerTool, lastDiskTool;
     private bool advancedTools;
     // Four groups at the top level; "Компьютер" and "Диски" show their own sub-tools in the same row.
     private void HighlightTool(Button active)
     {
-        bool computer = active == PcToolButton || active == SensorToolButton, disks = active == DiskToolButton || active == SpaceToolButton;
+        bool computer = active == PcToolButton || active == SensorToolButton || active == StartupToolButton, disks = active == DiskToolButton || active == SpaceToolButton;
         if (computer) lastComputerTool = active;
         if (disks) lastDiskTool = active;
         foreach (var (button, selected) in new[] { (ComputerGroupButton, computer), (DisksGroupButton, disks), (NetworkToolButton, active == NetworkToolButton), (TimerToolButton, active == TimerToolButton) })
             button.Style = (Style)FindResource(selected ? "ChipActive" : "Chip");
-        foreach (var button in new[] { PcToolButton, SensorToolButton, DiskToolButton, SpaceToolButton })
+        foreach (var button in new[] { PcToolButton, SensorToolButton, StartupToolButton, DiskToolButton, SpaceToolButton })
             button.Style = (Style)FindResource(button == active ? "SubChipActive" : "SubChip");
         ComputerSubTools.Visibility = computer ? Visibility.Visible : Visibility.Collapsed;
         DiskSubTools.Visibility = disks ? Visibility.Visible : Visibility.Collapsed;
     }
     private void ComputerGroup_Click(object sender, RoutedEventArgs e)
-    { if (lastComputerTool == SensorToolButton) ShowExtendedTool("Sensors"); else ShowPcTool(); }
+    {
+        if (lastComputerTool == SensorToolButton) ShowExtendedTool("Sensors");
+        else if (lastComputerTool == StartupToolButton) ShowStartupTool();
+        else ShowPcTool();
+    }
     private void DisksGroup_Click(object sender, RoutedEventArgs e)
     { if (lastDiskTool == SpaceToolButton) ShowExtendedTool("Space"); else ShowDiskTool(); }
 
@@ -70,11 +74,11 @@ public partial class MainWindow
     private void ApplyAdvancedTools()
     {
         var visibility = advancedTools ? Visibility.Visible : Visibility.Collapsed;
-        DiskAdvancedOptions.Visibility = QualityRouteCheck.Visibility = SpeedModePicker.Visibility = SensorCsvButton.Visibility = visibility;
+        DiskAdvancedOptions.Visibility = QualityRouteCheck.Visibility = SpeedModePicker.Visibility = SensorCsvButton.Visibility = PcPrivateCheck.Visibility = visibility;
         AdvancedToolsButton.Style = (Style)FindResource(advancedTools ? "ChipActive" : "Chip");
         AdvancedToolsButton.ToolTip = advancedTools ? "Скрыть возможности для опытных" : "Для опытных: дополнительные настройки и инструменты";
         if (!advancedTools)
-        { QualityRouteCheck.IsChecked = false; DiskSizePicker.SelectedIndex = 1; DiskModePicker.SelectedIndex = 0; SpeedModePicker.SelectedIndex = 0; }
+        { QualityRouteCheck.IsChecked = false; PcPrivateCheck.IsChecked = false; DiskSizePicker.SelectedIndex = 1; DiskModePicker.SelectedIndex = 0; SpeedModePicker.SelectedIndex = 0; }
         UpdatePawnState();
     }
 
@@ -120,7 +124,7 @@ public partial class MainWindow
     private void UpdateExtendedControls()
     {
         if (!extendedInitialized) return;
-        foreach (var button in new[] { ComputerGroupButton, DisksGroupButton, PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, NetworkToolButton, SpaceToolButton })
+        foreach (var button in new[] { ComputerGroupButton, DisksGroupButton, PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, StartupToolButton, NetworkToolButton, SpaceToolButton })
             button.IsEnabled = !diskBenchmarkRunning && !extendedRunning;
         foreach (var button in new[] { FlushDnsButton, ResetNetworkButton, DnsCloudflareButton, DnsGoogleButton, DnsAutoButton })
             button.IsEnabled = !busy && !pcExporting;
@@ -460,5 +464,6 @@ public partial class MainWindow
         RenderSpeedReport(new(now, 487.6, 94.8, 18.2, 34.7, 31_000_000, 31_000_000, "Completed", ""));
         RenderQualityReport(new("1.1.1.1 · пример", [new(1, 18), new(2, 20), new(3, 19)], [new(1, 1), new(2, 2)], []));
         NetworkStageText.Text = "Пример интерфейса · демонстрационные показатели";
+        ShowVerdict("Services", ToolVerdicts.Services(new(now, [new("Discord · пример", "Discord", true, 48, ""), new("YouTube · пример", "YouTube", true, 36, ""), new("Контроль", "Internet", true, 20, "")])));
     }
 }
