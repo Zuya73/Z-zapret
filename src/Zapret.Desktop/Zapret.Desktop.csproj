@@ -23,6 +23,7 @@
     <EmbeddedResource Include="Runtime\PcInfo\Collect.ps1" />
     <EmbeddedResource Include="Assets\Hardware\components.json" LogicalName="Zapret.Desktop.Hardware.components.json" />
     <Resource Include="Assets\x2air.png" />
+    <Resource Include="Assets\x2air-ink.png" />
     <Content Include="..\..\resources\catalogs\strategies.json" CopyToOutputDirectory="PreserveNewest" Link="strategies.json" />
     <Content Include="..\..\resources\catalogs\upstream-info.json" CopyToOutputDirectory="PreserveNewest" Link="upstream-info.json" />
     <Content Include="..\..\resources\catalogs\legacy-seed-hashes.json" CopyToOutputDirectory="PreserveNewest" Link="legacy-seed-hashes.json" />

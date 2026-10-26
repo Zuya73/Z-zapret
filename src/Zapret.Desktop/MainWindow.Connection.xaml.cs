@@ -76,7 +76,7 @@ public partial class MainWindow
             connectionHealth.ServicesAvailable ? "Сайты отвечают" : connectionHealth.InternetAvailable ? "Есть проблемы с доступом" : "Интернет не проверен";
         ConnectionDetail.Text = connectionHealth.Summary + $"\nПроверено в {connectionHealth.CapturedAt.ToLocalTime():HH:mm:ss}" +
             (fresh ? "" : " · результат устарел");
-        if (running && (!fresh || !connectionHealth.ServicesAvailable)) StateDot.Fill = new SolidColorBrush(Color.FromRgb(153, 153, 153));
+        if (running && (!fresh || !connectionHealth.ServicesAvailable)) StateDot.Fill = (Brush)FindResource("WarningDotBrush");
         if (tray != null) tray.Text = "x2zapret · " + (running && fresh && connectionHealth.ServicesAvailable ? "сайты отвечают" : running ? "обход включён" : "остановлен");
     }
     private async Task RecoverConnectionAsync()

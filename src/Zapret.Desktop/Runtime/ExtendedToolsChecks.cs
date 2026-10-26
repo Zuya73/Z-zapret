@@ -96,6 +96,17 @@ internal static class ExtendedToolsChecks
         Require(diagnosticText != null && diagnosticRow != null && diagnosticText.ActualHeight > diagnosticText.FontSize && diagnosticRow.ActualHeight >= diagnosticText.ActualHeight,
             "Diagnostic explanations fit their row height instead of being clipped");
         InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "diagnostics-preview.png"));
+        try
+        {
+            ThemeManager.Apply(ThemeManager.Light);
+            window.SelectPage("Home"); await Task.Delay(450); window.UpdateLayout();
+            Require(System.Windows.Application.Current.FindResource("BackgroundBrush") is System.Windows.Media.SolidColorBrush { Color.R: > 200 } && window.PageScroll.Opacity == 1,
+                "The light theme replaces the palette while the window is open");
+            InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "light-theme-preview.png"));
+            window.SelectPage("Tools"); window.ShowExtendedTool("Sensors"); await Task.Delay(450); window.UpdateLayout();
+            InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "light-tools-preview.png"));
+        }
+        finally { ThemeManager.Apply(ThemeManager.Dark); }
         AtomicFile.WriteJson(destination, new { passed = checks.Count, checks });
     }
     private sealed class HealthHandler(bool failMain) : HttpMessageHandler

@@ -11,6 +11,7 @@ public partial class MainWindow
     private ShutdownTimerController? shutdownTimer;
     private ShutdownPlan? shutdownPlan;
     private bool shutdownBusy;
+    private TimerAction timerAction = TimerAction.Shutdown;
     private readonly DispatcherTimer shutdownClock = new() { Interval = TimeSpan.FromSeconds(1) };
     internal ShutdownTimerController? ShutdownTimer => shutdownTimer;
     internal void ShowToolsPreview() => SelectPage("Tools");
@@ -50,8 +51,8 @@ public partial class MainWindow
         try
         {
             var delay = ShutdownTimerPolicy.Delay(ShutdownHoursBox.Text, ShutdownMinutesBox.Text);
-            shutdownPlan = await shutdownTimer.ScheduleAsync(delay, DateTimeOffset.UtcNow, lifetime.Token);
-            Log("X2 Tools: выключение ПК запланировано на " + shutdownPlan.Deadline.ToLocalTime().ToString("dd.MM HH:mm") + ".");
+            shutdownPlan = await shutdownTimer.ScheduleAsync(delay, DateTimeOffset.UtcNow, lifetime.Token, timerAction);
+            Log("X2 Tools: " + ShutdownTimerPolicy.ActionTitle(timerAction).ToLowerInvariant() + " ПК запланировано на " + shutdownPlan.Deadline.ToLocalTime().ToString("dd.MM HH:mm") + ".");
         }
         catch (OperationCanceledException) { }
         catch (Exception error) { ShutdownTimerError.Text = error.Message; }
@@ -86,11 +87,32 @@ public partial class MainWindow
         ShutdownCountdown.Text = shutdownPlan == null ? "— : — : —" :
             ShutdownTimerPolicy.Remaining(shutdownPlan.Deadline, DateTimeOffset.UtcNow);
         ShutdownStatus.Text = shutdownPlan == null ? "Таймер не запущен" :
-            active ? "Выключение: " + shutdownPlan.Deadline.ToLocalTime().ToString("dd.MM.yyyy в HH:mm:ss") : "Запланированное время наступило";
+            active ? ShutdownTimerPolicy.ActionTitle(shutdownPlan.Action) + ": " + shutdownPlan.Deadline.ToLocalTime().ToString("dd.MM.yyyy в HH:mm:ss") : "Запланированное время наступило";
+        if (active) SetTimerAction(shutdownPlan!.Action);
+        foreach (var chip in new[] { TimerShutdownButton, TimerRestartButton, TimerSleepButton }) chip.IsEnabled = !shutdownBusy && !active;
         StartShutdownTimerButton.IsEnabled = shutdownTimer != null && !shutdownBusy && !active;
         CancelShutdownTimerButton.IsEnabled = shutdownTimer != null && !shutdownBusy && active;
         ShutdownHoursBox.IsEnabled = ShutdownMinutesBox.IsEnabled = !shutdownBusy && !active;
     }
+    private void TimerAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tag } && Enum.TryParse<TimerAction>(tag, out var action)) SetTimerAction(action);
+    }
+    private void SetTimerAction(TimerAction action)
+    {
+        timerAction = action;
+        foreach (var (chip, value) in new[] { (TimerShutdownButton, TimerAction.Shutdown), (TimerRestartButton, TimerAction.Restart), (TimerSleepButton, TimerAction.Sleep) })
+            chip.Style = (Style)FindResource(value == action ? "ChipActive" : "Chip");
+        (TimerHeading.Text, TimerDescription.Text) = action switch
+        {
+            TimerAction.Restart => ("Перезагрузка по таймеру", "Выберите, через сколько перезагрузить компьютер. Таймер продолжит работать, даже если закрыть x2zapret."),
+            TimerAction.Sleep => ("Сон по таймеру", "Выберите, через сколько перевести компьютер в сон. Программы останутся открытыми; компьютер проснётся от мыши или клавиатуры."),
+            _ => ("Выключение по таймеру", "Выберите, через сколько выключить компьютер. Таймер продолжит работать, даже если закрыть x2zapret.")
+        };
+    }
+    // Shown in the tray menu while a timer is active.
+    internal string? TimerSummary() => shutdownPlan is { } plan && plan.Deadline > DateTimeOffset.UtcNow
+        ? $"Таймер: {ShutdownTimerPolicy.ActionTitle(plan.Action).ToLowerInvariant()} через {ShutdownTimerPolicy.Remaining(plan.Deadline, DateTimeOffset.UtcNow)}" : null;
     private void FlowsealChanges_Click(object sender, RoutedEventArgs e) =>
         Open("https://github.com/Flowseal/zapret-discord-youtube/releases");
 }

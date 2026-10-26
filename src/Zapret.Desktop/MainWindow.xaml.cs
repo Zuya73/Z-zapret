@@ -66,17 +66,20 @@ public partial class MainWindow : Window
         this.preview = preview;
         this.startupLaunch = startupLaunch;
         InitializeComponent();
+        SelectThemePicker(ThemeManager.Preference);
         WorkAreaBehavior = new WindowWorkArea(this);
         InitializeTools(shutdownTimer);
         InitializePcInformation(pcInformation);
         InitializeDiskTool(diskBenchmark);
         InitializeConnectionMonitor();
         InitializeExtendedTools();
+        InitializeCleanup();
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
         StateChanged += (_, _) => { UpdateWindowChrome(); UpdateStatePulse(); };
         IsVisibleChanged += (_, _) => UpdateStatePulse();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
+        ThemeManager.Changed += ThemeChanged;
         Navigate_Click(new Button { Tag = "Home" }, new RoutedEventArgs());
         AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
         if (startupLaunch) ShowInTaskbar = false;
@@ -85,7 +88,7 @@ public partial class MainWindow : Window
         Closing += Window_Closing;
         Closed += (_, _) =>
         {
-            SystemParameters.StaticPropertyChanged -= MotionPreferencesChanged; pageTransitions.Dispose();
+            SystemParameters.StaticPropertyChanged -= MotionPreferencesChanged; ThemeManager.Changed -= ThemeChanged; pageTransitions.Dispose();
             timer.Stop(); updateTimer.Stop(); lifetime.Cancel(); tray?.Dispose(); engine?.Dispose(); operationCancellation?.Dispose();
             if (startupLaunch) Application.Current.Shutdown();
         };
@@ -235,6 +238,10 @@ public partial class MainWindow : Window
         menu.Items.Add("Открыть x2zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Включить / отключить обход", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
         menu.Items.Add("X2 Tools", null, (_, _) => Dispatcher.Invoke(() => { SelectPage("Tools"); ShowFromTray(); }));
+        var timerItem = new Forms.ToolStripMenuItem { Visible = false };
+        timerItem.Click += (_, _) => Dispatcher.Invoke(() => { SelectPage("Tools"); ShowShutdownTool(); ShowFromTray(); });
+        menu.Items.Add(timerItem);
+        menu.Opening += (_, _) => Dispatcher.Invoke(() => { string? summary = TimerSummary(); timerItem.Visible = summary != null; timerItem.Text = summary ?? ""; });
         menu.Items.Add("Проверить обновления", null, (_, _) => Dispatcher.Invoke(() => CheckUpdates_Click(this, new RoutedEventArgs())));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Выход", null, (_, _) => Dispatcher.Invoke(() => { forceExit = true; Close(); }));
@@ -311,7 +318,7 @@ public partial class MainWindow : Window
         foreach (Control control in new Control[] { ConnectButton, ServiceButton, HomeStrategyPicker, StartTestsButton, TestModePicker,
             OnlySelectedCheck, ChooseStrategyButton, StrategiesGrid, DiagnoseButton, ClearCacheButton, SaveSettingsButton,
             SaveListButton, UserListPicker, UpdateIpSetButton, UpdateHostsButton, RemoveHostsButton, CheckUpdatesButton,
-            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton })
+            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton, HomeCheckButton })
             control.IsEnabled = !value;
         StartupConnectSwitch.IsEnabled = !value && StartupSwitch.IsChecked == true;
         CancelTestsButton.IsEnabled = value && TestsPanel.Visibility == Visibility.Visible;
@@ -345,8 +352,10 @@ public partial class MainWindow : Window
         HeaderStatusDot.Fill = StateDot.Fill;
     }
 
+    private (string Text, bool Active) headerStatus = ("ПОДГОТОВКА", false);
     private void SetHeaderStatus(string text, bool active)
     {
+        headerStatus = (text, active);
         HeaderStatusText.Text = text;
         HeaderStatusText.Foreground = (Brush)FindResource(active ? "TextBrush" : "MutedBrush");
         HeaderStatusDot.Fill = (Brush)FindResource(active ? "AccentBrush" : "SubtleBrush");
@@ -377,6 +386,33 @@ public partial class MainWindow : Window
             pulse.Children.Add(animation);
         }
         pulse.Begin(StatePulse, true); statePulse = pulse;
+    }
+
+    // Brushes copied out of the palette in code are reapplied after a theme switch; XAML follows it on its own.
+    private void ThemeChanged()
+    {
+        Motion.Refresh(this); pageTransitions.RefreshNavigation();
+        if (engine == null) StateDot.Fill = (Brush)FindResource("SubtleBrush");
+        SetHeaderStatus(headerStatus.Text, headerStatus.Active);
+        RefreshState();
+        foreach (var (name, verdict) in shownVerdicts.ToArray()) ShowVerdict(name, verdict);
+        SensorPlot.InvalidateVisual();
+    }
+
+    private bool loadingTheme;
+    private void ThemePicker_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (loadingTheme || ThemePicker.SelectedItem is not ComboBoxItem { Tag: string theme }) return;
+        ThemeManager.Apply(theme);
+        if (!ready || preview) return;
+        try { var updated = settings with { Theme = theme }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ShowError(UserMessages.Error(error)); }
+    }
+    private void SelectThemePicker(string theme)
+    {
+        loadingTheme = true;
+        ThemePicker.SelectedItem = ThemePicker.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == ThemeManager.Normalize(theme));
+        loadingTheme = false;
     }
 
     private void UpdateWindowChrome()
@@ -435,7 +471,7 @@ public partial class MainWindow : Window
                 ? targets.Where(x => new[] { "DiscordMain", "DiscordGateway", "DiscordCDN", "YouTubeWeb", "YouTubeImage", "GoogleMain" }.Contains(x.Id)).ToArray()
                 : targets;
             string testDirectory = paths.PrepareLists(settings, dpi: mode == TestMode.Dpi, test: true);
-            probeRows.Clear(); lastSession = null; ExportTestsButton.IsEnabled = false;
+            probeRows.Clear(); lastSession = null; ExportTestsButton.IsEnabled = false; AdviceBox.Visibility = Visibility.Collapsed;
             RecommendationTitle.Text = "Идёт проверка соединения";
             ConnectionTitle.Text = "Идёт автоподбор";
             ConnectionDetail.Text = "Подключение временно переключается между профилями.";
@@ -466,7 +502,12 @@ public partial class MainWindow : Window
                 RecommendationTitle.Text = lastSession.Cancelled ? "Проверка отменена" : recommended != null ? "Рекомендуем: " + recommended : "Подходящий профиль не найден";
                 RecommendationDetail.Text = lastSession.Cancelled ? "Прежнее подключение восстановлено. Результаты завершённых проверок сохранены." :
                     recommended != null ? "Этот профиль прошёл две проверки. Нажмите «Включить рекомендованный профиль», чтобы использовать его." :
-                    "Ни один профиль не прошёл проверку. Откройте «Диагностику» и проверьте подключение к интернету.";
+                    "Ни один профиль не прошёл проверку. Ниже — что можно попробовать.";
+                if (!lastSession.Cancelled && recommended == null)
+                {
+                    AdviceText.Text = string.Join("\n", AutoselectAdvice.For(lastSession).Select((tip, i) => $"{i + 1}. {tip}"));
+                    AdviceBox.Visibility = Visibility.Visible;
+                }
                 Log("Отчёт сохранён: " + saved);
             }
             finally
@@ -540,6 +581,8 @@ public partial class MainWindow : Window
         StartupConnectSwitch.IsEnabled = StartupSwitch.IsChecked == true;
         AutoUpdateSwitch.IsChecked = settings.AutoUpdate;
         advancedTools = settings.AdvancedTools; ApplyAdvancedTools();
+        OverheatCheck.IsChecked = settings.OverheatAlert;
+        SelectThemePicker(settings.Theme); ThemeManager.Apply(settings.Theme);
         var fakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
             .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Order().ToArray();
         DiscordFakePicker.ItemsSource = fakes; GameFakePicker.ItemsSource = fakes;
@@ -784,6 +827,14 @@ public partial class MainWindow : Window
         Motion.To(ErrorBanner, UIElement.OpacityProperty, 1, 180, 0);
         Motion.To(Motion.Translation(ErrorBanner), TranslateTransform.YProperty, 0, 200, -5);
     }
+    private async void CheckHome_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy || preview) return;
+        HomeCheckButton.IsEnabled = false; HomeCheckText.Text = "Проверяем…";
+        try { await CheckConnectionAsync(manual: true); }
+        finally { HomeCheckButton.IsEnabled = !busy; HomeCheckText.Text = "Проверить Discord и YouTube"; }
+    }
+    private void OpenNetworkTools_Click(object sender, RoutedEventArgs e) { SelectPage("Tools"); ShowExtendedTool("Network"); }
     private void DismissError_Click(object sender, RoutedEventArgs e) => ErrorBanner.Visibility = Visibility.Collapsed;
     private void ExportLog_Click(object sender, RoutedEventArgs e)
     {

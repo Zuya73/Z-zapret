@@ -78,8 +78,10 @@ public partial class MainWindow
         UpdatePawnState();
     }
 
+    private readonly Dictionary<string, Verdict?> shownVerdicts = new();
     private void ShowVerdict(string name, Verdict? verdict)
     {
+        shownVerdicts[name] = verdict;
         var box = (Border)FindName(name + "Verdict");
         if (verdict == null) { box.Visibility = Visibility.Collapsed; return; }
         var badge = (Border)FindName(name + "VerdictBadge"); var icon = (TextBlock)FindName(name + "VerdictIcon");
@@ -107,7 +109,11 @@ public partial class MainWindow
             catch (System.Net.NetworkInformation.NetworkInformationException e) { NetworkStageText.Text = e.Message; }
         }
         if (tool == "Network") RefreshDns();
-        if (tool == "Space" && string.IsNullOrWhiteSpace(SpacePathBox.Text)) SpacePathBox.Text = Path.GetPathRoot(Environment.SystemDirectory)!;
+        if (tool == "Space")
+        {
+            if (string.IsNullOrWhiteSpace(SpacePathBox.Text)) SpacePathBox.Text = Path.GetPathRoot(Environment.SystemDirectory)!;
+            RefreshSpaceDrives();
+        }
     }
     private void SelectExtendedTool_Click(object sender, RoutedEventArgs e)
     { if (sender is Button { Tag: string tool }) ShowExtendedTool(tool); }
@@ -124,6 +130,9 @@ public partial class MainWindow
         QualityTargetBox.IsEnabled = QualityGatewayPicker.IsEnabled = QualityRouteCheck.IsEnabled = SpeedModePicker.IsEnabled = !busy;
         SaveNetworkButton.IsEnabled = !busy && (qualityReport != null || speedReport != null);
         SpaceOpenButton.IsEnabled = !busy;
+        CleanupScanButton.IsEnabled = !busy;
+        CleanupButton.IsEnabled = !busy && cleanupSizes.Count > 0;
+        foreach (var drive in SpaceDrivesPanel.Children.OfType<Button>()) drive.IsEnabled = !busy;
     }
 
     private void RefreshGraphClock()
@@ -163,6 +172,7 @@ public partial class MainWindow
                     tray?.ShowBalloonTip(6000, "x2zapret · датчики", message, System.Windows.Forms.ToolTipIcon.Warning);
                 }
             }
+            if (settings.OverheatAlert) CheckOverheat(readings);
             RenderSensorHistory();
         }
         catch (OperationCanceledException) { }
@@ -179,7 +189,7 @@ public partial class MainWindow
         SensorPicker.SelectedItem = series.FirstOrDefault(s => s.Id == id) ?? series.FirstOrDefault(s => s.Kind == "Temperature") ?? series.FirstOrDefault();
         changingSensor = false;
         if ((SensorPicker.SelectedItem as SensorSeries)?.Id != id) Sensor_Changed(this, new SelectionChangedEventArgs(Selector.SelectionChangedEvent, Array.Empty<object>(), Array.Empty<object>()));
-        RenderSensorChart();
+        RenderSensorChart(); RenderSensorTiles();
         SensorStatusText.Text = $"Датчиков: {series.Count} · обновление раз в 2 с · история за час" + (graphRecording ? " · сбор продолжается при сворачивании" : " · сбор только в этом разделе") + graphDriverNote;
     }
     private void RenderSensorChart()
@@ -191,6 +201,50 @@ public partial class MainWindow
         SensorPlot.InvalidateVisual();
         SensorValueText.Text = points.Count == 0 ? "—" : SensorStatistics.Format(points[^1].Value, sensor.Kind);
         SensorRangeText.Text = points.Count == 0 ? "" : $"Мин. {SensorStatistics.Format(points.Min(p => p.Value), sensor.Kind)} · Макс. {SensorStatistics.Format(points.Max(p => p.Value), sensor.Kind)}";
+    }
+    private void RenderSensorTiles()
+    {
+        var catalog = sensorHistory.Catalog;
+        RenderTile("Cpu", SensorTiles.CpuTemperature(catalog), v => SensorTiles.Temperature(v, gpu: false));
+        RenderTile("Gpu", SensorTiles.GpuTemperature(catalog), v => SensorTiles.Temperature(v, gpu: true));
+        RenderTile("Load", catalog.FirstOrDefault(s => s.Id == "x2.cpu.load"), SensorTiles.Load);
+        RenderTile("Memory", catalog.FirstOrDefault(s => s.Id == "x2.memory.load"), SensorTiles.Load);
+    }
+    private void RenderTile(string name, SensorSeries? sensor, Func<double, (string Text, int Level)> rate)
+    {
+        double? value = sensor == null ? null : sensorHistory.Find(sensor.Id)?.Points.LastOrDefault()?.Value;
+        var tile = (Border)FindName(name + "Tile");
+        tile.Tag = sensor?.Id; tile.Cursor = sensor == null ? null : Cursors.Hand;
+        ((TextBlock)FindName(name + "TileValue")).Text = value is double v ? SensorStatistics.Format(Math.Round(v), sensor!.Kind) : "—";
+        ((ProgressBar)FindName(name + "TileBar")).Value = value is double bar ? Math.Clamp(bar, 0, 100) : 0;
+        var (text, level) = value is double reading ? rate(reading) : (sensor == null ? "Нет данных от датчика" : "Ожидание", 0);
+        var rating = (TextBlock)FindName(name + "TileRating");
+        rating.Text = text;
+        rating.Foreground = (Brush)FindResource(level == 0 ? "MutedBrush" : "TextBrush");
+        rating.FontWeight = level == 2 ? FontWeights.Bold : FontWeights.Normal;
+    }
+    private void SensorTile_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Border { Tag: string id } && SensorPicker.Items.OfType<SensorSeries>().FirstOrDefault(s => s.Id == id) is { } series)
+            SensorPicker.SelectedItem = series;
+    }
+    private void CheckOverheat(IReadOnlyList<HardwareReading> readings)
+    {
+        var catalog = sensorHistory.Catalog;
+        foreach (var (series, device) in new[] { (SensorTiles.CpuTemperature(catalog), "Процессор"), (SensorTiles.GpuTemperature(catalog), "Видеокарта") })
+        {
+            if (series == null || readings.FirstOrDefault(r => r.Id == series.Id)?.Value is not double celsius ||
+                !sensorAlerts.Observe("x2.overheat." + series.Id, celsius, SensorTiles.OverheatCelsius, DateTimeOffset.UtcNow)) continue;
+            string message = $"{device} нагрелся до {celsius:0} °C. Проверьте охлаждение и закройте тяжёлые программы.";
+            Log("Датчики: перегрев. " + message);
+            tray?.ShowBalloonTip(7000, "x2zapret · перегрев", message, System.Windows.Forms.ToolTipIcon.Warning);
+        }
+    }
+    private void OverheatAlert_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!ready || preview || settings.OverheatAlert == (OverheatCheck.IsChecked == true)) return;
+        try { var updated = settings with { OverheatAlert = OverheatCheck.IsChecked == true }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ShowError(UserMessages.Error(error)); }
     }
     private void Sensor_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -399,7 +453,9 @@ public partial class MainWindow
     internal void PopulateExtendedPreview()
     {
         var now = DateTimeOffset.UtcNow;
-        for (int i = 0; i < 90; i++) sensorHistory.Add(now.AddSeconds((i - 89) * 2), [new("preview.cpu", "CPU · пример", "Температура", "Temperature", 52 + Math.Sin(i * .16) * 7 + Math.Cos(i * .4) * 2)]);
+        for (int i = 0; i < 90; i++) sensorHistory.Add(now.AddSeconds((i - 89) * 2), [new("/preview-cpu/0/temperature/0", "CPU · пример", "CPU Package", "Temperature", 52 + Math.Sin(i * .16) * 7 + Math.Cos(i * .4) * 2),
+            new("/gpu-preview/0/temperature/0", "GPU · пример", "GPU Core", "Temperature", 77 + Math.Sin(i * .1) * 4), new("x2.cpu.load", "Компьютер", "Загрузка процессора", "Load", 24 + Math.Sin(i * .3) * 10),
+            new("x2.memory.load", "Компьютер", "Загрузка памяти", "Load", 61)]);
         RenderSensorHistory(); SensorStatusText.Text = "Пример интерфейса · демонстрационные показатели";
         RenderSpeedReport(new(now, 487.6, 94.8, 18.2, 34.7, 31_000_000, 31_000_000, "Completed", ""));
         RenderQualityReport(new("1.1.1.1 · пример", [new(1, 18), new(2, 20), new(3, 19)], [new(1, 1), new(2, 2)], []));

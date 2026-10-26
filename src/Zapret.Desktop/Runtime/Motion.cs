@@ -81,8 +81,13 @@ public static class Motion
     internal static void Refresh(DependencyObject root)
     {
         foreach (var element in Descendants(root))
-            if (Feedbacks.TryGetValue(element, out var feedback)) feedback.Update(true);
+            if (Feedbacks.TryGetValue(element, out var feedback)) { feedback.Retheme(); feedback.Update(true); }
     }
+
+    private static Color ResourceColor(FrameworkElement element, string key, Color fallback) =>
+        element.TryFindResource(key) is SolidColorBrush brush ? brush.Color : fallback;
+    private static Color Mix(Color from, Color to, double amount) => Color.FromRgb(
+        (byte)Math.Round(from.R + (to.R - from.R) * amount), (byte)Math.Round(from.G + (to.G - from.G) * amount), (byte)Math.Round(from.B + (to.B - from.B) * amount));
 
     private static void SelectedChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
     { if (target is FrameworkElement element && Feedbacks.TryGetValue(element, out var feedback)) feedback.Update(); }
@@ -111,17 +116,18 @@ public static class Motion
         private readonly FrameworkElement element;
         private readonly DependencyPropertyDescriptor? pressed;
         private readonly SolidColorBrush? cardBrush;
-        private readonly Color cardIdle, cardHover;
+        private readonly string cardOutline = "LineBrush";
+        private Color cardIdle, cardHover;
         internal Feedback(FrameworkElement element)
         {
             this.element = element;
             if (element is Control control) control.ApplyTemplate();
             if (element is Border card)
             {
-                // Each card keeps its own outline colour at rest and brightens it slightly under the pointer.
-                cardIdle = card.BorderBrush is SolidColorBrush outline ? outline.Color : Color.FromRgb(30, 30, 30);
-                cardHover = Color.FromRgb((byte)Math.Min(255, cardIdle.R + 26), (byte)Math.Min(255, cardIdle.G + 26), (byte)Math.Min(255, cardIdle.B + 26));
-                cardBrush = new SolidColorBrush(cardIdle); card.BorderBrush = cardBrush;
+                // Each card keeps its own outline token at rest and moves it slightly towards the text colour under the pointer.
+                if (ReferenceEquals(card.BorderBrush, card.TryFindResource("LineStrongBrush"))) cardOutline = "LineStrongBrush";
+                cardBrush = new SolidColorBrush(); card.BorderBrush = cardBrush;
+                Retheme();
             }
             if (element is Button button)
             {
@@ -133,6 +139,12 @@ public static class Motion
             element.IsEnabledChanged += EnabledChanged;
             if (element is CheckBox toggle) { toggle.Checked += CheckedChanged; toggle.Unchecked += CheckedChanged; }
             Update(true);
+        }
+        internal void Retheme()
+        {
+            if (cardBrush == null) return;
+            cardIdle = ResourceColor(element, cardOutline, Color.FromRgb(30, 30, 30));
+            cardHover = Mix(cardIdle, ResourceColor(element, "TextBrush", Colors.White), .14);
         }
         private void Changed(object? sender, EventArgs e) => Update();
         private void MouseChanged(object sender, MouseEventArgs e) => Update();
@@ -172,7 +184,7 @@ public static class Motion
                 {
                     To(Translation(thumb), TranslateTransform.XProperty, on ? 24 : 0, duration);
                     if (fill.IsFrozen) { fill = fill.Clone(); thumb.Fill = fill; }
-                    ColorTo(fill, on ? Color.FromRgb(5, 5, 5) : Color.FromRgb(140, 140, 140), duration);
+                    ColorTo(fill, on ? ResourceColor(toggle, "AccentForegroundBrush", Colors.Black) : ResourceColor(toggle, "SwitchThumbBrush", Colors.Gray), duration);
                 }
             }
         }

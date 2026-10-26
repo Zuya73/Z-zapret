@@ -91,6 +91,8 @@ public partial class MainWindow
             var section = await pcSession.ReadAsync(category.Id, refresh || HardwarePcInformation.IsHardware(category.Id), cancellation.Token);
             if (request != pcRequest) return;
             pcSection = section; ApplyPcFilter();
+            if (category.Id == "summary" && PcBrief.From(section) is { } brief)
+            { PcBriefText.Text = brief; PcBriefText.ToolTip = brief; PcBriefText.Visibility = Visibility.Visible; }
         }
         catch (OperationCanceledException) { if (request == pcRequest) PcStatusText.Text = "Сбор отменён. Нажмите «Обновить», чтобы повторить."; }
         catch (Exception error) { if (request == pcRequest) PcStatusText.Text = "Не удалось получить данные раздела: " + error.Message; }
