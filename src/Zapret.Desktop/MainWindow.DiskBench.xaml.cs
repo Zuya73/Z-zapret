@@ -32,8 +32,7 @@ public partial class MainWindow
         HideExtendedTools();
         PcInfoPanel.Visibility = ShutdownToolPanel.Visibility = Visibility.Collapsed;
         DiskToolPanel.Visibility = Visibility.Visible;
-        PcToolButton.Style = TimerToolButton.Style = (Style)FindResource(typeof(Button));
-        DiskToolButton.Style = (Style)FindResource("Primary");
+        HighlightTool(DiskToolButton);
         PageScroll.ScrollToTop();
         if (DiskDrivePicker.ItemsSource == null) RefreshDiskDrives();
         else UpdateDiskControls();
@@ -115,7 +114,8 @@ public partial class MainWindow
     {
         if (diskReport == null || diskBenchmarkRunning) return;
         var dialog = new SaveFileDialog { Filter = "Текстовый отчёт (*.txt)|*.txt", FileName = "x2zapret-disk-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt" };
-        if (dialog.ShowDialog(this) == true) AtomicFile.Write(dialog.FileName, DiskBenchmarkPolicy.Export(diskReport));
+        if (dialog.ShowDialog(this) == true)
+            try { AtomicFile.Write(dialog.FileName, DiskBenchmarkPolicy.Export(diskReport)); } catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     internal sealed record DiskDriveChoice(string Root, string Description)
     { public override string ToString() => Description; }

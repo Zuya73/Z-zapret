@@ -43,8 +43,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         {
             CheckForeign();
             if (IsRunning) throw new InvalidOperationException("Сначала отключите обход, затем включите выбранный профиль.");
-            paths.ApplyFakes(settings);
-            string lists = paths.PrepareLists(settings);
+            string lists = await PrepareAsync(settings, cancellationToken);
             if (OwnsService)
             {
                 await ConfigureService(strategy, lists, settings, cancellationToken);
@@ -64,7 +63,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         try
         {
             CheckForeign();
-            paths.ApplyFakes(settings);
+            await Task.Run(() => paths.ApplyFakes(settings), cancellationToken);
             await StartProcess(strategy, listsDirectory, settings, cancellationToken);
             currentStrategy = strategy.Id;
         }
@@ -108,7 +107,8 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         {
             if (process is { HasExited: false })
             {
-                process.Kill(entireProcessTree: true);
+                // The engine may exit on its own between the check and the kill.
+                try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
                 await process.WaitForExitAsync(cancellationToken);
             }
             job?.Dispose(); job = null;
@@ -133,16 +133,14 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         if (snapshot.ServiceMode)
         {
             if (!OwnsService) throw new InvalidOperationException("Настройки фонового подключения изменились во время проверки. Автоматическое восстановление остановлено; проверьте «Диагностику».");
-            paths.ApplyFakes(settings);
-            await ConfigureService(strategy, paths.PrepareLists(settings), settings, cancellationToken);
+            await ConfigureService(strategy, await PrepareAsync(settings, cancellationToken), settings, cancellationToken);
             await ScAsync(["start", ServiceName], cancellationToken);
             await WindowsService.WaitAsync(ServiceName, 4, cancellationToken);
             currentStrategy = strategy.Id;
         }
         else
         {
-            paths.ApplyFakes(settings);
-            await StartProcess(strategy, paths.PrepareLists(settings), settings, cancellationToken);
+            await StartProcess(strategy, await PrepareAsync(settings, cancellationToken), settings, cancellationToken);
             currentStrategy = strategy.Id;
         }
         log("Предыдущее подключение восстановлено.");
@@ -152,8 +150,7 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
     {
         CheckForeign();
         await StopAsync(cancellationToken);
-        paths.ApplyFakes(settings);
-        string lists = paths.PrepareLists(settings);
+        string lists = await PrepareAsync(settings, cancellationToken);
         if (!ServiceInstalled)
         {
             string command = ServiceCommand(strategy, lists, settings);
@@ -185,6 +182,10 @@ public sealed class EngineController(AppPaths paths, IReadOnlyList<Strategy> str
         key.SetValue("ZZapretStrategy", strategy.Id);
         key.SetValue("zapret-discord-youtube", strategy.Source);
     }
+
+    // Copying fakes and lists touches several megabytes; keep it off the UI thread so the window stays responsive.
+    private Task<string> PrepareAsync(AppSettings settings, CancellationToken cancellationToken) =>
+        Task.Run(() => { paths.ApplyFakes(settings); return paths.PrepareLists(settings); }, cancellationToken);
 
     private string ServiceCommand(Strategy strategy, string lists, AppSettings settings) =>
         StrategyCatalog.QuoteWindowsArgument(Path.Combine(paths.Bin, "winws.exe")) + " " +

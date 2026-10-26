@@ -37,16 +37,19 @@ public partial class MainWindow
     private void HideExtendedTools()
     {
         SensorToolPanel.Visibility = NetworkToolPanel.Visibility = SpaceToolPanel.Visibility = Visibility.Collapsed;
-        SensorToolButton.Style = NetworkToolButton.Style = SpaceToolButton.Style = (Style)FindResource(typeof(Button));
+    }
+    private void HighlightTool(Button active)
+    {
+        foreach (var button in new[] { PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, NetworkToolButton, SpaceToolButton })
+            button.Style = (Style)FindResource(button == active ? "ChipActive" : "Chip");
     }
     internal void ShowExtendedTool(string tool)
     {
         if (busy || diskBenchmarkRunning || pcExporting) return;
         HideExtendedTools(); PcInfoPanel.Visibility = ShutdownToolPanel.Visibility = DiskToolPanel.Visibility = Visibility.Collapsed;
-        PcToolButton.Style = TimerToolButton.Style = DiskToolButton.Style = (Style)FindResource(typeof(Button));
         var panel = tool == "Sensors" ? SensorToolPanel : tool == "Network" ? NetworkToolPanel : SpaceToolPanel;
         var button = tool == "Sensors" ? SensorToolButton : tool == "Network" ? NetworkToolButton : SpaceToolButton;
-        panel.Visibility = Visibility.Visible; button.Style = (Style)FindResource("Primary"); PageScroll.ScrollToTop();
+        panel.Visibility = Visibility.Visible; HighlightTool(button); PageScroll.ScrollToTop();
         if (tool == "Network" && QualityGatewayPicker.ItemsSource == null)
         {
             try { QualityGatewayPicker.ItemsSource = NetworkTools.Gateways(); QualityGatewayPicker.SelectedIndex = 0; }

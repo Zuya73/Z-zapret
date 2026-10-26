@@ -26,16 +26,25 @@ public static class SmoothScroll
     {
         var viewer = (ScrollViewer)sender;
         if (!Motion.Enabled || Keyboard.Modifiers != ModifierKeys.None) { Stop(viewer); return; }
-        // Text editors, grids, lists and their own scrollbars retain their native wheel behavior.
+        // Multi-line editors keep their native wheel input. Nested lists and grids scroll themselves until they reach
+        // an edge in the wheel direction; after that the page continues, so the pointer never gets stuck over a table.
         for (var node = e.OriginalSource as DependencyObject; node != null && node != viewer; node = Parent(node))
-            if (node is ScrollViewer or TextBoxBase or ItemsControl or RangeBase or Thumb) return;
+        {
+            if (node is TextBoxBase { AcceptsReturn: true } || node is ScrollBar or Slider) return;
+            if (node is ScrollViewer inner)
+            {
+                if (inner.TemplatedParent is TextBoxBase { AcceptsReturn: true }) return;
+                bool canScroll = e.Delta < 0 ? inner.VerticalOffset < inner.ScrollableHeight - .5 : inner.VerticalOffset > .5;
+                if (canScroll) return;
+            }
+        }
         double lines = SystemParameters.WheelScrollLines;
         double distance = lines < 0 ? viewer.ViewportHeight * .85 : lines * 24;
         double previous = (double)viewer.GetValue(TargetProperty);
         double target = Math.Clamp((double.IsNaN(previous) ? viewer.VerticalOffset : previous) - e.Delta / 120.0 * distance, 0, viewer.ScrollableHeight);
         if (Math.Abs(target - viewer.VerticalOffset) < .1) return;
         viewer.SetValue(TargetProperty, target);
-        Motion.To(viewer, OffsetProperty, target, 210, viewer.VerticalOffset);
+        Motion.To(viewer, OffsetProperty, target, 280, viewer.VerticalOffset);
         e.Handled = true;
     }
     private static DependencyObject? Parent(DependencyObject node) => node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);

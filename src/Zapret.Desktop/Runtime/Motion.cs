@@ -26,11 +26,15 @@ public static class Motion
 
     internal static void To(DependencyObject target, DependencyProperty property, double value, int milliseconds = 180, double? from = null) =>
         Run(target, property, value, new DoubleAnimation(from ?? (double)target.GetValue(property), value,
-            TimeSpan.FromMilliseconds(milliseconds)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } }, milliseconds);
+            TimeSpan.FromMilliseconds(milliseconds)) { EasingFunction = Ease }, milliseconds);
+
+    // One shared, frozen curve: a quick start with a long soft landing reads as smooth without feeling slow.
+    private static readonly IEasingFunction Ease = CreateEase();
+    private static IEasingFunction CreateEase() { var ease = new QuinticEase { EasingMode = EasingMode.EaseOut }; ease.Freeze(); return ease; }
 
     private static void ColorTo(SolidColorBrush brush, Color value, int milliseconds) =>
         Run(brush, SolidColorBrush.ColorProperty, value, new ColorAnimation(brush.Color, value, TimeSpan.FromMilliseconds(milliseconds))
-        { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } }, milliseconds);
+        { EasingFunction = Ease }, milliseconds);
 
     private static void Run(DependencyObject target, DependencyProperty property, object value, AnimationTimeline animation, int milliseconds)
     {
@@ -107,12 +111,18 @@ public static class Motion
         private readonly FrameworkElement element;
         private readonly DependencyPropertyDescriptor? pressed;
         private readonly SolidColorBrush? cardBrush;
+        private readonly Color cardIdle, cardHover;
         internal Feedback(FrameworkElement element)
         {
             this.element = element;
             if (element is Control control) control.ApplyTemplate();
             if (element is Border card)
-            { cardBrush = new SolidColorBrush(Color.FromRgb(41, 41, 41)); card.BorderBrush = cardBrush; }
+            {
+                // Each card keeps its own outline colour at rest and brightens it slightly under the pointer.
+                cardIdle = card.BorderBrush is SolidColorBrush outline ? outline.Color : Color.FromRgb(30, 30, 30);
+                cardHover = Color.FromRgb((byte)Math.Min(255, cardIdle.R + 26), (byte)Math.Min(255, cardIdle.G + 26), (byte)Math.Min(255, cardIdle.B + 26));
+                cardBrush = new SolidColorBrush(cardIdle); card.BorderBrush = cardBrush;
+            }
             if (element is Button button)
             {
                 pressed = DependencyPropertyDescriptor.FromProperty(ButtonBase.IsPressedProperty, typeof(Button));
@@ -132,9 +142,9 @@ public static class Motion
 
         internal void Update(bool immediate = false)
         {
-            int duration = immediate ? 0 : 170;
+            int duration = immediate ? 0 : 160;
             if (cardBrush != null)
-            { ColorTo(cardBrush, element.IsMouseOver ? Color.FromRgb(63, 63, 63) : Color.FromRgb(41, 41, 41), duration); return; }
+            { ColorTo(cardBrush, element.IsMouseOver ? cardHover : cardIdle, duration); return; }
             if (element is not Control control) return;
             object? Part(string name) => control.Template.FindName(name, control);
             if (element is Button button)
@@ -162,7 +172,7 @@ public static class Motion
                 {
                     To(Translation(thumb), TranslateTransform.XProperty, on ? 24 : 0, duration);
                     if (fill.IsFrozen) { fill = fill.Clone(); thumb.Fill = fill; }
-                    ColorTo(fill, on ? Color.FromRgb(17, 17, 17) : Color.FromRgb(150, 150, 150), duration);
+                    ColorTo(fill, on ? Color.FromRgb(5, 5, 5) : Color.FromRgb(140, 140, 140), duration);
                 }
             }
         }

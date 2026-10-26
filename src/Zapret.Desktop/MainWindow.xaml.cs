@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Zapret.Core;
@@ -25,7 +26,7 @@ public partial class MainWindow : Window
     private readonly PageTransitions pageTransitions;
     private FrameworkElement[] Pages => [HomePanel, TestsPanel, StrategiesPanel, DiagnosticsPanel, ToolsPanel, SettingsPanel, LogsPanel];
     internal void SelectPage(string page) => Navigate_Click(new Button { Tag = page }, new RoutedEventArgs());
-    internal void ApplyMotionPreferences() { pageTransitions.Finish(); Motion.Refresh(this); }
+    internal void ApplyMotionPreferences() { pageTransitions.Finish(); Motion.Refresh(this); UpdateStatePulse(); }
     private void MotionPreferencesChanged(object? sender, PropertyChangedEventArgs e)
     { if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation)) Dispatcher.BeginInvoke(() => ApplyMotionPreferences()); }
     private readonly AppPaths paths = new();
@@ -73,6 +74,8 @@ public partial class MainWindow : Window
         InitializeExtendedTools();
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
+        StateChanged += (_, _) => { UpdateWindowChrome(); UpdateStatePulse(); };
+        IsVisibleChanged += (_, _) => UpdateStatePulse();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
         Navigate_Click(new Button { Tag = "Home" }, new RoutedEventArgs());
         AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
@@ -108,11 +111,12 @@ public partial class MainWindow : Window
             {
                 HomeStrategyPicker.SelectedIndex = 0;
                 ConnectionTitle.Text = "Готов к работе";
+                SetHeaderStatus("ГОТОВ К РАБОТЕ", false);
                 StatusText.Text = $"Профилей: {strategies.Count} · встроенное автотестирование · Windows x64";
                 StrategyDescription.Text = "Подберите профиль для своей сети и включайте обход одной кнопкой.";
                 return;
             }
-            settings = AtomicFile.ReadJson<AppSettings>(paths.Settings) ?? new();
+            settings = ReadSettings();
             var bundleFakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
                 .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Select(x => x!).Order().ToArray();
             var migrated = SettingsMigration.ForBundle(settings, strategies, bundleFakes);
@@ -126,12 +130,12 @@ public partial class MainWindow : Window
             }
             engine = new(paths, strategies, Log);
             EngineSnapshot? componentSnapshot = null;
-            if (paths.EngineUpdateRequired && engine.OwnsService && engine.IsRunning)
+            if (await Task.Run(() => paths.EngineUpdateRequired) && engine.OwnsService && engine.IsRunning)
             {
                 componentSnapshot = await engine.CaptureAsync(lifetime.Token);
                 await engine.StopAsync(lifetime.Token);
             }
-            try { paths.Initialize(); }
+            try { await Task.Run(paths.Initialize); }
             catch (Exception componentError)
             {
                 // EngineFiles rolls back file replacements before an old service is resumed.
@@ -183,6 +187,20 @@ public partial class MainWindow : Window
             StatusText.Text = "Не удалось запустить программу. Если используете архив, распакуйте его целиком и сохраните папки рядом с EXE.";
             SetBusy(true);
             CancelTestsButton.IsEnabled = false;
+            SetHeaderStatus("ОШИБКА ЗАПУСКА", false);
+        }
+    }
+
+    private AppSettings ReadSettings()
+    {
+        try { return AtomicFile.ReadJson<AppSettings>(paths.Settings) ?? new(); }
+        catch (JsonException)
+        {
+            // A damaged settings file must not lock the user out: keep a copy for diagnosis and start with defaults.
+            string copy = paths.Settings + ".damaged-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            try { File.Move(paths.Settings, copy, overwrite: true); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            Log("Файл настроек повреждён. Используются стандартные настройки; прежний файл сохранён: " + copy);
+            return new();
         }
     }
 
@@ -314,7 +332,7 @@ public partial class MainWindow : Window
         if (engine == null) return;
         bool running = engine.IsRunning;
         ConnectionTitle.Text = running ? "Обход включён" : "Обход отключён";
-        StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(119, 119, 119));
+        StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("SubtleBrush");
         ConnectionDetail.Text = running ? "Доступ к сайтам проверяется отдельно. Результаты есть в «Диагностике»." : "Выберите профиль или запустите автоподбор.";
         ConnectButton.Content = running ? "Отключить обход" : "Включить обход";
         ServiceButton.Content = engine.OwnsService ? "Отключить фоновое подключение" : "Включить фоновое подключение";
@@ -323,6 +341,50 @@ public partial class MainWindow : Window
         ActiveStrategyText.Text = "Текущий профиль: " + (running ? strategies.FirstOrDefault(x => x.Id == activeStrategy)?.Name ?? "служба Windows" : "—");
         if (tray != null) tray.Text = running ? "x2zapret · обход включён" : "x2zapret · остановлен";
         RenderConnectionHealth(running);
+        SetHeaderStatus(running ? "ОБХОД ВКЛЮЧЁН" : "ОБХОД ОТКЛЮЧЁН", running);
+        HeaderStatusDot.Fill = StateDot.Fill;
+    }
+
+    private void SetHeaderStatus(string text, bool active)
+    {
+        HeaderStatusText.Text = text;
+        HeaderStatusText.Foreground = (Brush)FindResource(active ? "TextBrush" : "MutedBrush");
+        HeaderStatusDot.Fill = (Brush)FindResource(active ? "AccentBrush" : "SubtleBrush");
+        bypassActive = active;
+        UpdateStatePulse();
+    }
+
+    private bool bypassActive;
+    private Storyboard? statePulse;
+    // A slow ring around the status dot while the bypass is running; it stops whenever it would not be seen.
+    private void UpdateStatePulse()
+    {
+        bool animate = bypassActive && Motion.Enabled && IsVisible && WindowState != WindowState.Minimized;
+        if (animate == (statePulse != null)) return;
+        if (!animate)
+        {
+            statePulse!.Stop(StatePulse); statePulse.Remove(StatePulse); statePulse = null; StatePulse.Opacity = 0;
+            return;
+        }
+        var pulse = new Storyboard { RepeatBehavior = RepeatBehavior.Forever, Duration = TimeSpan.FromSeconds(2.4) };
+        Timeline.SetDesiredFrameRate(pulse, 30);
+        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        foreach (var (path, from, to) in new[] { ("Opacity", .45, 0.0),
+            ("(UIElement.RenderTransform).(ScaleTransform.ScaleX)", 1.0, 2.6), ("(UIElement.RenderTransform).(ScaleTransform.ScaleY)", 1.0, 2.6) })
+        {
+            var animation = new DoubleAnimation(from, to, TimeSpan.FromSeconds(1.8)) { EasingFunction = ease };
+            Storyboard.SetTarget(animation, StatePulse); Storyboard.SetTargetProperty(animation, new PropertyPath(path));
+            pulse.Children.Add(animation);
+        }
+        pulse.Begin(StatePulse, true); statePulse = pulse;
+    }
+
+    private void UpdateWindowChrome()
+    {
+        bool maximized = WindowState == WindowState.Maximized;
+        MaximizeButton.Content = maximized ? "\uE923" : "\uE922";
+        MaximizeButton.ToolTip = maximized ? "Восстановить" : "Развернуть";
+        WindowFrame.BorderThickness = new Thickness(maximized ? 0 : 1);
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
@@ -552,10 +614,19 @@ public partial class MainWindow : Window
         }, "Применение настроек");
     }
 
-    private void UserList_Changed(object sender, SelectionChangedEventArgs e) { if (ready) LoadUserList(); }
+    private void UserList_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ready) return;
+        try { LoadUserList(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ShowError(UserMessages.Error(error)); }
+    }
     private void LoadUserList()
     {
-        if (UserListPicker.SelectedIndex is >= 0 and < 4) UserListBox.Text = File.ReadAllText(Path.Combine(paths.Lists, UserFiles[UserListPicker.SelectedIndex]));
+        if (UserListPicker.SelectedIndex is >= 0 and < 4)
+        {
+            string path = Path.Combine(paths.Lists, UserFiles[UserListPicker.SelectedIndex]);
+            UserListBox.Text = File.Exists(path) ? File.ReadAllText(path) : "";
+        }
     }
     private void SaveList_Click(object sender, RoutedEventArgs e)
     {
@@ -712,6 +783,7 @@ public partial class MainWindow : Window
         Motion.To(ErrorBanner, UIElement.OpacityProperty, 1, 180, 0);
         Motion.To(Motion.Translation(ErrorBanner), TranslateTransform.YProperty, 0, 200, -5);
     }
+    private void DismissError_Click(object sender, RoutedEventArgs e) => ErrorBanner.Visibility = Visibility.Collapsed;
     private void ExportLog_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "x2zapret-log.txt" };
@@ -721,5 +793,10 @@ public partial class MainWindow : Window
     private void OpenServices_Click(object sender, RoutedEventArgs e) => Open("services.msc");
     private void GitHub_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret");
     private void Releases_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret/releases");
-    private static void Open(string target) => Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+    private void Open(string target)
+    {
+        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException)
+        { ShowError("Не удалось открыть " + target + ". Откройте адрес вручную. " + UserMessages.Error(error)); }
+    }
 }

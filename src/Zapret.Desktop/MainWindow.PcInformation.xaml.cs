@@ -49,20 +49,18 @@ public partial class MainWindow
     {
         if (diskBenchmarkRunning || extendedRunning) return;
         HideExtendedTools();
-        DiskToolPanel.Visibility = Visibility.Collapsed; DiskToolButton.Style = (Style)FindResource(typeof(Button));
+        DiskToolPanel.Visibility = Visibility.Collapsed;
         PcInfoPanel.Visibility = Visibility.Collapsed; ShutdownToolPanel.Visibility = Visibility.Visible;
-        PcToolButton.Style = (Style)FindResource(typeof(Button));
-        TimerToolButton.Style = (Style)FindResource("Primary");
+        HighlightTool(TimerToolButton);
         PageScroll.ScrollToTop();
     }
     internal void ShowPcTool()
     {
         if (diskBenchmarkRunning || extendedRunning) return;
         HideExtendedTools();
-        DiskToolPanel.Visibility = Visibility.Collapsed; DiskToolButton.Style = (Style)FindResource(typeof(Button));
+        DiskToolPanel.Visibility = Visibility.Collapsed;
         ShutdownToolPanel.Visibility = Visibility.Collapsed; PcInfoPanel.Visibility = Visibility.Visible;
-        PcToolButton.Style = (Style)FindResource("Primary");
-        TimerToolButton.Style = (Style)FindResource(typeof(Button));
+        HighlightTool(PcToolButton);
         PageScroll.ScrollToTop();
     }
     private void SelectPcTool_Click(object sender, RoutedEventArgs e) => ShowPcTool();
