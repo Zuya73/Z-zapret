@@ -58,6 +58,7 @@ public partial class MainWindow
             var health = await serviceHealth.CheckAsync(cancellation.Token);
             if (epoch != connectionEpoch || busy || lifetime.IsCancellationRequested) return;
             connectionHealth = health;
+            ShowVerdict("Services", ToolVerdicts.Services(health));
             HealthChecksGrid.ItemsSource = health.Checks.Select(x => new { x.Name, State = x.Available ? "Доступен" : "Не подтверждён", Latency = $"{x.Milliseconds:0} мс", x.Detail });
             RefreshState();
             if (reconnectPolicy.Observe(health, engine.IsRunning, connectionWanted, settings.AutoReconnect))
@@ -76,7 +77,7 @@ public partial class MainWindow
             connectionHealth.ServicesAvailable ? "Сайты отвечают" : connectionHealth.InternetAvailable ? "Есть проблемы с доступом" : "Интернет не проверен";
         ConnectionDetail.Text = connectionHealth.Summary + $"\nПроверено в {connectionHealth.CapturedAt.ToLocalTime():HH:mm:ss}" +
             (fresh ? "" : " · результат устарел");
-        if (running && (!fresh || !connectionHealth.ServicesAvailable)) StateDot.Fill = new SolidColorBrush(Color.FromRgb(153, 153, 153));
+        if (running && (!fresh || !connectionHealth.ServicesAvailable)) StateDot.Fill = (Brush)FindResource("WarningDotBrush");
         if (tray != null) tray.Text = "x2zapret · " + (running && fresh && connectionHealth.ServicesAvailable ? "сайты отвечают" : running ? "обход включён" : "остановлен");
     }
     private async Task RecoverConnectionAsync()

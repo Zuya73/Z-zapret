@@ -109,6 +109,11 @@ public partial class App : Application
             MessageBox.Show(UserMessages.Error(error.Exception), "Не удалось выполнить действие", MessageBoxButton.OK, MessageBoxImage.Error);
             error.Handled = true;
         };
+        // Apply the saved theme before the first frame so the window never flashes in the wrong palette.
+        string? theme = null;
+        try { theme = AtomicFile.ReadJson<AppSettings>(new AppPaths().Settings)?.Theme; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { }
+        ThemeManager.Apply(theme); ThemeManager.Follow();
         var window = new MainWindow(preview: smoke && !startupCheck, startupLaunch: startupInvocation, shutdownTimer: toolsCheck ? ToolsChecks.CreateController() : null, pcInformation: pcCheck ? PcInformationChecks.CreateSource() : null, diskBenchmark: diskCheck ? DiskBenchmarkChecks.CreateRunner() : null);
         MainWindow = window;
         if (startupInvocation)

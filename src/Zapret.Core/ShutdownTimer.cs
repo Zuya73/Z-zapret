@@ -3,7 +3,8 @@ using System.Xml.Linq;
 
 namespace Zapret.Core;
 
-public sealed record ShutdownPlan(DateTimeOffset Deadline);
+public enum TimerAction { Shutdown, Restart, Sleep }
+public sealed record ShutdownPlan(DateTimeOffset Deadline, TimerAction Action = TimerAction.Shutdown);
 public interface IShutdownTimerBackend
 {
     Task<string?> ReadXmlAsync(CancellationToken token);
@@ -15,6 +16,19 @@ public static class ShutdownTimerPolicy
 {
     public const string Source = "x2zapret.Tools.Shutdown";
     public const string Arguments = "/s /t 0 /d p:0:0 /c \"x2zapret X2 Tools\"";
+    public const string RestartArguments = "/r /t 0 /d p:0:0 /c \"x2zapret X2 Tools\"";
+    // Sleep goes through the documented Forms API so it suspends instead of hibernating where hibernation is enabled.
+    public const string SleepArguments = "-NoProfile -NonInteractive -WindowStyle Hidden -Command \"Add-Type -AssemblyName System.Windows.Forms; [void][System.Windows.Forms.Application]::SetSuspendState('Suspend', $false, $false)\"";
+    // Windows paths are composed explicitly so the tests produce the same result on any platform.
+    public static string PowerShellFor(string shutdownExecutable) =>
+        shutdownExecutable[..Math.Max(0, shutdownExecutable.LastIndexOf('\\'))] + @"\WindowsPowerShell\v1.0\powershell.exe";
+    private static (string Command, string Arguments, string Description) Launch(TimerAction action, string executable) => action switch
+    {
+        TimerAction.Restart => (executable, RestartArguments, "Однократная перезагрузка ПК по таймеру X2 Tools"),
+        TimerAction.Sleep => (PowerShellFor(executable), SleepArguments, "Однократный переход ПК в сон по таймеру X2 Tools"),
+        _ => (executable, Arguments, "Однократное выключение ПК по таймеру X2 Tools")
+    };
+    public static string ActionTitle(TimerAction action) => action switch { TimerAction.Restart => "Перезагрузка", TimerAction.Sleep => "Сон", _ => "Выключение" };
     public static readonly TimeSpan MaximumDelay = TimeSpan.FromDays(7);
     private static readonly XNamespace N = StartupPolicy.TaskNamespace;
 
@@ -48,8 +62,9 @@ public static class ShutdownTimerPolicy
         if (string.IsNullOrWhiteSpace(executable)) throw new ArgumentException("Не найден системный инструмент выключения shutdown.exe. Проверьте файлы Windows.");
         XElement E(string name, object value) => new(N + name, value);
         string Boundary(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        var launch = Launch(plan.Action, executable);
         return new XDocument(new XElement(N + "Task", new XAttribute("version", "1.2"),
-            E("RegistrationInfo", new[] { E("Description", "Однократное выключение ПК по таймеру X2 Tools"), E("Source", Source) }),
+            E("RegistrationInfo", new[] { E("Description", launch.Description), E("Source", Source) }),
             E("Triggers", new XElement(N + "TimeTrigger",
                 E("StartBoundary", Boundary(plan.Deadline)), E("EndBoundary", Boundary(plan.Deadline.AddMinutes(5))), E("Enabled", "true"))),
             E("Principals", new XElement(N + "Principal", new XAttribute("id", "Owner"),
@@ -59,7 +74,7 @@ public static class ShutdownTimerPolicy
                 E("AllowStartOnDemand", "false"), E("Enabled", "true"), E("WakeToRun", "false"),
                 E("ExecutionTimeLimit", "PT1M"), E("DeleteExpiredTaskAfter", "PT1H"), E("Priority", "7") }),
             new XElement(N + "Actions", new XAttribute("Context", "Owner"),
-                new XElement(N + "Exec", E("Command", executable), E("Arguments", Arguments))))).ToString();
+                new XElement(N + "Exec", E("Command", launch.Command), E("Arguments", launch.Arguments))))).ToString();
     }
     public static ShutdownPlan ReadOwned(string xml, string executable, string sid)
     {
@@ -70,13 +85,14 @@ public static class ShutdownTimerPolicy
         if (root?.Name != N + "Task" || root.Element(N + "RegistrationInfo")?.Element(N + "Source")?.Value != Source ||
             root.Element(N + "Principals")?.Element(N + "Principal")?.Element(N + "UserId")?.Value != sid ||
             actions is not { Length: 1 } || actions[0].Name != N + "Exec" ||
-            !string.Equals(actions[0].Element(N + "Command")?.Value, executable, StringComparison.OrdinalIgnoreCase) ||
-            actions[0].Element(N + "Arguments")?.Value != Arguments ||
+            Enum.GetValues<TimerAction>().Cast<TimerAction?>().FirstOrDefault(a =>
+                string.Equals(actions[0].Element(N + "Command")?.Value, Launch(a!.Value, executable).Command, StringComparison.OrdinalIgnoreCase) &&
+                actions[0].Element(N + "Arguments")?.Value == Launch(a.Value, executable).Arguments) is not TimerAction action ||
             triggers is not { Length: 1 } || triggers[0].Name != N + "TimeTrigger" ||
             !DateTimeOffset.TryParse(triggers[0].Element(N + "StartBoundary")?.Value, CultureInfo.InvariantCulture,
                 DateTimeStyles.AssumeUniversal, out var deadline))
             throw new InvalidOperationException("Этот таймер создан другой программой или изменён вручную. x2zapret оставил его без изменений.");
-        return new(deadline);
+        return new(deadline, action);
     }
 }
 
@@ -94,7 +110,7 @@ public sealed class ShutdownTimerController(IShutdownTimerBackend backend, strin
         string? xml = await backend.ReadXmlAsync(token);
         return xml == null ? null : ShutdownTimerPolicy.ReadOwned(xml, executable, sid);
     }
-    public async Task<ShutdownPlan> ScheduleAsync(TimeSpan delay, DateTimeOffset now, CancellationToken token)
+    public async Task<ShutdownPlan> ScheduleAsync(TimeSpan delay, DateTimeOffset now, CancellationToken token, TimerAction action = TimerAction.Shutdown)
     {
         ShutdownTimerPolicy.Validate(delay);
         await gate.WaitAsync(token);
@@ -102,7 +118,7 @@ public sealed class ShutdownTimerController(IShutdownTimerBackend backend, strin
         {
             await ReadCore(token); // Only replace a task whose ownership and action were verified.
             var deadline = now.Add(delay);
-            var plan = new ShutdownPlan(deadline.AddTicks(-(deadline.Ticks % TimeSpan.TicksPerSecond)));
+            var plan = new ShutdownPlan(deadline.AddTicks(-(deadline.Ticks % TimeSpan.TicksPerSecond)), action);
             await backend.RegisterAsync(ShutdownTimerPolicy.TaskXml(plan, executable, sid), token);
             return plan;
         }

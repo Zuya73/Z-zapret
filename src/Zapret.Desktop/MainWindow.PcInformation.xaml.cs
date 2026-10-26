@@ -49,20 +49,18 @@ public partial class MainWindow
     {
         if (diskBenchmarkRunning || extendedRunning) return;
         HideExtendedTools();
-        DiskToolPanel.Visibility = Visibility.Collapsed; DiskToolButton.Style = (Style)FindResource(typeof(Button));
+        DiskToolPanel.Visibility = Visibility.Collapsed;
         PcInfoPanel.Visibility = Visibility.Collapsed; ShutdownToolPanel.Visibility = Visibility.Visible;
-        PcToolButton.Style = (Style)FindResource(typeof(Button));
-        TimerToolButton.Style = (Style)FindResource("Primary");
+        HighlightTool(TimerToolButton);
         PageScroll.ScrollToTop();
     }
     internal void ShowPcTool()
     {
         if (diskBenchmarkRunning || extendedRunning) return;
         HideExtendedTools();
-        DiskToolPanel.Visibility = Visibility.Collapsed; DiskToolButton.Style = (Style)FindResource(typeof(Button));
+        DiskToolPanel.Visibility = Visibility.Collapsed;
         ShutdownToolPanel.Visibility = Visibility.Collapsed; PcInfoPanel.Visibility = Visibility.Visible;
-        PcToolButton.Style = (Style)FindResource("Primary");
-        TimerToolButton.Style = (Style)FindResource(typeof(Button));
+        HighlightTool(PcToolButton);
         PageScroll.ScrollToTop();
     }
     private void SelectPcTool_Click(object sender, RoutedEventArgs e) => ShowPcTool();
@@ -93,6 +91,8 @@ public partial class MainWindow
             var section = await pcSession.ReadAsync(category.Id, refresh || HardwarePcInformation.IsHardware(category.Id), cancellation.Token);
             if (request != pcRequest) return;
             pcSection = section; ApplyPcFilter();
+            if (category.Id == "summary" && PcBrief.From(section) is { } brief)
+            { PcBriefText.Text = brief; PcBriefText.ToolTip = brief; PcBriefText.Visibility = Visibility.Visible; }
         }
         catch (OperationCanceledException) { if (request == pcRequest) PcStatusText.Text = "Сбор отменён. Нажмите «Обновить», чтобы повторить."; }
         catch (Exception error) { if (request == pcRequest) PcStatusText.Text = "Не удалось получить данные раздела: " + error.Message; }
@@ -174,7 +174,8 @@ public partial class MainWindow
         var driver = PawnDriver.State();
         PcDriverStatus.Text = driver.Ready ? "Драйвер датчиков PawnIO " + driver.Version : "Драйвер датчиков PawnIO: " + driver.Version + ". Часть показаний видеокарты, дисков и батареи может работать без него.";
         if (pawnRebootRequired || !driver.Ready && Version.TryParse(driver.Version, out _)) PcDriverStatus.Text += " Если показания недоступны, перезагрузите Windows.";
-        PcDriverButton.Visibility = PcHardwareBar.Visibility == Visibility.Visible && !driver.Ready ? Visibility.Visible : Visibility.Collapsed;
+        if (!driver.Ready && !advancedTools) PcDriverStatus.Text += " Установить драйвер можно в режиме для опытных — значок шестерёнки справа от вкладок.";
+        PcDriverButton.Visibility = PcHardwareBar.Visibility == Visibility.Visible && !driver.Ready && advancedTools ? Visibility.Visible : Visibility.Collapsed;
         PcDriverButton.IsEnabled = !driver.Ready && !pcExporting && PawnDriver.CanInstallOver(driver.Version);
     }
     private async void InstallPawn_Click(object sender, RoutedEventArgs e)

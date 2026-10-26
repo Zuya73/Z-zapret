@@ -32,12 +32,14 @@ public static class ProcessRunner
             await process.WaitForExitAsync(deadline.Token);
             return new(process.ExitCode, await stdout, await stderr);
         }
-        catch
+        catch (Exception error)
         {
             try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
-            try { await Task.WhenAll(stdout, stderr); } catch (OperationCanceledException) { }
+            try { await Task.WhenAll(stdout, stderr); } catch (Exception drain) when (drain is OperationCanceledException or IOException) { }
             cancellationToken.ThrowIfCancellationRequested();
-            throw new TimeoutException($"Превышено время выполнения: {Path.GetFileName(executable)}.");
+            // Only an expired deadline is a timeout; other failures (for example a closed input pipe) keep their own cause.
+            if (error is OperationCanceledException) throw new TimeoutException($"Превышено время выполнения: {Path.GetFileName(executable)}.");
+            throw;
         }
     }
 

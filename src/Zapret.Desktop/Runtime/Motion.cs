@@ -26,11 +26,15 @@ public static class Motion
 
     internal static void To(DependencyObject target, DependencyProperty property, double value, int milliseconds = 180, double? from = null) =>
         Run(target, property, value, new DoubleAnimation(from ?? (double)target.GetValue(property), value,
-            TimeSpan.FromMilliseconds(milliseconds)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } }, milliseconds);
+            TimeSpan.FromMilliseconds(milliseconds)) { EasingFunction = Ease }, milliseconds);
+
+    // One shared, frozen curve: a quick start with a long soft landing reads as smooth without feeling slow.
+    private static readonly IEasingFunction Ease = CreateEase();
+    private static IEasingFunction CreateEase() { var ease = new QuinticEase { EasingMode = EasingMode.EaseOut }; ease.Freeze(); return ease; }
 
     private static void ColorTo(SolidColorBrush brush, Color value, int milliseconds) =>
         Run(brush, SolidColorBrush.ColorProperty, value, new ColorAnimation(brush.Color, value, TimeSpan.FromMilliseconds(milliseconds))
-        { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } }, milliseconds);
+        { EasingFunction = Ease }, milliseconds);
 
     private static void Run(DependencyObject target, DependencyProperty property, object value, AnimationTimeline animation, int milliseconds)
     {
@@ -77,8 +81,13 @@ public static class Motion
     internal static void Refresh(DependencyObject root)
     {
         foreach (var element in Descendants(root))
-            if (Feedbacks.TryGetValue(element, out var feedback)) feedback.Update(true);
+            if (Feedbacks.TryGetValue(element, out var feedback)) { feedback.Retheme(); feedback.Update(true); }
     }
+
+    private static Color ResourceColor(FrameworkElement element, string key, Color fallback) =>
+        element.TryFindResource(key) is SolidColorBrush brush ? brush.Color : fallback;
+    private static Color Mix(Color from, Color to, double amount) => Color.FromRgb(
+        (byte)Math.Round(from.R + (to.R - from.R) * amount), (byte)Math.Round(from.G + (to.G - from.G) * amount), (byte)Math.Round(from.B + (to.B - from.B) * amount));
 
     private static void SelectedChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
     { if (target is FrameworkElement element && Feedbacks.TryGetValue(element, out var feedback)) feedback.Update(); }
@@ -107,12 +116,19 @@ public static class Motion
         private readonly FrameworkElement element;
         private readonly DependencyPropertyDescriptor? pressed;
         private readonly SolidColorBrush? cardBrush;
+        private readonly string cardOutline = "LineBrush";
+        private Color cardIdle, cardHover;
         internal Feedback(FrameworkElement element)
         {
             this.element = element;
             if (element is Control control) control.ApplyTemplate();
             if (element is Border card)
-            { cardBrush = new SolidColorBrush(Color.FromRgb(41, 41, 41)); card.BorderBrush = cardBrush; }
+            {
+                // Each card keeps its own outline token at rest and moves it slightly towards the text colour under the pointer.
+                if (ReferenceEquals(card.BorderBrush, card.TryFindResource("LineStrongBrush"))) cardOutline = "LineStrongBrush";
+                cardBrush = new SolidColorBrush(); card.BorderBrush = cardBrush;
+                Retheme();
+            }
             if (element is Button button)
             {
                 pressed = DependencyPropertyDescriptor.FromProperty(ButtonBase.IsPressedProperty, typeof(Button));
@@ -124,6 +140,12 @@ public static class Motion
             if (element is CheckBox toggle) { toggle.Checked += CheckedChanged; toggle.Unchecked += CheckedChanged; }
             Update(true);
         }
+        internal void Retheme()
+        {
+            if (cardBrush == null) return;
+            cardIdle = ResourceColor(element, cardOutline, Color.FromRgb(30, 30, 30));
+            cardHover = Mix(cardIdle, ResourceColor(element, "TextBrush", Colors.White), .14);
+        }
         private void Changed(object? sender, EventArgs e) => Update();
         private void MouseChanged(object sender, MouseEventArgs e) => Update();
         private void FocusChanged(object sender, KeyboardFocusChangedEventArgs e) => Update();
@@ -132,9 +154,9 @@ public static class Motion
 
         internal void Update(bool immediate = false)
         {
-            int duration = immediate ? 0 : 170;
+            int duration = immediate ? 0 : 160;
             if (cardBrush != null)
-            { ColorTo(cardBrush, element.IsMouseOver ? Color.FromRgb(63, 63, 63) : Color.FromRgb(41, 41, 41), duration); return; }
+            { ColorTo(cardBrush, element.IsMouseOver ? cardHover : cardIdle, duration); return; }
             if (element is not Control control) return;
             object? Part(string name) => control.Template.FindName(name, control);
             if (element is Button button)
@@ -162,7 +184,7 @@ public static class Motion
                 {
                     To(Translation(thumb), TranslateTransform.XProperty, on ? 24 : 0, duration);
                     if (fill.IsFrozen) { fill = fill.Clone(); thumb.Fill = fill; }
-                    ColorTo(fill, on ? Color.FromRgb(17, 17, 17) : Color.FromRgb(150, 150, 150), duration);
+                    ColorTo(fill, on ? ResourceColor(toggle, "AccentForegroundBrush", Colors.Black) : ResourceColor(toggle, "SwitchThumbBrush", Colors.Gray), duration);
                 }
             }
         }

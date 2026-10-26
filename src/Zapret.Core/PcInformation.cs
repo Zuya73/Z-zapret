@@ -17,7 +17,7 @@ public sealed record PcCategory(string Id, string Title)
         new("windows", "Windows"), new("software", "Установленные программы"),
         new("processes", "Программы и процессы"), new("services", "Службы Windows"),
         new("startup", "Автозагрузка"), new("sensors", "Датчики и питание"),
-        new("smart", "Состояние дисков (SMART)"), new("spd", "Модули памяти (SPD)")
+        new("smart", "Здоровье дисков"), new("spd", "Модули памяти: данные производителя")
     });
     public static PcCategory Find(string id) => All.FirstOrDefault(c => c.Id == id)
         ?? throw new ArgumentException("Этот раздел информации о ПК не поддерживается. Откройте другой раздел или перезапустите программу.", nameof(id));

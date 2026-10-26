@@ -76,6 +76,10 @@ internal static class ExtendedToolsChecks
         window.ShowDiskTool(); Require(window.DiskToolPanel.IsVisible && !window.SpaceToolPanel.IsVisible, "Disk benchmark remains reachable");
         window.ShowPcTool(); Require(window.PcInfoPanel.IsVisible && !window.NetworkToolPanel.IsVisible, "PC information remains reachable");
         window.ShowShutdownTool(); Require(window.ShutdownToolPanel.IsVisible, "Shutdown timer remains reachable");
+        window.ShowStartupTool(); await Task.Delay(300); window.UpdateLayout();
+        Require(window.StartupToolPanel.IsVisible && !window.PcInfoPanel.IsVisible && !window.ShutdownToolPanel.IsVisible && window.StartupStatusText.Text.Length > 0,
+            "Autostart programs are listed read-only in their own tool");
+        InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "startup-programs-preview.png"));
         window.SelectPage("Strategies"); await Task.Delay(450); window.UpdateLayout();
         var profileItem = window.StrategiesGrid.Items[0];
         var profileText = window.StrategiesGrid.Columns[2].GetCellContent(profileItem) as TextBlock;
@@ -96,6 +100,17 @@ internal static class ExtendedToolsChecks
         Require(diagnosticText != null && diagnosticRow != null && diagnosticText.ActualHeight > diagnosticText.FontSize && diagnosticRow.ActualHeight >= diagnosticText.ActualHeight,
             "Diagnostic explanations fit their row height instead of being clipped");
         InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "diagnostics-preview.png"));
+        try
+        {
+            ThemeManager.Apply(ThemeManager.Light);
+            window.SelectPage("Home"); await Task.Delay(450); window.UpdateLayout();
+            Require(System.Windows.Application.Current.FindResource("BackgroundBrush") is System.Windows.Media.SolidColorBrush { Color.R: > 200 } && window.PageScroll.Opacity == 1,
+                "The light theme replaces the palette while the window is open");
+            InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "light-theme-preview.png"));
+            window.SelectPage("Tools"); window.ShowExtendedTool("Sensors"); await Task.Delay(450); window.UpdateLayout();
+            InterfacePreview.Save(window, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(destination))!, "light-tools-preview.png"));
+        }
+        finally { ThemeManager.Apply(ThemeManager.Dark); }
         AtomicFile.WriteJson(destination, new { passed = checks.Count, checks });
     }
     private sealed class HealthHandler(bool failMain) : HttpMessageHandler

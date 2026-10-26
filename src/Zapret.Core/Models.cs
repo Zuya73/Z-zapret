@@ -34,6 +34,9 @@ public sealed record AppSettings
     public bool MonitorConnection { get; init; } = true;
     public bool AutoReconnect { get; init; }
     public SensorAlert[] SensorAlerts { get; init; } = [];
+    public bool AdvancedTools { get; init; }
+    public bool OverheatAlert { get; init; }
+    public string Theme { get; init; } = "Dark";
 }
 
 public sealed record ProbeTarget(string Id, string Name, string Group, string Url, bool Required = false,

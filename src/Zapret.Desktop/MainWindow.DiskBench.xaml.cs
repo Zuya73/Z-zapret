@@ -32,8 +32,7 @@ public partial class MainWindow
         HideExtendedTools();
         PcInfoPanel.Visibility = ShutdownToolPanel.Visibility = Visibility.Collapsed;
         DiskToolPanel.Visibility = Visibility.Visible;
-        PcToolButton.Style = TimerToolButton.Style = (Style)FindResource(typeof(Button));
-        DiskToolButton.Style = (Style)FindResource("Primary");
+        HighlightTool(DiskToolButton);
         PageScroll.ScrollToTop();
         if (DiskDrivePicker.ItemsSource == null) RefreshDiskDrives();
         else UpdateDiskControls();
@@ -73,7 +72,7 @@ public partial class MainWindow
         long size = DiskSizePicker.SelectedIndex switch { 0 => 256 * DiskBenchmarkOptions.MiB, 2 => 4096 * DiskBenchmarkOptions.MiB, _ => 1024 * DiskBenchmarkOptions.MiB };
         var options = new DiskBenchmarkOptions(size, DiskModePicker.SelectedIndex == 1 ? 5 : 3, DiskModePicker.SelectedIndex == 1 ? 3 : 1);
         int run = ++diskRun;
-        diskReport = null; diskMeasurements.Clear(); RenderDiskResults(); diskBenchmarkRunning = true; UpdateDiskControls();
+        diskReport = null; diskMeasurements.Clear(); RenderDiskResults(); ShowVerdict("Disk", null); diskBenchmarkRunning = true; UpdateDiskControls();
         var elapsed = Stopwatch.StartNew();
         await Execute(async token =>
         {
@@ -91,6 +90,7 @@ public partial class MainWindow
             {
                 diskReport = await Task.Run(() => runner.RunAsync(drive.Root, options, progress, token));
                 diskMeasurements.Clear(); diskMeasurements.AddRange(diskReport.Measurements); RenderDiskResults();
+                ShowVerdict("Disk", diskReport.Outcome == "Completed" ? ToolVerdicts.Disk(diskReport.Measurements) : null);
                 DiskProgress.Value = diskReport.Outcome == "Completed" ? 100 : DiskProgress.Value;
                 DiskStageText.Text = diskReport.Outcome switch { "Completed" => diskReport.CleanupNote.Length == 0 ? "Замер завершён. Тестовый файл удалён." : "Замер завершён.", "Cancelled" => "Замер отменён. Выполненные измерения сохранены.", _ => "Ошибка: " + diskReport.Error };
                 if (diskReport.CleanupNote.Length > 0) DiskStageText.Text += " " + diskReport.CleanupNote;
@@ -115,7 +115,8 @@ public partial class MainWindow
     {
         if (diskReport == null || diskBenchmarkRunning) return;
         var dialog = new SaveFileDialog { Filter = "Текстовый отчёт (*.txt)|*.txt", FileName = "x2zapret-disk-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt" };
-        if (dialog.ShowDialog(this) == true) AtomicFile.Write(dialog.FileName, DiskBenchmarkPolicy.Export(diskReport));
+        if (dialog.ShowDialog(this) == true)
+            try { AtomicFile.Write(dialog.FileName, DiskBenchmarkPolicy.Export(diskReport)); } catch (Exception error) { ShowError(UserMessages.Error(error)); }
     }
     internal sealed record DiskDriveChoice(string Root, string Description)
     { public override string ToString() => Description; }

@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Zapret.Core;
@@ -36,37 +37,106 @@ public partial class MainWindow
     }
     private void HideExtendedTools()
     {
-        SensorToolPanel.Visibility = NetworkToolPanel.Visibility = SpaceToolPanel.Visibility = Visibility.Collapsed;
-        SensorToolButton.Style = NetworkToolButton.Style = SpaceToolButton.Style = (Style)FindResource(typeof(Button));
+        SensorToolPanel.Visibility = NetworkToolPanel.Visibility = SpaceToolPanel.Visibility = StartupToolPanel.Visibility = Visibility.Collapsed;
+    }
+    private Button? lastComputerTool, lastDiskTool;
+    private bool advancedTools;
+    // Four groups at the top level; "Компьютер" and "Диски" show their own sub-tools in the same row.
+    private void HighlightTool(Button active)
+    {
+        bool computer = active == PcToolButton || active == SensorToolButton || active == StartupToolButton, disks = active == DiskToolButton || active == SpaceToolButton;
+        if (computer) lastComputerTool = active;
+        if (disks) lastDiskTool = active;
+        foreach (var (button, selected) in new[] { (ComputerGroupButton, computer), (DisksGroupButton, disks), (NetworkToolButton, active == NetworkToolButton), (TimerToolButton, active == TimerToolButton) })
+            button.Style = (Style)FindResource(selected ? "ChipActive" : "Chip");
+        foreach (var button in new[] { PcToolButton, SensorToolButton, StartupToolButton, DiskToolButton, SpaceToolButton })
+            button.Style = (Style)FindResource(button == active ? "SubChipActive" : "SubChip");
+        ComputerSubTools.Visibility = computer ? Visibility.Visible : Visibility.Collapsed;
+        DiskSubTools.Visibility = disks ? Visibility.Visible : Visibility.Collapsed;
+    }
+    private void ComputerGroup_Click(object sender, RoutedEventArgs e)
+    {
+        if (lastComputerTool == SensorToolButton) ShowExtendedTool("Sensors");
+        else if (lastComputerTool == StartupToolButton) ShowStartupTool();
+        else ShowPcTool();
+    }
+    private void DisksGroup_Click(object sender, RoutedEventArgs e)
+    { if (lastDiskTool == SpaceToolButton) ShowExtendedTool("Space"); else ShowDiskTool(); }
+
+    private void AdvancedTools_Click(object sender, RoutedEventArgs e)
+    {
+        advancedTools = !advancedTools; ApplyAdvancedTools();
+        if (!ready || preview) return;
+        try { var updated = settings with { AdvancedTools = advancedTools }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Log("Не удалось сохранить режим для опытных: " + error.Message); }
+    }
+    // Rarely needed options stay out of the way until the user asks for them; hidden options fall back to their defaults.
+    private void ApplyAdvancedTools()
+    {
+        var visibility = advancedTools ? Visibility.Visible : Visibility.Collapsed;
+        DiskAdvancedOptions.Visibility = QualityRouteCheck.Visibility = SpeedModePicker.Visibility = SensorCsvButton.Visibility = PcPrivateCheck.Visibility = visibility;
+        AdvancedToolsButton.Style = (Style)FindResource(advancedTools ? "ChipActive" : "Chip");
+        AdvancedToolsButton.ToolTip = advancedTools ? "Скрыть возможности для опытных" : "Для опытных: дополнительные настройки и инструменты";
+        if (!advancedTools)
+        { QualityRouteCheck.IsChecked = false; PcPrivateCheck.IsChecked = false; DiskSizePicker.SelectedIndex = 1; DiskModePicker.SelectedIndex = 0; SpeedModePicker.SelectedIndex = 0; }
+        UpdatePawnState();
+    }
+
+    private readonly Dictionary<string, Verdict?> shownVerdicts = new();
+    private void ShowVerdict(string name, Verdict? verdict)
+    {
+        shownVerdicts[name] = verdict;
+        var box = (Border)FindName(name + "Verdict");
+        if (verdict == null) { box.Visibility = Visibility.Collapsed; return; }
+        var badge = (Border)FindName(name + "VerdictBadge"); var icon = (TextBlock)FindName(name + "VerdictIcon");
+        ((TextBlock)FindName(name + "VerdictTitle")).Text = verdict.Title;
+        ((TextBlock)FindName(name + "VerdictDetail")).Text = verdict.Detail;
+        bool good = verdict.Level == 0;
+        badge.Background = good ? (Brush)FindResource("AccentBrush") : Brushes.Transparent;
+        badge.BorderBrush = (Brush)FindResource(good ? "AccentBrush" : verdict.Level == 1 ? "FocusBrush" : "TextBrush");
+        icon.Text = verdict.Level switch { 0 => "\uE73E", 1 => "\uE7BA", _ => "\uE711" };
+        icon.Foreground = (Brush)FindResource(good ? "AccentForegroundBrush" : "TextBrush");
+        bool appearing = box.Visibility != Visibility.Visible;
+        box.Visibility = Visibility.Visible;
+        if (appearing) Motion.To(box, UIElement.OpacityProperty, 1, 220, 0);
     }
     internal void ShowExtendedTool(string tool)
     {
         if (busy || diskBenchmarkRunning || pcExporting) return;
         HideExtendedTools(); PcInfoPanel.Visibility = ShutdownToolPanel.Visibility = DiskToolPanel.Visibility = Visibility.Collapsed;
-        PcToolButton.Style = TimerToolButton.Style = DiskToolButton.Style = (Style)FindResource(typeof(Button));
         var panel = tool == "Sensors" ? SensorToolPanel : tool == "Network" ? NetworkToolPanel : SpaceToolPanel;
         var button = tool == "Sensors" ? SensorToolButton : tool == "Network" ? NetworkToolButton : SpaceToolButton;
-        panel.Visibility = Visibility.Visible; button.Style = (Style)FindResource("Primary"); PageScroll.ScrollToTop();
+        panel.Visibility = Visibility.Visible; HighlightTool(button); PageScroll.ScrollToTop();
         if (tool == "Network" && QualityGatewayPicker.ItemsSource == null)
         {
             try { QualityGatewayPicker.ItemsSource = NetworkTools.Gateways(); QualityGatewayPicker.SelectedIndex = 0; }
             catch (System.Net.NetworkInformation.NetworkInformationException e) { NetworkStageText.Text = e.Message; }
         }
-        if (tool == "Space" && string.IsNullOrWhiteSpace(SpacePathBox.Text)) SpacePathBox.Text = Path.GetPathRoot(Environment.SystemDirectory)!;
+        if (tool == "Network") RefreshDns();
+        if (tool == "Space")
+        {
+            if (string.IsNullOrWhiteSpace(SpacePathBox.Text)) SpacePathBox.Text = Path.GetPathRoot(Environment.SystemDirectory)!;
+            RefreshSpaceDrives();
+        }
     }
     private void SelectExtendedTool_Click(object sender, RoutedEventArgs e)
     { if (sender is Button { Tag: string tool }) ShowExtendedTool(tool); }
     private void UpdateExtendedControls()
     {
         if (!extendedInitialized) return;
-        foreach (var button in new[] { PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, NetworkToolButton, SpaceToolButton })
+        foreach (var button in new[] { ComputerGroupButton, DisksGroupButton, PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, StartupToolButton, NetworkToolButton, SpaceToolButton })
             button.IsEnabled = !diskBenchmarkRunning && !extendedRunning;
+        foreach (var button in new[] { FlushDnsButton, ResetNetworkButton, DnsCloudflareButton, DnsGoogleButton, DnsAutoButton })
+            button.IsEnabled = !busy && !pcExporting;
         QualityStartButton.IsEnabled = SpeedStartButton.IsEnabled = SpaceStartButton.IsEnabled = !busy && !pcExporting;
         NetworkCancelButton.IsEnabled = SpeedCancelButton.IsEnabled = SpaceCancelButton.IsEnabled = extendedRunning;
         SpacePathBox.IsEnabled = SpaceBrowseButton.IsEnabled = SpaceParentButton.IsEnabled = !busy;
         QualityTargetBox.IsEnabled = QualityGatewayPicker.IsEnabled = QualityRouteCheck.IsEnabled = SpeedModePicker.IsEnabled = !busy;
         SaveNetworkButton.IsEnabled = !busy && (qualityReport != null || speedReport != null);
         SpaceOpenButton.IsEnabled = !busy;
+        CleanupScanButton.IsEnabled = !busy;
+        CleanupButton.IsEnabled = !busy && cleanupSizes.Count > 0;
+        foreach (var drive in SpaceDrivesPanel.Children.OfType<Button>()) drive.IsEnabled = !busy;
     }
 
     private void RefreshGraphClock()
@@ -106,6 +176,7 @@ public partial class MainWindow
                     tray?.ShowBalloonTip(6000, "x2zapret · датчики", message, System.Windows.Forms.ToolTipIcon.Warning);
                 }
             }
+            if (settings.OverheatAlert) CheckOverheat(readings);
             RenderSensorHistory();
         }
         catch (OperationCanceledException) { }
@@ -122,7 +193,7 @@ public partial class MainWindow
         SensorPicker.SelectedItem = series.FirstOrDefault(s => s.Id == id) ?? series.FirstOrDefault(s => s.Kind == "Temperature") ?? series.FirstOrDefault();
         changingSensor = false;
         if ((SensorPicker.SelectedItem as SensorSeries)?.Id != id) Sensor_Changed(this, new SelectionChangedEventArgs(Selector.SelectionChangedEvent, Array.Empty<object>(), Array.Empty<object>()));
-        RenderSensorChart();
+        RenderSensorChart(); RenderSensorTiles();
         SensorStatusText.Text = $"Датчиков: {series.Count} · обновление раз в 2 с · история за час" + (graphRecording ? " · сбор продолжается при сворачивании" : " · сбор только в этом разделе") + graphDriverNote;
     }
     private void RenderSensorChart()
@@ -134,6 +205,50 @@ public partial class MainWindow
         SensorPlot.InvalidateVisual();
         SensorValueText.Text = points.Count == 0 ? "—" : SensorStatistics.Format(points[^1].Value, sensor.Kind);
         SensorRangeText.Text = points.Count == 0 ? "" : $"Мин. {SensorStatistics.Format(points.Min(p => p.Value), sensor.Kind)} · Макс. {SensorStatistics.Format(points.Max(p => p.Value), sensor.Kind)}";
+    }
+    private void RenderSensorTiles()
+    {
+        var catalog = sensorHistory.Catalog;
+        RenderTile("Cpu", SensorTiles.CpuTemperature(catalog), v => SensorTiles.Temperature(v, gpu: false));
+        RenderTile("Gpu", SensorTiles.GpuTemperature(catalog), v => SensorTiles.Temperature(v, gpu: true));
+        RenderTile("Load", catalog.FirstOrDefault(s => s.Id == "x2.cpu.load"), SensorTiles.Load);
+        RenderTile("Memory", catalog.FirstOrDefault(s => s.Id == "x2.memory.load"), SensorTiles.Load);
+    }
+    private void RenderTile(string name, SensorSeries? sensor, Func<double, (string Text, int Level)> rate)
+    {
+        double? value = sensor == null ? null : sensorHistory.Find(sensor.Id)?.Points.LastOrDefault()?.Value;
+        var tile = (Border)FindName(name + "Tile");
+        tile.Tag = sensor?.Id; tile.Cursor = sensor == null ? null : Cursors.Hand;
+        ((TextBlock)FindName(name + "TileValue")).Text = value is double v ? SensorStatistics.Format(Math.Round(v), sensor!.Kind) : "—";
+        ((ProgressBar)FindName(name + "TileBar")).Value = value is double bar ? Math.Clamp(bar, 0, 100) : 0;
+        var (text, level) = value is double reading ? rate(reading) : (sensor == null ? "Нет данных от датчика" : "Ожидание", 0);
+        var rating = (TextBlock)FindName(name + "TileRating");
+        rating.Text = text;
+        rating.SetResourceReference(TextBlock.ForegroundProperty, level == 0 ? "MutedBrush" : "TextBrush"); // Follows theme switches.
+        rating.FontWeight = level == 2 ? FontWeights.Bold : FontWeights.Normal;
+    }
+    private void SensorTile_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Border { Tag: string id } && SensorPicker.Items.OfType<SensorSeries>().FirstOrDefault(s => s.Id == id) is { } series)
+            SensorPicker.SelectedItem = series;
+    }
+    private void CheckOverheat(IReadOnlyList<HardwareReading> readings)
+    {
+        var catalog = sensorHistory.Catalog;
+        foreach (var (series, device) in new[] { (SensorTiles.CpuTemperature(catalog), "Процессор"), (SensorTiles.GpuTemperature(catalog), "Видеокарта") })
+        {
+            if (series == null || readings.FirstOrDefault(r => r.Id == series.Id)?.Value is not double celsius ||
+                !sensorAlerts.Observe("x2.overheat." + series.Id, celsius, SensorTiles.OverheatCelsius, DateTimeOffset.UtcNow)) continue;
+            string message = $"{device} нагрелся до {celsius:0} °C. Проверьте охлаждение и закройте тяжёлые программы.";
+            Log("Датчики: перегрев. " + message);
+            tray?.ShowBalloonTip(7000, "x2zapret · перегрев", message, System.Windows.Forms.ToolTipIcon.Warning);
+        }
+    }
+    private void OverheatAlert_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!ready || preview || settings.OverheatAlert == (OverheatCheck.IsChecked == true)) return;
+        try { var updated = settings with { OverheatAlert = OverheatCheck.IsChecked == true }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ShowError(UserMessages.Error(error)); }
     }
     private void Sensor_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -176,7 +291,8 @@ public partial class MainWindow
     {
         if (busy || pcExporting) return;
         string target = QualityTargetBox.Text; var gateway = (QualityGatewayPicker.SelectedItem as NetworkGateway)?.Address;
-        bool route = QualityRouteCheck.IsChecked == true;
+        bool route = advancedTools && QualityRouteCheck.IsChecked == true;
+        ShowVerdict("Quality", null);
         extendedRunning = true;
         await Execute(async token =>
         {
@@ -203,11 +319,14 @@ public partial class MainWindow
             rows.Add(new { Target = item.Item1, Ping = Metric(stats.AverageMs), Jitter = Metric(stats.JitterMs), Loss = $"{stats.LossPercent:0.0}%", Range = Metric(stats.MinimumMs) + "–" + Metric(stats.MaximumMs) });
         }
         QualityRowsGrid.ItemsSource = rows; QualityRouteText.Text = string.Join("\n", report.Route);
+        ShowVerdict("Quality", report.Internet.Count == 0 ? null : ToolVerdicts.Connection(NetworkMeasurements.Summarize(report.Internet),
+            report.Gateway.Count == 0 ? null : NetworkMeasurements.Summarize(report.Gateway)));
     }
     internal async Task RunSpeedAsync()
     {
         if (busy || pcExporting) return;
-        bool detailed = SpeedModePicker.SelectedIndex == 1;
+        bool detailed = advancedTools && SpeedModePicker.SelectedIndex == 1;
+        ShowVerdict("Speed", null);
         extendedRunning = true;
         await Execute(async token =>
         {
@@ -226,6 +345,7 @@ public partial class MainWindow
     {
         SpeedDownText.Text = report.DownloadMbps > 0 ? report.DownloadMbps.ToString("0.0") : "—";
         SpeedUpText.Text = report.UploadMbps > 0 ? report.UploadMbps.ToString("0.0") : "—";
+        ShowVerdict("Speed", report.Outcome == "Completed" ? ToolVerdicts.Speed(report.DownloadMbps, report.UploadMbps) : null);
         SpeedLatencyText.Text = $"Время ответа: {report.IdleMs?.ToString("0.0") ?? "—"} мс · под нагрузкой: {report.LoadedMs?.ToString("0.0") ?? "—"} мс";
         NetworkStageText.Text = (report.Outcome == "Completed" ? "Замер завершён." : report.Note) + $" Получено {report.DownloadBytes / 1_000_000d:0.#} МБ · отправлено {report.UploadBytes / 1_000_000d:0.#} МБ.";
     }
@@ -337,10 +457,13 @@ public partial class MainWindow
     internal void PopulateExtendedPreview()
     {
         var now = DateTimeOffset.UtcNow;
-        for (int i = 0; i < 90; i++) sensorHistory.Add(now.AddSeconds((i - 89) * 2), [new("preview.cpu", "CPU · пример", "Температура", "Temperature", 52 + Math.Sin(i * .16) * 7 + Math.Cos(i * .4) * 2)]);
+        for (int i = 0; i < 90; i++) sensorHistory.Add(now.AddSeconds((i - 89) * 2), [new("/preview-cpu/0/temperature/0", "CPU · пример", "CPU Package", "Temperature", 52 + Math.Sin(i * .16) * 7 + Math.Cos(i * .4) * 2),
+            new("/gpu-preview/0/temperature/0", "GPU · пример", "GPU Core", "Temperature", 77 + Math.Sin(i * .1) * 4), new("x2.cpu.load", "Компьютер", "Загрузка процессора", "Load", 24 + Math.Sin(i * .3) * 10),
+            new("x2.memory.load", "Компьютер", "Загрузка памяти", "Load", 61)]);
         RenderSensorHistory(); SensorStatusText.Text = "Пример интерфейса · демонстрационные показатели";
         RenderSpeedReport(new(now, 487.6, 94.8, 18.2, 34.7, 31_000_000, 31_000_000, "Completed", ""));
         RenderQualityReport(new("1.1.1.1 · пример", [new(1, 18), new(2, 20), new(3, 19)], [new(1, 1), new(2, 2)], []));
         NetworkStageText.Text = "Пример интерфейса · демонстрационные показатели";
+        ShowVerdict("Services", ToolVerdicts.Services(new(now, [new("Discord · пример", "Discord", true, 48, ""), new("YouTube · пример", "YouTube", true, 36, ""), new("Контроль", "Internet", true, 20, "")])));
     }
 }

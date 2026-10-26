@@ -53,7 +53,12 @@ public sealed class Maintenance(AppPaths paths)
         string json;
         string cache = Path.Combine(paths.Root, "dpi-suite.json");
         try { json = await Http.GetStringAsync("https://hyperion-cs.github.io/dpi-checkers/ru/tcp-16-20/suite.v2.json", cancellationToken); }
-        catch (HttpRequestException) when (File.Exists(cache)) { json = File.ReadAllText(cache); }
+        // Blocked or slow networks often time out instead of failing fast; both fall back to the last good list.
+        catch (Exception error) when (error is HttpRequestException || error is TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        {
+            if (!File.Exists(cache)) throw;
+            json = File.ReadAllText(cache);
+        }
         using var doc = JsonDocument.Parse(json);
         var result = new List<ProbeTarget>();
         foreach (var entry in doc.RootElement.EnumerateArray())
@@ -69,17 +74,6 @@ public sealed class Maintenance(AppPaths paths)
             throw new InvalidDataException("Не найдены серверы для проверки передачи данных (DPI). Попробуйте позже или выберите быстрый режим.");
         AtomicFile.Write(cache, json);
         return result;
-    }
-
-    public async Task<string> CheckUpdatesAsync(CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/Zuya73/x2zapret/releases/latest");
-        request.Headers.UserAgent.ParseAdd("Z-zapret/0.1.0");
-        using var response = await Http.SendAsync(request, cancellationToken);
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return "Версии для скачивания пока не опубликованы.";
-        response.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
-        return "Последняя доступная версия: " + doc.RootElement.GetProperty("tag_name").GetString() + ". Установлено: 0.1.0.";
     }
 
     public IReadOnlyList<Diagnostic> Diagnose(EngineController engine)

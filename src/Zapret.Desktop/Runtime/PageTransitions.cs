@@ -29,12 +29,7 @@ internal sealed class PageTransitions : IDisposable
     internal void Select(FrameworkElement page, Button button, Action title)
     {
         selected = button;
-        foreach (var nav in navigation.Children.OfType<Button>().Where(b => b.Tag is string))
-        {
-            bool active = nav == button;
-            Motion.SetSelected(nav, active);
-            nav.Foreground = (Brush)nav.FindResource(active ? "TextBrush" : "MutedBrush");
-        }
+        RefreshNavigation();
         MoveMarker();
         swap.Stop();
         requested = page; updateHeading = title;
@@ -44,6 +39,16 @@ internal sealed class PageTransitions : IDisposable
         Motion.To(Motion.Translation(scroll), TranslateTransform.YProperty, -4, 80);
         Motion.To(heading, UIElement.OpacityProperty, .5, 80);
         swap.Start();
+    }
+
+    internal void RefreshNavigation()
+    {
+        foreach (var nav in navigation.Children.OfType<Button>().Where(b => b.Tag is string))
+        {
+            bool active = nav == selected;
+            Motion.SetSelected(nav, active);
+            nav.Foreground = (Brush)nav.FindResource(active ? "TextBrush" : "MutedBrush");
+        }
     }
 
     private void Swap(object? sender, EventArgs e)

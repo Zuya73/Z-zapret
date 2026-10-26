@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Zapret.Core;
@@ -25,7 +26,7 @@ public partial class MainWindow : Window
     private readonly PageTransitions pageTransitions;
     private FrameworkElement[] Pages => [HomePanel, TestsPanel, StrategiesPanel, DiagnosticsPanel, ToolsPanel, SettingsPanel, LogsPanel];
     internal void SelectPage(string page) => Navigate_Click(new Button { Tag = page }, new RoutedEventArgs());
-    internal void ApplyMotionPreferences() { pageTransitions.Finish(); Motion.Refresh(this); }
+    internal void ApplyMotionPreferences() { pageTransitions.Finish(); Motion.Refresh(this); UpdateStatePulse(); }
     private void MotionPreferencesChanged(object? sender, PropertyChangedEventArgs e)
     { if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation)) Dispatcher.BeginInvoke(() => ApplyMotionPreferences()); }
     private readonly AppPaths paths = new();
@@ -65,15 +66,20 @@ public partial class MainWindow : Window
         this.preview = preview;
         this.startupLaunch = startupLaunch;
         InitializeComponent();
+        SelectThemePicker(ThemeManager.Preference);
         WorkAreaBehavior = new WindowWorkArea(this);
         InitializeTools(shutdownTimer);
         InitializePcInformation(pcInformation);
         InitializeDiskTool(diskBenchmark);
         InitializeConnectionMonitor();
         InitializeExtendedTools();
+        InitializeCleanup();
         pageTransitions = new PageTransitions(Pages, PageScroll, PageHeading, NavigationPanel, NavigationMarker);
         Loaded += (_, _) => pageTransitions.Open();
+        StateChanged += (_, _) => { UpdateWindowChrome(); UpdateStatePulse(); };
+        IsVisibleChanged += (_, _) => UpdateStatePulse();
         SystemParameters.StaticPropertyChanged += MotionPreferencesChanged;
+        ThemeManager.Changed += ThemeChanged;
         Navigate_Click(new Button { Tag = "Home" }, new RoutedEventArgs());
         AppVersionText.Text = "Версия " + UpdateManifest.CurrentVersion.ToString(3);
         if (startupLaunch) ShowInTaskbar = false;
@@ -82,7 +88,7 @@ public partial class MainWindow : Window
         Closing += Window_Closing;
         Closed += (_, _) =>
         {
-            SystemParameters.StaticPropertyChanged -= MotionPreferencesChanged; pageTransitions.Dispose();
+            SystemParameters.StaticPropertyChanged -= MotionPreferencesChanged; ThemeManager.Changed -= ThemeChanged; pageTransitions.Dispose();
             timer.Stop(); updateTimer.Stop(); lifetime.Cancel(); tray?.Dispose(); engine?.Dispose(); operationCancellation?.Dispose();
             if (startupLaunch) Application.Current.Shutdown();
         };
@@ -108,11 +114,12 @@ public partial class MainWindow : Window
             {
                 HomeStrategyPicker.SelectedIndex = 0;
                 ConnectionTitle.Text = "Готов к работе";
+                SetHeaderStatus("ГОТОВ К РАБОТЕ", false);
                 StatusText.Text = $"Профилей: {strategies.Count} · встроенное автотестирование · Windows x64";
                 StrategyDescription.Text = "Подберите профиль для своей сети и включайте обход одной кнопкой.";
                 return;
             }
-            settings = AtomicFile.ReadJson<AppSettings>(paths.Settings) ?? new();
+            settings = ReadSettings();
             var bundleFakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
                 .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Select(x => x!).Order().ToArray();
             var migrated = SettingsMigration.ForBundle(settings, strategies, bundleFakes);
@@ -126,12 +133,12 @@ public partial class MainWindow : Window
             }
             engine = new(paths, strategies, Log);
             EngineSnapshot? componentSnapshot = null;
-            if (paths.EngineUpdateRequired && engine.OwnsService && engine.IsRunning)
+            if (await Task.Run(() => paths.EngineUpdateRequired) && engine.OwnsService && engine.IsRunning)
             {
                 componentSnapshot = await engine.CaptureAsync(lifetime.Token);
                 await engine.StopAsync(lifetime.Token);
             }
-            try { paths.Initialize(); }
+            try { await Task.Run(paths.Initialize); }
             catch (Exception componentError)
             {
                 // EngineFiles rolls back file replacements before an old service is resumed.
@@ -183,6 +190,20 @@ public partial class MainWindow : Window
             StatusText.Text = "Не удалось запустить программу. Если используете архив, распакуйте его целиком и сохраните папки рядом с EXE.";
             SetBusy(true);
             CancelTestsButton.IsEnabled = false;
+            SetHeaderStatus("ОШИБКА ЗАПУСКА", false);
+        }
+    }
+
+    private AppSettings ReadSettings()
+    {
+        try { return AtomicFile.ReadJson<AppSettings>(paths.Settings) ?? new(); }
+        catch (JsonException)
+        {
+            // A damaged settings file must not lock the user out: keep a copy for diagnosis and start with defaults.
+            string copy = paths.Settings + ".damaged-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            try { File.Move(paths.Settings, copy, overwrite: true); } catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            Log("Файл настроек повреждён. Используются стандартные настройки; прежний файл сохранён: " + copy);
+            return new();
         }
     }
 
@@ -217,6 +238,10 @@ public partial class MainWindow : Window
         menu.Items.Add("Открыть x2zapret", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Включить / отключить обход", null, (_, _) => Dispatcher.Invoke(() => Connect_Click(this, new RoutedEventArgs())));
         menu.Items.Add("X2 Tools", null, (_, _) => Dispatcher.Invoke(() => { SelectPage("Tools"); ShowFromTray(); }));
+        var timerItem = new Forms.ToolStripMenuItem { Visible = false };
+        timerItem.Click += (_, _) => Dispatcher.Invoke(() => { SelectPage("Tools"); ShowShutdownTool(); ShowFromTray(); });
+        menu.Items.Add(timerItem);
+        menu.Opening += (_, _) => Dispatcher.Invoke(() => { string? summary = TimerSummary(); timerItem.Visible = summary != null; timerItem.Text = summary ?? ""; });
         menu.Items.Add("Проверить обновления", null, (_, _) => Dispatcher.Invoke(() => CheckUpdates_Click(this, new RoutedEventArgs())));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Выход", null, (_, _) => Dispatcher.Invoke(() => { forceExit = true; Close(); }));
@@ -293,7 +318,7 @@ public partial class MainWindow : Window
         foreach (Control control in new Control[] { ConnectButton, ServiceButton, HomeStrategyPicker, StartTestsButton, TestModePicker,
             OnlySelectedCheck, ChooseStrategyButton, StrategiesGrid, DiagnoseButton, ClearCacheButton, SaveSettingsButton,
             SaveListButton, UserListPicker, UpdateIpSetButton, UpdateHostsButton, RemoveHostsButton, CheckUpdatesButton,
-            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton })
+            TimestampsButton, IpSetPicker, GameFilterPicker, TcpPortsBox, UdpPortsBox, DiscordFakePicker, GameFakePicker, TrayCheck, StartupSwitch, SaveStartupButton, AutoUpdateSwitch, SaveAutoUpdateButton, HomeCheckButton, NetServicesButton })
             control.IsEnabled = !value;
         StartupConnectSwitch.IsEnabled = !value && StartupSwitch.IsChecked == true;
         CancelTestsButton.IsEnabled = value && TestsPanel.Visibility == Visibility.Visible;
@@ -314,7 +339,7 @@ public partial class MainWindow : Window
         if (engine == null) return;
         bool running = engine.IsRunning;
         ConnectionTitle.Text = running ? "Обход включён" : "Обход отключён";
-        StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromRgb(119, 119, 119));
+        StateDot.Fill = running ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("SubtleBrush");
         ConnectionDetail.Text = running ? "Доступ к сайтам проверяется отдельно. Результаты есть в «Диагностике»." : "Выберите профиль или запустите автоподбор.";
         ConnectButton.Content = running ? "Отключить обход" : "Включить обход";
         ServiceButton.Content = engine.OwnsService ? "Отключить фоновое подключение" : "Включить фоновое подключение";
@@ -323,6 +348,79 @@ public partial class MainWindow : Window
         ActiveStrategyText.Text = "Текущий профиль: " + (running ? strategies.FirstOrDefault(x => x.Id == activeStrategy)?.Name ?? "служба Windows" : "—");
         if (tray != null) tray.Text = running ? "x2zapret · обход включён" : "x2zapret · остановлен";
         RenderConnectionHealth(running);
+        SetHeaderStatus(running ? "ОБХОД ВКЛЮЧЁН" : "ОБХОД ОТКЛЮЧЁН", running);
+        HeaderStatusDot.Fill = StateDot.Fill;
+    }
+
+    private (string Text, bool Active) headerStatus = ("ПОДГОТОВКА", false);
+    private void SetHeaderStatus(string text, bool active)
+    {
+        headerStatus = (text, active);
+        HeaderStatusText.Text = text;
+        HeaderStatusText.Foreground = (Brush)FindResource(active ? "TextBrush" : "MutedBrush");
+        HeaderStatusDot.Fill = (Brush)FindResource(active ? "AccentBrush" : "SubtleBrush");
+        bypassActive = active;
+        UpdateStatePulse();
+    }
+
+    private bool bypassActive;
+    private Storyboard? statePulse;
+    // A slow ring around the status dot while the bypass is running; it stops whenever it would not be seen.
+    private void UpdateStatePulse()
+    {
+        bool animate = bypassActive && Motion.Enabled && IsVisible && WindowState != WindowState.Minimized;
+        if (animate == (statePulse != null)) return;
+        if (!animate)
+        {
+            statePulse!.Stop(StatePulse); statePulse.Remove(StatePulse); statePulse = null; StatePulse.Opacity = 0;
+            return;
+        }
+        var pulse = new Storyboard { RepeatBehavior = RepeatBehavior.Forever, Duration = TimeSpan.FromSeconds(2.4) };
+        Timeline.SetDesiredFrameRate(pulse, 30);
+        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        foreach (var (path, from, to) in new[] { ("Opacity", .45, 0.0),
+            ("(UIElement.RenderTransform).(ScaleTransform.ScaleX)", 1.0, 2.6), ("(UIElement.RenderTransform).(ScaleTransform.ScaleY)", 1.0, 2.6) })
+        {
+            var animation = new DoubleAnimation(from, to, TimeSpan.FromSeconds(1.8)) { EasingFunction = ease };
+            Storyboard.SetTarget(animation, StatePulse); Storyboard.SetTargetProperty(animation, new PropertyPath(path));
+            pulse.Children.Add(animation);
+        }
+        pulse.Begin(StatePulse, true); statePulse = pulse;
+    }
+
+    // Brushes copied out of the palette in code are reapplied after a theme switch; XAML follows it on its own.
+    private void ThemeChanged()
+    {
+        Motion.Refresh(this); pageTransitions.RefreshNavigation();
+        if (engine == null) StateDot.Fill = (Brush)FindResource("SubtleBrush");
+        SetHeaderStatus(headerStatus.Text, headerStatus.Active);
+        RefreshState();
+        foreach (var (name, verdict) in shownVerdicts.ToArray()) ShowVerdict(name, verdict);
+        SensorPlot.InvalidateVisual();
+    }
+
+    private bool loadingTheme;
+    private void ThemePicker_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (loadingTheme || ThemePicker.SelectedItem is not ComboBoxItem { Tag: string theme }) return;
+        ThemeManager.Apply(theme);
+        if (!ready || preview) return;
+        try { var updated = settings with { Theme = theme }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ShowError(UserMessages.Error(error)); }
+    }
+    private void SelectThemePicker(string theme)
+    {
+        loadingTheme = true;
+        ThemePicker.SelectedItem = ThemePicker.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == ThemeManager.Normalize(theme));
+        loadingTheme = false;
+    }
+
+    private void UpdateWindowChrome()
+    {
+        bool maximized = WindowState == WindowState.Maximized;
+        MaximizeButton.Content = maximized ? "\uE923" : "\uE922";
+        MaximizeButton.ToolTip = maximized ? "Восстановить" : "Развернуть";
+        WindowFrame.BorderThickness = new Thickness(maximized ? 0 : 1);
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
@@ -373,7 +471,7 @@ public partial class MainWindow : Window
                 ? targets.Where(x => new[] { "DiscordMain", "DiscordGateway", "DiscordCDN", "YouTubeWeb", "YouTubeImage", "GoogleMain" }.Contains(x.Id)).ToArray()
                 : targets;
             string testDirectory = paths.PrepareLists(settings, dpi: mode == TestMode.Dpi, test: true);
-            probeRows.Clear(); lastSession = null; ExportTestsButton.IsEnabled = false;
+            probeRows.Clear(); lastSession = null; ExportTestsButton.IsEnabled = false; AdviceBox.Visibility = Visibility.Collapsed;
             RecommendationTitle.Text = "Идёт проверка соединения";
             ConnectionTitle.Text = "Идёт автоподбор";
             ConnectionDetail.Text = "Подключение временно переключается между профилями.";
@@ -404,7 +502,12 @@ public partial class MainWindow : Window
                 RecommendationTitle.Text = lastSession.Cancelled ? "Проверка отменена" : recommended != null ? "Рекомендуем: " + recommended : "Подходящий профиль не найден";
                 RecommendationDetail.Text = lastSession.Cancelled ? "Прежнее подключение восстановлено. Результаты завершённых проверок сохранены." :
                     recommended != null ? "Этот профиль прошёл две проверки. Нажмите «Включить рекомендованный профиль», чтобы использовать его." :
-                    "Ни один профиль не прошёл проверку. Откройте «Диагностику» и проверьте подключение к интернету.";
+                    "Ни один профиль не прошёл проверку. Ниже — что можно попробовать.";
+                if (!lastSession.Cancelled && recommended == null)
+                {
+                    AdviceText.Text = string.Join("\n", AutoselectAdvice.For(lastSession).Select((tip, i) => $"{i + 1}. {tip}"));
+                    AdviceBox.Visibility = Visibility.Visible;
+                }
                 Log("Отчёт сохранён: " + saved);
             }
             finally
@@ -477,6 +580,9 @@ public partial class MainWindow : Window
         StartupConnectSwitch.IsChecked = settings.Startup == StartupMode.TrayAndConnect;
         StartupConnectSwitch.IsEnabled = StartupSwitch.IsChecked == true;
         AutoUpdateSwitch.IsChecked = settings.AutoUpdate;
+        advancedTools = settings.AdvancedTools; ApplyAdvancedTools();
+        OverheatCheck.IsChecked = settings.OverheatAlert;
+        SelectThemePicker(settings.Theme); ThemeManager.Apply(settings.Theme);
         var fakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
             .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Order().ToArray();
         DiscordFakePicker.ItemsSource = fakes; GameFakePicker.ItemsSource = fakes;
@@ -552,10 +658,19 @@ public partial class MainWindow : Window
         }, "Применение настроек");
     }
 
-    private void UserList_Changed(object sender, SelectionChangedEventArgs e) { if (ready) LoadUserList(); }
+    private void UserList_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ready) return;
+        try { LoadUserList(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ShowError(UserMessages.Error(error)); }
+    }
     private void LoadUserList()
     {
-        if (UserListPicker.SelectedIndex is >= 0 and < 4) UserListBox.Text = File.ReadAllText(Path.Combine(paths.Lists, UserFiles[UserListPicker.SelectedIndex]));
+        if (UserListPicker.SelectedIndex is >= 0 and < 4)
+        {
+            string path = Path.Combine(paths.Lists, UserFiles[UserListPicker.SelectedIndex]);
+            UserListBox.Text = File.Exists(path) ? File.ReadAllText(path) : "";
+        }
     }
     private void SaveList_Click(object sender, RoutedEventArgs e)
     {
@@ -712,6 +827,22 @@ public partial class MainWindow : Window
         Motion.To(ErrorBanner, UIElement.OpacityProperty, 1, 180, 0);
         Motion.To(Motion.Translation(ErrorBanner), TranslateTransform.YProperty, 0, 200, -5);
     }
+    private async void CheckHome_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy || preview) return;
+        HomeCheckButton.IsEnabled = false; HomeCheckText.Text = "Проверяем…";
+        try { await CheckConnectionAsync(manual: true); }
+        finally { HomeCheckButton.IsEnabled = !busy; HomeCheckText.Text = "Проверить Discord и YouTube"; }
+    }
+    private async void CheckServices_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ready || busy || preview) return;
+        NetServicesButton.IsEnabled = false; NetServicesButton.Content = "Проверяем…";
+        try { await CheckConnectionAsync(manual: true); }
+        finally { NetServicesButton.IsEnabled = !busy; NetServicesButton.Content = "Проверить сейчас"; }
+    }
+    private void OpenNetworkTools_Click(object sender, RoutedEventArgs e) { SelectPage("Tools"); ShowExtendedTool("Network"); }
+    private void DismissError_Click(object sender, RoutedEventArgs e) => ErrorBanner.Visibility = Visibility.Collapsed;
     private void ExportLog_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog { Filter = "Текстовый журнал|*.txt", FileName = "x2zapret-log.txt" };
@@ -721,5 +852,10 @@ public partial class MainWindow : Window
     private void OpenServices_Click(object sender, RoutedEventArgs e) => Open("services.msc");
     private void GitHub_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret");
     private void Releases_Click(object sender, RoutedEventArgs e) => Open("https://github.com/Zuya73/x2zapret/releases");
-    private static void Open(string target) => Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+    private void Open(string target)
+    {
+        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException)
+        { ShowError("Не удалось открыть " + target + ". Откройте адрес вручную. " + UserMessages.Error(error)); }
+    }
 }
