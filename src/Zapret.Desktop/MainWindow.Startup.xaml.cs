@@ -12,7 +12,8 @@ public partial class MainWindow
         public string Name => Entry.Name;
         public bool Enabled => Entry.Enabled;
         public string Command => Entry.Command;
-        public string Detail => Entry.Scope + " · " + StartupApproval.Executable(Entry.Command);
+        // Startup-folder entries are files whose paths may contain spaces; Run values are command lines.
+        public string Detail => Entry.Scope + " · " + (File.Exists(Entry.Command) ? Entry.Command : StartupApproval.Executable(Entry.Command));
     }
 
     internal void ShowStartupTool()

@@ -224,7 +224,7 @@ public partial class MainWindow
         var (text, level) = value is double reading ? rate(reading) : (sensor == null ? "Нет данных от датчика" : "Ожидание", 0);
         var rating = (TextBlock)FindName(name + "TileRating");
         rating.Text = text;
-        rating.Foreground = (Brush)FindResource(level == 0 ? "MutedBrush" : "TextBrush");
+        rating.SetResourceReference(TextBlock.ForegroundProperty, level == 0 ? "MutedBrush" : "TextBrush"); // Follows theme switches.
         rating.FontWeight = level == 2 ? FontWeights.Bold : FontWeights.Normal;
     }
     private void SensorTile_Click(object sender, MouseButtonEventArgs e)
