@@ -184,14 +184,25 @@
             <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Обновления и обслуживание" Style="{StaticResource Heading}" /><WrapPanel><Button x:Name="UpdateIpSetButton" Content="Обновить список IP-адресов" Click="UpdateIpSet_Click" Margin="0,0,10,10" /><Button x:Name="UpdateHostsButton" Content="Обновить адреса в hosts" Click="UpdateHosts_Click" Margin="0,0,10,10" /><Button x:Name="RemoveHostsButton" Content="Убрать наши записи из hosts" Click="RemoveHosts_Click" Margin="0,0,10,10" /><Button Content="Открыть страницу загрузки" Click="Releases_Click" Margin="0,0,10,10" /></WrapPanel><TextBlock Text="Основные файлы обхода обновляются вместе с программой. Ваши списки сайтов хранятся отдельно и сохраняются при обновлении." Style="{StaticResource Muted}" FontSize="12" /></StackPanel></Border>
           </StackPanel>
           <StackPanel x:Name="ToolsPanel" Visibility="Collapsed">
-            <WrapPanel Margin="0,0,0,16">
-              <Button x:Name="PcToolButton" Content="О ПК" Style="{StaticResource ChipActive}" Click="SelectPcTool_Click" ToolTip="Информация о ПК" AutomationProperties.Name="Информация о ПК" />
-              <Button x:Name="TimerToolButton" Style="{StaticResource Chip}" Content="Таймер" Click="SelectTimerTool_Click" ToolTip="Таймер выключения" AutomationProperties.Name="Таймер выключения" />
-              <Button x:Name="DiskToolButton" Style="{StaticResource Chip}" Content="Тест диска" Click="SelectDiskTool_Click" ToolTip="Скорость дисков" AutomationProperties.Name="Скорость дисков" />
-              <Button x:Name="SensorToolButton" Style="{StaticResource Chip}" Content="Датчики" Tag="Sensors" Click="SelectExtendedTool_Click" ToolTip="Графики датчиков" AutomationProperties.Name="Графики датчиков" />
-              <Button x:Name="NetworkToolButton" Style="{StaticResource Chip}" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" ToolTip="Качество соединения и скорость интернета" AutomationProperties.Name="Качество соединения и скорость интернета" />
-              <Button x:Name="SpaceToolButton" Style="{StaticResource Chip}" Content="Место на диске" Tag="Space" Click="SelectExtendedTool_Click" ToolTip="Анализ занятого места" AutomationProperties.Name="Анализ занятого места" />
-            </WrapPanel>
+            <DockPanel Margin="0,0,0,16">
+              <Button x:Name="AdvancedToolsButton" DockPanel.Dock="Right" Style="{StaticResource Chip}" Margin="8,0,0,8" Padding="11,8" Click="AdvancedTools_Click" ToolTip="Для опытных: дополнительные настройки и инструменты" AutomationProperties.Name="Показать возможности для опытных пользователей"><TextBlock Text="&#xE713;" Style="{StaticResource Icon}" FontSize="13" /></Button>
+              <WrapPanel>
+                <Button x:Name="ComputerGroupButton" Style="{StaticResource ChipActive}" Content="Компьютер" Click="ComputerGroup_Click" ToolTip="Сведения о ПК и датчики" AutomationProperties.Name="Компьютер" />
+                <Button x:Name="DisksGroupButton" Style="{StaticResource Chip}" Content="Диски" Click="DisksGroup_Click" ToolTip="Скорость дисков и занятое место" AutomationProperties.Name="Диски" />
+                <Button x:Name="NetworkToolButton" Style="{StaticResource Chip}" Content="Интернет" Tag="Network" Click="SelectExtendedTool_Click" ToolTip="Качество соединения, скорость и починка сети" AutomationProperties.Name="Интернет" />
+                <Button x:Name="TimerToolButton" Style="{StaticResource Chip}" Content="Таймер" Click="SelectTimerTool_Click" ToolTip="Таймер выключения" AutomationProperties.Name="Таймер выключения" />
+                <StackPanel x:Name="ComputerSubTools" Orientation="Horizontal">
+                  <Border Width="1" Height="22" Background="{DynamicResource LineStrongBrush}" Margin="4,0,12,8" />
+                  <Button x:Name="PcToolButton" Content="Сведения" Style="{StaticResource SubChipActive}" Click="SelectPcTool_Click" ToolTip="Информация о ПК" AutomationProperties.Name="Информация о ПК" />
+                  <Button x:Name="SensorToolButton" Style="{StaticResource SubChip}" Content="Датчики" Tag="Sensors" Click="SelectExtendedTool_Click" ToolTip="Графики датчиков" AutomationProperties.Name="Графики датчиков" />
+                </StackPanel>
+                <StackPanel x:Name="DiskSubTools" Orientation="Horizontal" Visibility="Collapsed">
+                  <Border Width="1" Height="22" Background="{DynamicResource LineStrongBrush}" Margin="4,0,12,8" />
+                  <Button x:Name="DiskToolButton" Style="{StaticResource SubChip}" Content="Скорость" Click="SelectDiskTool_Click" ToolTip="Скорость дисков" AutomationProperties.Name="Скорость дисков" />
+                  <Button x:Name="SpaceToolButton" Style="{StaticResource SubChip}" Content="Место" Tag="Space" Click="SelectExtendedTool_Click" ToolTip="Что занимает место на диске" AutomationProperties.Name="Анализ занятого места" />
+                </StackPanel>
+              </WrapPanel>
+            </DockPanel>
             <StackPanel x:Name="PcInfoPanel">
               <StackPanel.Resources><Style x:Key="PcMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
               <Border Style="{StaticResource Card}" Padding="22"><StackPanel>                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="1.3*" /></Grid.ColumnDefinitions>
@@ -222,10 +233,10 @@
             <StackPanel x:Name="DiskToolPanel" Visibility="Collapsed">
               <StackPanel.Resources><Style x:Key="DiskMuted" TargetType="TextBlock" BasedOn="{StaticResource Muted}"><Setter Property="LineHeight" Value="14" /></Style></StackPanel.Resources>
               <Border Style="{StaticResource Card}" Padding="22"><StackPanel>
-                <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="2.1*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="1.4*" /></Grid.ColumnDefinitions>
+                <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <ComboBox x:Name="DiskDrivePicker" SelectionChanged="DiskDrive_Changed" AutomationProperties.Name="Накопитель для замера скорости" ToolTip="Выберите диск компьютера или съёмный накопитель. Проверка использует отдельный временный файл." />
-                  <ComboBox x:Name="DiskSizePicker" Grid.Column="2" SelectedIndex="1" AutomationProperties.Name="Размер временного тестового файла"><ComboBoxItem Content="256 МиБ" /><ComboBoxItem Content="1 ГиБ" /><ComboBoxItem Content="4 ГиБ" /></ComboBox>
-                  <ComboBox x:Name="DiskModePicker" Grid.Column="4" SelectedIndex="0" AutomationProperties.Name="Режим замера"><ComboBoxItem Content="Быстрый · 1 проход" ToolTip="8 измерений по 3 секунды плюс подготовка файла" /><ComboBoxItem Content="Подробный · 3 прохода" ToolTip="8 измерений по 5 секунд, три прохода плюс подготовка файла" /></ComboBox>
+                  <StackPanel x:Name="DiskAdvancedOptions" Grid.Column="1" Orientation="Horizontal" Visibility="Collapsed"><ComboBox x:Name="DiskSizePicker" Width="120" Margin="10,0,0,0" SelectedIndex="1" AutomationProperties.Name="Размер временного тестового файла"><ComboBoxItem Content="256 МиБ" /><ComboBoxItem Content="1 ГиБ" /><ComboBoxItem Content="4 ГиБ" /></ComboBox>
+                  <ComboBox x:Name="DiskModePicker" Width="200" Margin="10,0,0,0" SelectedIndex="0" AutomationProperties.Name="Режим замера"><ComboBoxItem Content="Быстрый · 1 проход" ToolTip="8 измерений по 3 секунды плюс подготовка файла" /><ComboBoxItem Content="Подробный · 3 прохода" ToolTip="8 измерений по 5 секунд, три прохода плюс подготовка файла" /></ComboBox></StackPanel>
                 </Grid>
                 <WrapPanel Margin="0,0,0,8">
                   <Button x:Name="DiskStartButton" Content="Запустить" Style="{StaticResource Primary}" Click="StartDisk_Click" FontSize="12" Padding="14,7" Margin="0,0,8,0" />
@@ -235,7 +246,13 @@
                 </WrapPanel>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="50" /></Grid.ColumnDefinitions><TextBlock x:Name="DiskStageText" Text="Выберите накопитель и нажмите «Запустить»." Style="{StaticResource DiskMuted}" FontSize="11" /><TextBlock x:Name="DiskElapsedText" Text="00:00" Grid.Column="1" HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}" FontSize="11" /></Grid>
                 <ProgressBar x:Name="DiskProgress" Maximum="100" Height="4" Margin="0,6,0,8" />
-                <DataGrid x:Name="DiskResultGrid" Height="264" RowHeight="58" ColumnHeaderHeight="30" CanUserSortColumns="False" SelectionMode="Single" AutomationProperties.Name="Результаты скорости накопителя">
+                <Border x:Name="DiskVerdict" Visibility="Collapsed" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" CornerRadius="12" Padding="14,12" Margin="0,4,0,12">
+                  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border x:Name="DiskVerdictBadge" Width="28" Height="28" CornerRadius="14" BorderThickness="1.5" VerticalAlignment="Top" Margin="0,0,12,0"><TextBlock x:Name="DiskVerdictIcon" Style="{StaticResource Icon}" FontSize="12" HorizontalAlignment="Center" /></Border>
+                    <StackPanel Grid.Column="1"><TextBlock x:Name="DiskVerdictTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="DiskVerdictDetail" Style="{StaticResource Muted}" FontSize="12" LineHeight="19" Margin="0,3,0,0" /></StackPanel>
+                  </Grid>
+                </Border>
+                                <DataGrid x:Name="DiskResultGrid" Height="264" RowHeight="58" ColumnHeaderHeight="30" CanUserSortColumns="False" SelectionMode="Single" AutomationProperties.Name="Результаты скорости накопителя">
                   <DataGrid.Columns>
                     <DataGridTemplateColumn Header="ТИП ТЕСТА" Width="1.1*" MinWidth="125"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Profile.Description}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" /><TextBlock Text="{Binding Profile.Label}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,5,0,0" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="ЧТЕНИЕ · МБ/с" Width="1.6*"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel VerticalAlignment="Center" ToolTip="{Binding ReadTooltip}"><TextBlock Text="{Binding ReadSpeed}" FontSize="23" FontFamily="{StaticResource MonoFont}" /><TextBlock Text="{Binding ReadDetails}" FontSize="10" Foreground="{DynamicResource MutedBrush}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
@@ -257,7 +274,7 @@
                 <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="SensorValueText" Text="—" FontSize="30" FontFamily="{StaticResource MonoFont}" /><TextBlock x:Name="SensorRangeText" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" FontSize="11" /></Grid>
                 <ui:SensorChart x:Name="SensorPlot" Height="200" Margin="0,0,0,12" />
                 <CheckBox x:Name="SensorRecordCheck" ToolTip="Сбор продолжится в других вкладках и при сворачивании к значку рядом с часами. При полном выходе история исчезнет — сохраните таблицу CSV, если она нужна." Content="Продолжать сбор при переключении вкладок и сворачивании" Checked="RecordSensors_Changed" Unchecked="RecordSensors_Changed" Margin="0,0,0,10" />
-                <WrapPanel Margin="0,0,0,10"><Button Content="Сохранить таблицу CSV" Click="ExportSensors_Click" Margin="0,0,8,6" /><Button Content="Очистить историю" Click="ClearSensors_Click" Margin="0,0,0,6" /></WrapPanel>
+                <WrapPanel Margin="0,0,0,10"><Button x:Name="SensorCsvButton" Content="Сохранить таблицу CSV" Click="ExportSensors_Click" Margin="0,0,8,6" Visibility="Collapsed" /><Button Content="Очистить историю" Click="ClearSensors_Click" Margin="0,0,0,6" /></WrapPanel>
                 <TextBlock x:Name="SensorStatusText" Text="Выберите датчик. Графики появятся после первого опроса." Style="{StaticResource Muted}" FontSize="11" />
               </StackPanel></Border>
               <Border Style="{StaticResource Card}" Padding="22"><StackPanel>
@@ -270,8 +287,14 @@
               <Border Style="{StaticResource Card}" Padding="22"><StackPanel>
                 <TextBlock Text="Качество соединения" Style="{StaticResource Heading}" />
                 <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1.5*" /></Grid.ColumnDefinitions><TextBox x:Name="QualityTargetBox" ToolTip="Сервер, с которым сравниваем связь. Можно указать IP-адрес или домен, например 1.1.1.1 или example.com." Text="1.1.1.1" MaxLength="253" AutomationProperties.Name="Внешний IP-адрес или домен для проверки" /><ComboBox x:Name="QualityGatewayPicker" ToolTip="Выберите подключение, через которое выходите в интернет. Шлюз — обычно ваш роутер; сравнение помогает проверить домашнюю сеть." Grid.Column="2" AutomationProperties.Name="Шлюз для сравнения задержки" /></Grid>
-                <CheckBox x:Name="QualityRouteCheck" Content="Показать путь до сервера" Margin="0,0,0,10" />
+                <CheckBox x:Name="QualityRouteCheck" Content="Показать путь до сервера" Margin="0,0,0,10" Visibility="Collapsed" />
                 <WrapPanel Margin="0,0,0,12"><Button x:Name="QualityStartButton" Content="Проверить соединение" Style="{StaticResource Primary}" Click="StartQuality_Click" Margin="0,0,8,0" /><Button x:Name="NetworkCancelButton" Content="Отменить" Click="CancelExtended_Click" IsEnabled="False" /></WrapPanel>
+                <Border x:Name="QualityVerdict" Visibility="Collapsed" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" CornerRadius="12" Padding="14,12" Margin="0,0,0,12">
+                  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border x:Name="QualityVerdictBadge" Width="28" Height="28" CornerRadius="14" BorderThickness="1.5" VerticalAlignment="Top" Margin="0,0,12,0"><TextBlock x:Name="QualityVerdictIcon" Style="{StaticResource Icon}" FontSize="12" HorizontalAlignment="Center" /></Border>
+                    <StackPanel Grid.Column="1"><TextBlock x:Name="QualityVerdictTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="QualityVerdictDetail" Style="{StaticResource Muted}" FontSize="12" LineHeight="19" Margin="0,3,0,0" /></StackPanel>
+                  </Grid>
+                </Border>
                 <DataGrid x:Name="QualityRowsGrid" Height="108" RowHeight="34" FontSize="11"><DataGrid.Columns><DataGridTextColumn Header="Узел" Binding="{Binding Target}" Width="2*" /><DataGridTextColumn Header="Пинг, мс" Binding="{Binding Ping}" Width="*" /><DataGridTextColumn Header="Джиттер" Binding="{Binding Jitter}" Width="*" /><DataGridTextColumn Header="Потери" Binding="{Binding Loss}" Width="*" /><DataGridTextColumn Header="Мин.–макс." Binding="{Binding Range}" Width="*" /></DataGrid.Columns></DataGrid>
                 <TextBlock x:Name="QualityRouteText" FontFamily="{StaticResource MonoFont}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0" />
                 <TextBlock Text="Пинг — время ответа. Джиттер — насколько это время меняется: меньше — стабильнее. Потери — доля запросов без ответа. Некоторые устройства не отвечают на такие проверки, даже если интернет работает." Style="{StaticResource Muted}" FontSize="11" Margin="0,10,0,0" />
@@ -283,8 +306,28 @@
                   <StackPanel Grid.Column="1"><TextBlock Text="ОТДАЧА · Мбит/с" Foreground="{DynamicResource MutedBrush}" FontSize="10" /><TextBlock x:Name="SpeedUpText" Text="—" FontSize="34" FontFamily="{StaticResource MonoFont}" /></StackPanel>
                 </Grid>
                 <TextBlock x:Name="SpeedLatencyText" Text="Задержка без нагрузки и во время передачи данных" Style="{StaticResource Muted}" FontSize="11" Margin="0,0,0,12" />
-                <WrapPanel><ComboBox x:Name="SpeedModePicker" SelectedIndex="0" MinWidth="230" Margin="0,0,10,8"><ComboBoxItem Content="Быстрый · до 62 МБ" /><ComboBoxItem Content="Подробный · до 262 МБ" /></ComboBox><Button x:Name="SpeedStartButton" Content="Измерить скорость" Click="StartSpeed_Click" Style="{StaticResource Primary}" Margin="0,0,8,8" /><Button x:Name="SpeedCancelButton" Content="Отменить" Click="CancelExtended_Click" IsEnabled="False" Margin="0,0,0,8" /></WrapPanel>
+                <Border x:Name="SpeedVerdict" Visibility="Collapsed" Background="{DynamicResource RaisedBrush}" BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1" CornerRadius="12" Padding="14,12" Margin="0,0,0,12">
+                  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border x:Name="SpeedVerdictBadge" Width="28" Height="28" CornerRadius="14" BorderThickness="1.5" VerticalAlignment="Top" Margin="0,0,12,0"><TextBlock x:Name="SpeedVerdictIcon" Style="{StaticResource Icon}" FontSize="12" HorizontalAlignment="Center" /></Border>
+                    <StackPanel Grid.Column="1"><TextBlock x:Name="SpeedVerdictTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="SpeedVerdictDetail" Style="{StaticResource Muted}" FontSize="12" LineHeight="19" Margin="0,3,0,0" /></StackPanel>
+                  </Grid>
+                </Border>
+                
+                <WrapPanel><ComboBox x:Name="SpeedModePicker" SelectedIndex="0" MinWidth="230" Margin="0,0,10,8" Visibility="Collapsed"><ComboBoxItem Content="Быстрый · до 62 МБ" /><ComboBoxItem Content="Подробный · до 262 МБ" /></ComboBox><Button x:Name="SpeedStartButton" Content="Измерить скорость" Click="StartSpeed_Click" Style="{StaticResource Primary}" Margin="0,0,8,8" /><Button x:Name="SpeedCancelButton" Content="Отменить" Click="CancelExtended_Click" IsEnabled="False" Margin="0,0,0,8" /></WrapPanel>
                 <TextBlock Text="Измеряем скорость скачивания и отправки данных до сервера Cloudflare. Перед запуском приостановите другие загрузки. Тест расходует до 62 или 262 МБ данных плюс небольшой служебный трафик. На другом сервере скорость может отличаться." Style="{StaticResource Muted}" FontSize="11" />
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="22"><StackPanel>
+                <TextBlock Text="Если сайты не открываются" Style="{StaticResource Heading}" />
+                <TextBlock Text="Сначала попробуйте очистить кэш DNS: это безопасно и занимает секунду. Полный сброс восстанавливает сетевые настройки Windows и помогает, когда другие программы (VPN, ускорители) испортили их. После сброса нужно перезагрузить компьютер." Style="{StaticResource Muted}" FontSize="12" LineHeight="19" Margin="0,0,0,14" />
+                <WrapPanel><Button x:Name="FlushDnsButton" Content="Очистить кэш DNS" Style="{StaticResource Primary}" Click="FlushDns_Click" Margin="0,0,8,8" /><Button x:Name="ResetNetworkButton" Content="Полный сброс сети" Click="ResetNetwork_Click" Margin="0,0,0,8" ToolTip="Сброс Winsock и TCP/IP. Вручную заданные IP-адреса и DNS будут сброшены, Wi-Fi и пароли сохранятся. Нужна перезагрузка." /></WrapPanel>
+                <TextBlock x:Name="RepairStatusText" Style="{StaticResource Muted}" FontSize="12" LineHeight="19" Visibility="Collapsed" Margin="0,4,0,0" />
+              </StackPanel></Border>
+              <Border Style="{StaticResource Card}" Padding="22"><StackPanel>
+                <TextBlock Text="DNS-сервер" Style="{StaticResource Heading}" />
+                <TextBlock Text="DNS превращает адреса сайтов в IP-адреса. Если DNS провайдера работает плохо или подменяет ответы, сайты могут не открываться даже при включённом обходе. Надёжный публичный DNS часто решает проблему." Style="{StaticResource Muted}" FontSize="12" LineHeight="19" Margin="0,0,0,14" />
+                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="10" Padding="14,11" Margin="0,0,0,14"><StackPanel><TextBlock Text="СЕЙЧАС ИСПОЛЬЗУЕТСЯ" Style="{StaticResource Caption}" Margin="0,0,0,6" /><TextBlock x:Name="DnsCurrentText" Text="Определяем…" TextWrapping="Wrap" FontSize="13" LineHeight="20" /></StackPanel></Border>
+                <WrapPanel><Button x:Name="DnsCloudflareButton" Content="Cloudflare · 1.1.1.1" Tag="cloudflare" Click="SetDns_Click" Margin="0,0,8,8" /><Button x:Name="DnsGoogleButton" Content="Google · 8.8.8.8" Tag="google" Click="SetDns_Click" Margin="0,0,8,8" /><Button x:Name="DnsAutoButton" Content="Автоматически (как было)" Tag="auto" Click="SetDns_Click" Margin="0,0,8,8" /><Button x:Name="DnsRefreshButton" Content="&#xE72C;" FontFamily="{StaticResource IconFont}" FontWeight="Normal" Padding="13,11" ToolTip="Обновить" AutomationProperties.Name="Обновить сведения о DNS" Click="RefreshDns_Click" Margin="0,0,0,8" /></WrapPanel>
+                <TextBlock Text="Меняется DNS активных подключений. Вернуть прежнюю настройку можно кнопкой «Автоматически». Если используете VPN, он может задавать DNS сам." Style="{StaticResource Muted}" Foreground="{DynamicResource SubtleBrush}" FontSize="11" LineHeight="17" Margin="0,4,0,0" />
               </StackPanel></Border>
               <Border Style="{StaticResource Card}" Padding="22"><StackPanel><TextBlock x:Name="NetworkStageText" Text="Запустите нужную проверку." Style="{StaticResource Muted}" FontSize="12" Margin="0,0,0,12" /><WrapPanel><Button x:Name="SaveNetworkButton" Content="Сохранить отчёт" Click="SaveNetwork_Click" IsEnabled="False" /></WrapPanel></StackPanel></Border>
             </StackPanel>

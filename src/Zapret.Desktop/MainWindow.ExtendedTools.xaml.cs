@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using Zapret.Core;
@@ -38,10 +39,60 @@ public partial class MainWindow
     {
         SensorToolPanel.Visibility = NetworkToolPanel.Visibility = SpaceToolPanel.Visibility = Visibility.Collapsed;
     }
+    private Button? lastComputerTool, lastDiskTool;
+    private bool advancedTools;
+    // Four groups at the top level; "Компьютер" and "Диски" show their own sub-tools in the same row.
     private void HighlightTool(Button active)
     {
-        foreach (var button in new[] { PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, NetworkToolButton, SpaceToolButton })
-            button.Style = (Style)FindResource(button == active ? "ChipActive" : "Chip");
+        bool computer = active == PcToolButton || active == SensorToolButton, disks = active == DiskToolButton || active == SpaceToolButton;
+        if (computer) lastComputerTool = active;
+        if (disks) lastDiskTool = active;
+        foreach (var (button, selected) in new[] { (ComputerGroupButton, computer), (DisksGroupButton, disks), (NetworkToolButton, active == NetworkToolButton), (TimerToolButton, active == TimerToolButton) })
+            button.Style = (Style)FindResource(selected ? "ChipActive" : "Chip");
+        foreach (var button in new[] { PcToolButton, SensorToolButton, DiskToolButton, SpaceToolButton })
+            button.Style = (Style)FindResource(button == active ? "SubChipActive" : "SubChip");
+        ComputerSubTools.Visibility = computer ? Visibility.Visible : Visibility.Collapsed;
+        DiskSubTools.Visibility = disks ? Visibility.Visible : Visibility.Collapsed;
+    }
+    private void ComputerGroup_Click(object sender, RoutedEventArgs e)
+    { if (lastComputerTool == SensorToolButton) ShowExtendedTool("Sensors"); else ShowPcTool(); }
+    private void DisksGroup_Click(object sender, RoutedEventArgs e)
+    { if (lastDiskTool == SpaceToolButton) ShowExtendedTool("Space"); else ShowDiskTool(); }
+
+    private void AdvancedTools_Click(object sender, RoutedEventArgs e)
+    {
+        advancedTools = !advancedTools; ApplyAdvancedTools();
+        if (!ready || preview) return;
+        try { var updated = settings with { AdvancedTools = advancedTools }; AtomicFile.WriteJson(paths.Settings, updated); settings = updated; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Log("Не удалось сохранить режим для опытных: " + error.Message); }
+    }
+    // Rarely needed options stay out of the way until the user asks for them; hidden options fall back to their defaults.
+    private void ApplyAdvancedTools()
+    {
+        var visibility = advancedTools ? Visibility.Visible : Visibility.Collapsed;
+        DiskAdvancedOptions.Visibility = QualityRouteCheck.Visibility = SpeedModePicker.Visibility = SensorCsvButton.Visibility = visibility;
+        AdvancedToolsButton.Style = (Style)FindResource(advancedTools ? "ChipActive" : "Chip");
+        AdvancedToolsButton.ToolTip = advancedTools ? "Скрыть возможности для опытных" : "Для опытных: дополнительные настройки и инструменты";
+        if (!advancedTools)
+        { QualityRouteCheck.IsChecked = false; DiskSizePicker.SelectedIndex = 1; DiskModePicker.SelectedIndex = 0; SpeedModePicker.SelectedIndex = 0; }
+        UpdatePawnState();
+    }
+
+    private void ShowVerdict(string name, Verdict? verdict)
+    {
+        var box = (Border)FindName(name + "Verdict");
+        if (verdict == null) { box.Visibility = Visibility.Collapsed; return; }
+        var badge = (Border)FindName(name + "VerdictBadge"); var icon = (TextBlock)FindName(name + "VerdictIcon");
+        ((TextBlock)FindName(name + "VerdictTitle")).Text = verdict.Title;
+        ((TextBlock)FindName(name + "VerdictDetail")).Text = verdict.Detail;
+        bool good = verdict.Level == 0;
+        badge.Background = good ? (Brush)FindResource("AccentBrush") : Brushes.Transparent;
+        badge.BorderBrush = (Brush)FindResource(good ? "AccentBrush" : verdict.Level == 1 ? "FocusBrush" : "TextBrush");
+        icon.Text = verdict.Level switch { 0 => "\uE73E", 1 => "\uE7BA", _ => "\uE711" };
+        icon.Foreground = (Brush)FindResource(good ? "AccentForegroundBrush" : "TextBrush");
+        bool appearing = box.Visibility != Visibility.Visible;
+        box.Visibility = Visibility.Visible;
+        if (appearing) Motion.To(box, UIElement.OpacityProperty, 1, 220, 0);
     }
     internal void ShowExtendedTool(string tool)
     {
@@ -55,6 +106,7 @@ public partial class MainWindow
             try { QualityGatewayPicker.ItemsSource = NetworkTools.Gateways(); QualityGatewayPicker.SelectedIndex = 0; }
             catch (System.Net.NetworkInformation.NetworkInformationException e) { NetworkStageText.Text = e.Message; }
         }
+        if (tool == "Network") RefreshDns();
         if (tool == "Space" && string.IsNullOrWhiteSpace(SpacePathBox.Text)) SpacePathBox.Text = Path.GetPathRoot(Environment.SystemDirectory)!;
     }
     private void SelectExtendedTool_Click(object sender, RoutedEventArgs e)
@@ -62,8 +114,10 @@ public partial class MainWindow
     private void UpdateExtendedControls()
     {
         if (!extendedInitialized) return;
-        foreach (var button in new[] { PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, NetworkToolButton, SpaceToolButton })
+        foreach (var button in new[] { ComputerGroupButton, DisksGroupButton, PcToolButton, TimerToolButton, DiskToolButton, SensorToolButton, NetworkToolButton, SpaceToolButton })
             button.IsEnabled = !diskBenchmarkRunning && !extendedRunning;
+        foreach (var button in new[] { FlushDnsButton, ResetNetworkButton, DnsCloudflareButton, DnsGoogleButton, DnsAutoButton })
+            button.IsEnabled = !busy && !pcExporting;
         QualityStartButton.IsEnabled = SpeedStartButton.IsEnabled = SpaceStartButton.IsEnabled = !busy && !pcExporting;
         NetworkCancelButton.IsEnabled = SpeedCancelButton.IsEnabled = SpaceCancelButton.IsEnabled = extendedRunning;
         SpacePathBox.IsEnabled = SpaceBrowseButton.IsEnabled = SpaceParentButton.IsEnabled = !busy;
@@ -179,7 +233,8 @@ public partial class MainWindow
     {
         if (busy || pcExporting) return;
         string target = QualityTargetBox.Text; var gateway = (QualityGatewayPicker.SelectedItem as NetworkGateway)?.Address;
-        bool route = QualityRouteCheck.IsChecked == true;
+        bool route = advancedTools && QualityRouteCheck.IsChecked == true;
+        ShowVerdict("Quality", null);
         extendedRunning = true;
         await Execute(async token =>
         {
@@ -206,11 +261,14 @@ public partial class MainWindow
             rows.Add(new { Target = item.Item1, Ping = Metric(stats.AverageMs), Jitter = Metric(stats.JitterMs), Loss = $"{stats.LossPercent:0.0}%", Range = Metric(stats.MinimumMs) + "–" + Metric(stats.MaximumMs) });
         }
         QualityRowsGrid.ItemsSource = rows; QualityRouteText.Text = string.Join("\n", report.Route);
+        ShowVerdict("Quality", report.Internet.Count == 0 ? null : ToolVerdicts.Connection(NetworkMeasurements.Summarize(report.Internet),
+            report.Gateway.Count == 0 ? null : NetworkMeasurements.Summarize(report.Gateway)));
     }
     internal async Task RunSpeedAsync()
     {
         if (busy || pcExporting) return;
-        bool detailed = SpeedModePicker.SelectedIndex == 1;
+        bool detailed = advancedTools && SpeedModePicker.SelectedIndex == 1;
+        ShowVerdict("Speed", null);
         extendedRunning = true;
         await Execute(async token =>
         {
@@ -229,6 +287,7 @@ public partial class MainWindow
     {
         SpeedDownText.Text = report.DownloadMbps > 0 ? report.DownloadMbps.ToString("0.0") : "—";
         SpeedUpText.Text = report.UploadMbps > 0 ? report.UploadMbps.ToString("0.0") : "—";
+        ShowVerdict("Speed", report.Outcome == "Completed" ? ToolVerdicts.Speed(report.DownloadMbps, report.UploadMbps) : null);
         SpeedLatencyText.Text = $"Время ответа: {report.IdleMs?.ToString("0.0") ?? "—"} мс · под нагрузкой: {report.LoadedMs?.ToString("0.0") ?? "—"} мс";
         NetworkStageText.Text = (report.Outcome == "Completed" ? "Замер завершён." : report.Note) + $" Получено {report.DownloadBytes / 1_000_000d:0.#} МБ · отправлено {report.UploadBytes / 1_000_000d:0.#} МБ.";
     }

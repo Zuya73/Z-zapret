@@ -60,8 +60,28 @@ internal sealed record QualityResult(string Target, IReadOnlyList<LatencySample>
 internal sealed record SpeedResult(DateTimeOffset At, double DownloadMbps, double UploadMbps, double? IdleMs,
     double? LoadedMs, long DownloadBytes, long UploadBytes, string Outcome, string Note);
 
+internal sealed record DnsAdapter(string Name, int IPv4Index, int? IPv6Index, IReadOnlyList<IPAddress> Servers);
+
 internal static class NetworkTools
 {
+    // Active connections that reach the internet through an IPv4 gateway; these are the ones a DNS change affects.
+    internal static IReadOnlyList<DnsAdapter> DnsAdapters()
+    {
+        var result = new List<DnsAdapter>();
+        foreach (var adapter in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (adapter.OperationalStatus != OperationalStatus.Up || adapter.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
+            var properties = adapter.GetIPProperties();
+            if (!properties.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any))) continue;
+            int? ipv4 = null, ipv6 = null;
+            try { ipv4 = properties.GetIPv4Properties()?.Index; } catch (NetworkInformationException) { }
+            try { ipv6 = properties.GetIPv6Properties()?.Index; } catch (NetworkInformationException) { }
+            if (ipv4 is not int index) continue;
+            result.Add(new(adapter.Name, index, ipv6, properties.DnsAddresses.ToArray()));
+        }
+        return result;
+    }
+
     internal static IReadOnlyList<NetworkGateway> Gateways() => NetworkInterface.GetAllNetworkInterfaces()
         .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
         .SelectMany(n => n.GetIPProperties().GatewayAddresses.Where(g => !g.Address.Equals(IPAddress.Any) && !g.Address.Equals(IPAddress.IPv6Any))

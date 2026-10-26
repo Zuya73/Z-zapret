@@ -539,6 +539,7 @@ public partial class MainWindow : Window
         StartupConnectSwitch.IsChecked = settings.Startup == StartupMode.TrayAndConnect;
         StartupConnectSwitch.IsEnabled = StartupSwitch.IsChecked == true;
         AutoUpdateSwitch.IsChecked = settings.AutoUpdate;
+        advancedTools = settings.AdvancedTools; ApplyAdvancedTools();
         var fakes = Directory.GetFiles(paths.BinarySource, "*.bin").Select(Path.GetFileName)
             .Where(x => x != null && !x.StartsWith("ACTIVE_", StringComparison.OrdinalIgnoreCase)).Order().ToArray();
         DiscordFakePicker.ItemsSource = fakes; GameFakePicker.ItemsSource = fakes;

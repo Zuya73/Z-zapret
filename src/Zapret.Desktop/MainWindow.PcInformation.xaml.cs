@@ -172,7 +172,8 @@ public partial class MainWindow
         var driver = PawnDriver.State();
         PcDriverStatus.Text = driver.Ready ? "Драйвер датчиков PawnIO " + driver.Version : "Драйвер датчиков PawnIO: " + driver.Version + ". Часть показаний видеокарты, дисков и батареи может работать без него.";
         if (pawnRebootRequired || !driver.Ready && Version.TryParse(driver.Version, out _)) PcDriverStatus.Text += " Если показания недоступны, перезагрузите Windows.";
-        PcDriverButton.Visibility = PcHardwareBar.Visibility == Visibility.Visible && !driver.Ready ? Visibility.Visible : Visibility.Collapsed;
+        if (!driver.Ready && !advancedTools) PcDriverStatus.Text += " Установить драйвер можно в режиме для опытных — значок шестерёнки справа от вкладок.";
+        PcDriverButton.Visibility = PcHardwareBar.Visibility == Visibility.Visible && !driver.Ready && advancedTools ? Visibility.Visible : Visibility.Collapsed;
         PcDriverButton.IsEnabled = !driver.Ready && !pcExporting && PawnDriver.CanInstallOver(driver.Version);
     }
     private async void InstallPawn_Click(object sender, RoutedEventArgs e)
